@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, flexpayEmail } from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, priceEmail } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
@@ -439,7 +439,7 @@ test("no em dash anywhere in either email, in either language", () => {
 // Mark 2026-11-09: "remove it from all 3 emails": no group email carries the Cornerstone logo or a Seller of Travel line.
 test("no group email carries the Cornerstone logo or the Seller of Travel line", () => {
   const base = { firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark", lang: "en" as const, publicSite: "https://dev.example.test" };
-  for (const html of [callEmail({ ...CALL }).html, flexpayEmail({ ...base, appointmentUrl: "https://dev.example.test/flexpay-call.html" }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
+  for (const html of [callEmail({ ...CALL }).html, priceEmail({ ...base, lines: [{ label: "Total cruise price", value: "$1,000.00", strong: true }], bookUrl: "https://dev.example.test/price.html", changesUrl: "https://dev.example.test/price.html" }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
     assert.ok(!/cornerstone/i.test(html) && !/Seller of Travel/.test(html));
   }
 });

@@ -488,43 +488,6 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string): st
 
 const para = (html: string) => `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;color:#07183f">${html}</p>`;
 
-// ── FlexPay: the appointment link (Mark 2026-11-05) ───────────────────────────
-// "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Sent by Mark from the booking card once the
-// signed paperwork is back and the booking is confirmed. The wording is a first draft for Mark to read.
-
-export interface FlexpayInput extends MailBase { groupLabel: string; appointmentUrl: string }
-const FLEXPAY = {
-  en: {
-    subject: (label: string) => `One short call and FlexPay is set… ${label}`,
-    title: "One short call and FlexPay is set!",
-    hi: (first: string) => `Hi ${first},`,
-    p1: "Your paperwork is signed and your booking is confirmed. Nicely done!",
-    p2: "You asked for FlexPay, so the last step is a short video call with Mark to complete the FlexPay application together. Pick the time that suits you.",
-    open: "Pick my time",
-    close: "Cruise smarter, laugh more… see you at the muster drill!",
-    footer: (label: string) => `You are receiving this because you asked for FlexPay on your ${label} booking. Not you? Reply and we will take you off the list.`,
-  },
-  es: {
-    subject: (label: string) => `Una llamada corta y FlexPay queda listo… ${label}`,
-    title: "¡Una llamada corta y FlexPay queda listo!",
-    hi: (first: string) => `Hola ${first}:`,
-    p1: "Sus documentos están firmados y su reservación está confirmada. ¡Bien hecho!",
-    p2: "Usted pidió FlexPay, así que el último paso es una videollamada corta con Mark para completar juntos la solicitud de FlexPay. Elija la hora que le convenga.",
-    open: "Elegir mi hora",
-    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
-    footer: (label: string) => `Recibió este correo porque pidió FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
-  },
-} as const;
-
-export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; text: string } {
-  const T = FLEXPAY[i.lang];
-  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
-  const text = [T.hi(first), T.p1, T.p2, `${T.open}: ${i.appointmentUrl}`, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
-  const button = `<a href="${esc(i.appointmentUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
-  const body = [para(esc(T.hi(first))), para(esc(T.p1)), para(esc(T.p2)), para(button), para(esc(T.close))].join("\n    ");
-  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
-}
-
 // ── The price, for the guest to approve (Mark 2026-11-09) ─────────────────────
 // "we need to send an email to confirm the pricing before we send the paperwork. the email should have cta's one 'Book It' and one 'I need changes'".
 // Mark sends it from the booking card once his re-quote is entered. Both buttons open the guest's own price page: "Book It" tells Mark to go ahead (the

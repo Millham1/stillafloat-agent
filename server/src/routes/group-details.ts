@@ -11,7 +11,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, priceEmail, type PriceLine, callerPhone, detailsFacts, detailsTokenFresh, firstWord, flexpayEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, priceEmail, type PriceLine, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -485,7 +485,7 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
     const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(agreed, quoteOptions({ group, cabins, travel }, "en"))}. Travelers are on the file (${where}). `
       + `The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; `
       + `(2) upload that quote in the group file: it fills the booking confirmation; (3) validate ${toCheck.length ? toCheck.join("; ") : "the flights, hotel and transfers, if they asked for any"} and enter the suppliers' confirmations; `
-      + `(4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors${agreed.answers.flexpay ? ", and send the FlexPay appointment link" : ""}.`;
+      + `(4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors.`;
     void createAction({
       type: "lead", source_ref: `group-quote-${reply.id}`, title, body, priority: "lead",
       buttons: [
@@ -741,7 +741,7 @@ function bookingView(b: BookingFile) {
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
     confirmWith: ["The cruise line", ...chosen.map((r) => [r.label, r.provider].filter(Boolean).join(" · "))],
-    flexpay: b.quote?.answers?.flexpay === true ? { link: text((b.reply.quote as Record<string, unknown> | null)?.["flexpay_link"], 20), call: callView(storedCall(b.reply.quote), "en") } : null,
+    flexpay: b.quote?.answers?.flexpay === true ? { call: callView(storedCall(b.reply.quote), "en") } : null,
   };
 }
 
@@ -1076,45 +1076,8 @@ router.post("/groups/:id/interests/:iid/complete", requireToken, async (req: Req
   }
 });
 
-/** Mark 2026-11-05: "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Only for a guest who asked
- *  for FlexPay, and only once the booking is confirmed. The link is our own scheduler page (public/flexpay-call.html), never an outside scheduling
- *  service (Mark 2026-11-05: "I'm not paying for another service"). Sent again, it emails again (the same link: it is derived, not stored). */
-router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req: Request, res: Response) => {
-  try {
-    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
-    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
-    const b = await loadBooking(groupId, iid);
-    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
-    if (b.quote?.answers?.flexpay !== true) return res.status(409).json({ success: false, error: "This guest did not ask for FlexPay." });
-    if (!b.reply.booking_completed_at) return res.status(409).json({ success: false, error: "Confirm the booking with the cruise line and the vendors first." });
-    const linkKey = hubKey();
-    if (!linkKey) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
-    const to = (b.lead.email ?? b.reply.email ?? "").trim();
-    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
-    if (ge) throw new Error(ge.message);
-    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
-    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
-    const facts = detailsFacts({ group, cabins: [] }, lang);
-    const appointmentUrl = `${publicSite()}${lang === "es" ? "/es" : ""}/flexpay-call.html?r=${iid}&k=${deriveCallKey(iid, linkKey)}`;
-    let link: "sent" | "held" | "no-email" | "failed";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) link = "no-email";
-    else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
-      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "flexpay-appointment", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
-      link = "held";
-    } else {
-      const mail = flexpayEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), appointmentUrl });
-      const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
-      const at = new Date().toISOString();
-      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "flexpay-appointment", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
-      link = ok ? "sent" : "failed";
-    }
-    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), flexpay_link: link }, updated_at: new Date().toISOString() }).eq("id", iid);
-    if (error) throw new Error(error.message);
-    return res.json({ success: true, link });
-  } catch (err) {
-    return fail(req, res, err, "group flexpay link failed");
-  }
-});
+// Mark 2026-11-09: there is no "FlexPay appointment link" email. The scheduler pops up on the quote page the moment the guest says yes to FlexPay, so
+// the appointment is already made there; the one email is the confirmation of the time they picked.
 
 // ── FlexPay: the guest picks the time of the video call (Mark 2026-11-05) ─────────────────────────────────────────
 // "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already". The page is ours

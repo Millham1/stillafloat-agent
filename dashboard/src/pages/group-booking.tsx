@@ -34,7 +34,7 @@ type Booking = {
     read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[]; guests?: GuestPrice[] };
   };
   signed: null | { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> };
-  completedAt: string | null; confirmWith: string[]; flexpay: null | { link: string | null; call: null | { start: string; whenText: string; meetLink: string | null } };
+  completedAt: string | null; confirmWith: string[]; flexpay: null | { call: null | { start: string; whenText: string; meetLink: string | null } };
 };
 const READING = ["queued", "reading", "extracting"];
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -151,16 +151,6 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       qc.invalidateQueries({ queryKey: ["group-bookings", groupId] });
       qc.invalidateQueries({ queryKey: key });
     } catch (e) { toast({ variant: "destructive", title: "Not completed", description: (e as Error).message }); }
-    finally { setBusy(false); }
-  };
-  const flexpay = async () => {
-    if (!window.confirm(`Email ${data.guest.name} the link to schedule the FlexPay appointment?`)) return;
-    setBusy(true);
-    try {
-      const r = await api<{ link: string }>(`/groups/${groupId}/interests/${guest.id}/flexpay-link`, "POST");
-      toast({ title: r.link === "sent" ? "FlexPay appointment link sent" : `Not sent: ${SENT[r.link] ?? r.link}` });
-      qc.invalidateQueries({ queryKey: key });
-    } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
   // Mark 2026-11-09: the price goes to the guest first ("Book It" / "I need changes"); the paperwork waits for their yes
@@ -389,9 +379,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               {data.flexpay ? (
                 <div className="space-y-1">
                   <h4 className="text-sm font-semibold">4. FlexPay</h4>
-                  <p className="text-sm text-muted-foreground">This guest asked for FlexPay. The scheduler pops up on their quote page the moment they say yes: they pick a video call from your open times (Monday to Saturday, 10 AM to 8 PM Eastern, never over a meeting on your calendar). You schedule nothing. If they closed it without a time, send them the link to it. Then you make the payments.</p>
-                  <button className={btn} disabled={busy || !data.completedAt} onClick={flexpay} title={data.completedAt ? "" : "Confirm the booking first"}><Send className="w-3 h-3" /> {data.flexpay.link ? "Send the appointment link again" : "Send the FlexPay appointment link"}</button>
-                  {data.flexpay.link && <span className="text-xs text-muted-foreground ml-2">{data.flexpay.link === "sent" ? "Sent" : SENT[data.flexpay.link] ?? data.flexpay.link}.</span>}
+                  <p className="text-sm text-muted-foreground">This guest asked for FlexPay. The scheduler pops up on their quote page the moment they say yes: they pick a video call from your open times (Monday to Saturday, 10 AM to 8 PM Eastern, never over a meeting on your calendar). You schedule nothing, and no separate email is needed: their own quote link opens the scheduler again. Then you make the payments.</p>
                   {data.flexpay.call ? (
                     <p className="text-sm mt-2">Video call: <b>{data.flexpay.call.whenText}</b>. It is on your calendar.{" "}
                       {data.flexpay.call.meetLink && <a className="underline" href={data.flexpay.call.meetLink} target="_blank" rel="noreferrer">Join the video call</a>}</p>
