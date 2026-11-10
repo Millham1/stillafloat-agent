@@ -87,12 +87,11 @@
     q_cabin:'¿Qué cabina?',
     q_flex:'¿Quiere solicitar FlexPay?', flex_note:'FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera. Si dice sí, elija la hora de una videollamada breve con Mark para completar juntos la solicitud; fija su propio calendario de pagos y no cambia nada en esta cotización.', flex_yes:'Agendemos una cita breve con Mark para solicitarlo.', flex_no:'No, gracias',
     q_drinks:'¿Agregar un paquete de bebidas?', drinks_note:'No está incluido en esta tarifa. Mark lo cotiza para su grupo.', drinks_yes:'Sí, cotícenlo', drinks_no:'No, gracias', drinks_inc:'Bebidas: su tarifa incluye un paquete.',
-    q_ins:'¿Seguro de viaje?', ins_note:'Los precios pueden cambiar hasta que se finalicen.',
     q_travel:'Ida y vuelta', travel_note:'Elija lo que quiera agregar. Mark le cotiza vuelos, hotel y traslados con su cotización final.',
     q_need_flight:'¿Necesita vuelos?', q_need_hotel:'¿Necesita hotel la noche anterior?', q_need_transfer:'¿Necesita traslados?', need_yes:'Sí, Mark, cotícelo', need_no:'No, gracias',
     fp_title:'Su videollamada de FlexPay', fp_pick:'Elija la hora de su videollamada de FlexPay con Mark.', fp_open:'Abrir el calendario', fp_booked:'Su videollamada de FlexPay: {when}.',
     agree:'¡Enviar mis decisiones a Mark!', agreeing:'Enviando…', agree_note:'Mark cotiza sus decisiones con la naviera y luego le envía por correo su confirmación de reserva con el precio final para que la revise y firme. Todavía no se reserva ni se cobra nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.', agree_miss:'Falta responder antes de enviarlo a Mark:',
-    agreed_h:'¡Sus documentos van en camino a {email}!… {category}, {party}. Traen su precio final: revíselos y firme.', agreed_h_mark:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él le envía sus documentos después.', agreed_h_booking:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él las está cotizando con la naviera; sus documentos, con su precio final, le llegan por correo.',
+    agreed_h:'¡Sus documentos van en camino a {email}!… {category}, {party}. Traen su precio final: revíselos y firme.', agreed_h_mark:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él le envía sus documentos después.', agreed_h_booking:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él está confirmando el precio de todo; su cotización le llega por correo.',
     party_one:'para una persona', party_n:'grupo de {n}',
     change:'¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al {phone}.',
     err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
@@ -106,12 +105,11 @@
     q_cabin:'Which cabin?',
     q_flex:'Would you like to apply for FlexPay?', flex_note:'FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and pick the time of a brief video call with Mark to complete the application together; it sets its own payment schedule, and nothing on this quote changes.', flex_yes:"Let's schedule a brief appointment with Mark to apply.", flex_no:'No thanks',
     q_drinks:'Add a drink package?', drinks_note:'Not included in this fare. Mark prices one for your party.', drinks_yes:'Yes, price one for us', drinks_no:'No thanks', drinks_inc:'Drinks: a package is included in your fare.',
-    q_ins:'Travel insurance?', ins_note:'Pricing subject to change until finalized.',
     q_travel:'Getting there and back', travel_note:'Pick what you want added. Mark prices flights, hotel and transfers with your final quote.',
     q_need_flight:'Do you need flights?', q_need_hotel:'Do you need a hotel the night before?', q_need_transfer:'Do you need transfers?', need_yes:'Yes, Mark, quote it', need_no:'No thanks',
     fp_title:'Your FlexPay video call', fp_pick:'Pick the time for your FlexPay video call with Mark.', fp_open:'Open the scheduler', fp_booked:'Your FlexPay video call: {when}.',
     agree:'Send my choices to Mark!', agreeing:'Sending…', agree_note:'Mark prices your choices with the cruise line, then emails your booking confirmation with the final price for you to check and sign. Nothing is booked or charged yet.', agree_wait:'Answer every question above and the button lights up.', agree_miss:'Still to answer before this can go to Mark:',
-    agreed_h:'Your paperwork is on its way to {email}!… {category}, {party}. It carries your final price: check it and sign.', agreed_h_mark:'Your choices are with Mark!… {category}, {party}. He sends your paperwork next.', agreed_h_booking:'Your choices are with Mark!… {category}, {party}. He is pricing them with the cruise line; your paperwork, with your final price, follows by email.',
+    agreed_h:'Your paperwork is on its way to {email}!… {category}, {party}. It carries your final price: check it and sign.', agreed_h_mark:'Your choices are with Mark!… {category}, {party}. He sends your paperwork next.', agreed_h_booking:'Your choices are with Mark!… {category}, {party}. He is confirming the pricing for everything; your quote follows by email.',
     party_one:'party of one', party_n:'party of {n}',
     change:'Need to change a name, a birthday or your mind? Call or text Mark at {phone}.',
     err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
@@ -182,7 +180,7 @@
 
   // ── The quote step ──
   function qaComplete(){
-    if(!qo || !qa.cabin || qa.flexpay === null || !qa.insurance) return false;
+    if(!qo || !qa.cabin || qa.flexpay === null) return false;
     if(qo.drinks === 'ask' && qa.drinks === null) return false;
     for(var i = 0; i < qo.needs.length; i++){ if(typeof qa.needs[qo.needs[i]] !== 'boolean') return false; }
     return true;
@@ -193,7 +191,6 @@
     if(!qa.cabin) m.push({ id: 'q-cabin', label: T.q_cabin });
     if(qa.flexpay === null) m.push({ id: 'q-flexpay', label: T.q_flex });
     if(qo.drinks === 'ask' && qa.drinks === null) m.push({ id: 'q-drinks', label: T.q_drinks });
-    if(!qa.insurance) m.push({ id: 'q-insurance', label: T.q_ins });
     qo.needs.forEach(function(k){ if(typeof qa.needs[k] !== 'boolean') m.push({ id: 'q-need-' + k, label: T['q_need_' + k] }); });
     return m;
   }
@@ -213,9 +210,8 @@
     }
     if(qo.drinks === 'ask') h += '<p class="q" id="q-drinks">' + esc(T.q_drinks) + '</p><p class="small">' + esc(T.drinks_note) + '</p>' + yesNo('drinks', qa.drinks, T.drinks_yes, T.drinks_no);
     else h += '<p class="q">' + esc(T.drinks_inc) + '</p>';
-    h += '<p class="q" id="q-insurance">' + esc(T.q_ins) + '</p><div class="opts">';
-    qo.insurance.forEach(function(o){ h += optBtn('insurance', o.key, o.label, qa.insurance === o.key); });
-    h += '</div><p class="small">' + esc(T.ins_note) + '</p>';
+    // Mark 2026-11-10: insurance is NOT asked here any more ("delete this section for now and create an insurance section on the quote"):
+    // it is priced on Mark's quote, from the cruise line's own figures, and chosen there.
     if(qo.travel.length){
       h += '<p class="q">' + esc(T.q_travel) + '</p><p class="small">' + esc(T.travel_note) + '</p>';
       qo.travel.forEach(function(t){
