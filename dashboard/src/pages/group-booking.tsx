@@ -159,8 +159,11 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   // Mark 2026-11-09: the price goes to the guest first ("Book It" / "I need changes"); the paperwork waits for their yes
+  // Mark 2026-11-10 ("these buttons still do not work"): the buttons never wait on a separate Save any more. Unsaved figures are saved first, then the
+  // button does its job; a save that is refused stops there and says why.
   const emailPrice = async () => {
-    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}? They answer with "Book It" or "I need changes".`)) return;
+    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?${dirty ? " The figures on this page are saved first." : ""} They answer with "Book It" or "I need changes".`)) return;
+    if (dirty && !(await save())) return;
     setBusy(true);
     try {
       const r = await api<{ price: { sent: string } }>(`/groups/${groupId}/interests/${guest.id}/price-email`, "POST");
@@ -170,16 +173,21 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   const previewPrice = async () => {
+    // the preview window is opened at the click itself (a browser blocks one opened later), then filled
+    const win = window.open("", "_blank");
+    if (dirty && !(await save())) { win?.close(); return; }
     setBusy(true);
     try {
       const r = await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`);
       const page = `<!doctype html><meta charset="utf-8"><title>Price email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
-      window.open(URL.createObjectURL(new Blob([page], { type: "text/html" })), "_blank");
-    } catch (e) { toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
+      const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
+      if (win) win.location.href = url; else window.open(url, "_blank");
+    } catch (e) { win?.close(); toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
   const recordYes = async () => {
-    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
+    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?${dirty ? " The figures on this page are saved first." : ""}`)) return;
+    if (dirty && !(await save())) return;
     setBusy(true);
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/price-approved`, "POST");
@@ -421,10 +429,10 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <p className="text-sm text-muted-foreground">Not sent yet.</p>
             )}
             <div className="flex flex-wrap gap-2 items-center">
-              <button className={btn} disabled={busy || dirty || cruiseSum <= 0} onClick={previewPrice} title={dirty ? "Save first" : ""}>Preview the price email</button>
-              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy || dirty || cruiseSum <= 0} onClick={emailPrice} title={dirty ? "Save first" : cruiseSum > 0 ? "" : "Enter the cabin fare first"}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
-              {!approved && <button className={btn} disabled={busy || dirty} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
-              {dirty && <span className="text-xs text-muted-foreground">Save first.</span>}
+              <button className={btn} disabled={busy || cruiseSum <= 0} onClick={previewPrice} title={cruiseSum > 0 ? "" : "Enter the cabin fare first"}>Preview the price email</button>
+              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy || cruiseSum <= 0} onClick={emailPrice} title={cruiseSum > 0 ? "" : "Enter the cabin fare first"}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
+              {!approved && <button className={btn} disabled={busy} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
+              {dirty && <span className="text-xs text-muted-foreground">The figures above are not saved yet: these buttons save them first.</span>}
             </div>
           </div>
           <div className="space-y-2">
