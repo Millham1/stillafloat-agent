@@ -29,6 +29,7 @@ type Booking = {
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number; line: boolean }>;
+  protectionOnFile?: Array<{ name: string; per_person: number; line: boolean }>;
   price?: { protection?: { key: string; label: string } | null; sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
@@ -308,7 +309,27 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", per_person: "", line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
         </div>
         {guestPrices.some((g) => g.insurance > 0) && <p className="text-sm text-muted-foreground">The cruise line's quote already has its protection plan in the price ({guestPrices.map((g) => `${g.name}: ${usd(g.insurance)}`).join("; ")}). It shows on the quote as printed; do not add it again here.</p>}
-        {plans.length === 0 && <p className="text-sm text-muted-foreground">No plan priced yet. Add the cruise line's plan and each Allianz plan with its price per person; with none here, the quote has no travel protection section.</p>}
+        {/* Mark 2026-11-10: the quotes on file for this sailing show here, each with its own button: he picks which ones go on this guest's quote */}
+        {(data.protectionOnFile ?? []).length > 0 ? (
+          <div className="rounded-md border p-2 mb-2">
+            <p className="text-sm font-semibold mb-1">Quotes on file for this sailing (from the group file). Pick the ones to put on this quote:</p>
+            <div className="space-y-1">
+              {(data.protectionOnFile ?? []).map((q, i) => {
+                const on = plans.some((x) => x.name.trim() === q.name && x.line === q.line);
+                return (
+                  <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
+                    <span><b>{q.name}</b> · {usd(q.per_person)} per person · {q.line ? "the cruise line's own plan" : "Allianz"}</span>
+                    {on ? <span className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> On this quote</span>
+                      : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.per_person.trim()), { name: q.name, per_person: String(q.per_person), line: q.line }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-amber-700">No protection quote is on the group file for this sailing. Type the cruise line's plan and the Allianz plans on the group's details (as quoted), or add a plan by hand with "+ plan".</p>
+        )}
+        {plans.length === 0 && <p className="text-sm text-muted-foreground">Nothing is on this guest's quote yet: with no plan added, the quote has no travel protection section.</p>}
         <div className="space-y-2">
           {plans.map((x, i) => (
             <div key={i} className="grid grid-cols-[1fr_11rem_auto_auto] gap-2 items-end">

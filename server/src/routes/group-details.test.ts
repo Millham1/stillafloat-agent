@@ -1041,6 +1041,9 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const planned = await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } });
   assert.deepEqual(planned.json["protection"], [{ name: "MSC Cruise Protection", per_person: 99, line: true }, { name: "OneTrip Prime (Allianz)", per_person: 129.5, line: false }]);
   assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the plans keeps the travel");
+  // Mark 2026-11-10: the booking card shows the sailing's quotes from the group file, for him to pick which ones go on this guest's quote
+  assert.ok(Array.isArray(planned.json["protectionOnFile"]), "the quotes on the group file come with the booking");
+  for (const q of planned.json["protectionOnFile"] as Row[]) assert.ok(typeof q["name"] === "string" && typeof q["per_person"] === "number" && q["per_person"] > 0 && typeof q["line"] === "boolean");
   const offer = (await call("GET", pricePage)).json["doc"]["protection"];
   assert.deepEqual([offer["head"], offer["own"], offer["none"]], ["Travel protection", "I have my own policy", "No insurance for us"]);
   assert.deepEqual(offer["plans"], [

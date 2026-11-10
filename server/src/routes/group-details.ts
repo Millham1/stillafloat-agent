@@ -16,7 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { planLabel } from "../lib/allianz-quote";
+import { planLabel, plansFromText } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -613,7 +613,10 @@ async function loadBooking(groupId: string, iid: string) {
   // once the paperwork is out: what this party has signed
   let signed: SignedView | null = null;
   if (quote?.paperwork && quote.paperwork !== "booking") signed = await signedFor(groupId, lead);
-  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed };
+  // the sailing's protection quotes on the group file (the cruise line's plan and the Allianz plans, as Mark typed them there)
+  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans").eq("id", groupId).maybeSingle();
+  if (fe) throw new Error(fe.message);
+  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null };
 }
 
 interface SignedView { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> }
@@ -816,6 +819,12 @@ function bookingView(b: BookingFile) {
     guestPrices: storedGuestPrices(b.lead.form_data),
     // travel protection Mark priced for this booking; the guest picks one on the quote page
     protection: protectionPlans(b.lead.form_data),
+    // Mark 2026-11-10 ("it does not show me the quotes from Allianz nor the cruise line so I cannot select which ones to add"): the quotes on the
+    // group file for this sailing, for him to tick onto this guest's quote: the cruise line's plan first, then each Allianz plan
+    protectionOnFile: [
+      ...plansFromText(b.file?.["line_protection"]).slice(0, 1).map((q) => ({ name: q.name, per_person: q.price_per_person, line: true })),
+      ...plansFromText(b.file?.["insurance_plans"]).map((q) => ({ name: q.name, per_person: q.price_per_person, line: false })),
+    ],
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
