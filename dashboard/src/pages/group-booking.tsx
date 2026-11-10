@@ -166,11 +166,18 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const priceStop = (): string | null => (dirty ? UNSAVED : cruiseSum <= 0 ? "There is no price to send yet. Enter the cabin fare, then save the confirmation." : null);
   const emailPrice = async () => {
     const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
-    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}? They answer with "Book It" or "I need changes".`)) return;
+    if (!window.confirm(`Send this quote to ${data.guest.name}${data.guest.email ? ` at ${data.guest.email}` : ""} now? It is a real email. They answer with "Book It" or "I need changes".`)) return;
     setBusy(true);
     try {
       const r = await api<{ price: { sent: string } }>(`/groups/${groupId}/interests/${guest.id}/price-email`, "POST");
-      toast({ title: r.price.sent === "sent" ? "Price emailed to the guest" : `Not sent: ${SENT[r.price.sent] ?? r.price.sent}` });
+      // a send that did not go out says why, and what to do, in red beside the button
+      const WHY: Record<string, string> = {
+        failed: "The quote was NOT sent: the mail service refused it. Nothing went to the guest. Press the button again; if it fails twice, the mail service is down.",
+        held: "The quote was NOT sent: this is the test site, and it only emails its test addresses. This guest's address is not one of them.",
+        "no-email": "The quote was NOT sent: this guest has no email address on file. Add one to the reply, then send again.",
+      };
+      if (r.price.sent === "sent") { setStop(null); toast({ title: "Quote emailed to the guest" }); }
+      else { setStop({ at: "price", text: WHY[r.price.sent] ?? `The quote was NOT sent (${r.price.sent}).` }); toast({ variant: "destructive", title: "Quote not sent" }); }
       qc.invalidateQueries({ queryKey: key });
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
@@ -182,7 +189,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setBusy(true);
     try {
       const r = await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`);
-      const page = `<!doctype html><meta charset="utf-8"><title>Price email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
+      const page = `<!doctype html><meta charset="utf-8"><title>Quote email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
       const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
       if (win) win.location.href = url; else window.open(url, "_blank");
     } catch (e) { win?.close(); toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
@@ -418,8 +425,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
         <div className="space-y-4">
           {/* Mark 2026-11-09: the guest confirms the price by email before the paperwork goes out */}
           <div className="rounded-md border p-3 space-y-2">
-            <h4 className="text-sm font-semibold">Confirm the price with {data.guest.name}</h4>
-            <p className="text-sm text-muted-foreground">Email the price above to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
+            <h4 className="text-sm font-semibold">Confirm the quote with {data.guest.name}</h4>
+            <p className="text-sm text-muted-foreground">Email the quote above to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
             {approved ? (
               <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Price approved {price?.approved_how === "mark" ? "(you recorded their yes)" : "by the guest (Book It)"} · {when(price?.approved_at)}. Book it, enter the confirmation numbers, then send the paperwork.</p>
             ) : price?.changes_open ? (
@@ -429,13 +436,13 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
                 <p>Re-quote, update the confirmation above, save, then email the price again.</p>
               </div>
             ) : price?.sent_at ? (
-              <p className="text-sm text-muted-foreground">{price.sent === "sent" ? "Price emailed" : `Not sent: ${SENT[price.sent ?? ""] ?? price.sent}`} · {when(price.sent_at)}. Waiting on the guest.</p>
+              <p className="text-sm text-muted-foreground">{price.sent === "sent" ? `Quote emailed · ${when(price.sent_at)}. Waiting on the guest.` : `The last try did NOT go out (${SENT[price.sent ?? ""] ?? price.sent}) · ${when(price.sent_at)}. Send it again.`}</p>
             ) : (
               <p className="text-sm text-muted-foreground">Not sent yet.</p>
             )}
             <div className="flex flex-wrap gap-2 items-center">
-              <button className={btn} disabled={busy} onClick={previewPrice}>Preview the price email</button>
-              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy} onClick={emailPrice}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
+              <button className={btn} disabled={busy} onClick={previewPrice}>Preview the quote email</button>
+              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy} onClick={emailPrice}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the quote again" : `Email the quote to ${data.guest.name}`}</button>
               {!approved && <button className={btn} disabled={busy} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
             </div>
             {stop?.at === "price" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}

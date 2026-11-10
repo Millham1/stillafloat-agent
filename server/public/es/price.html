@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261109b">
+<link rel="stylesheet" href="/css/price-page.css?v=20261110a">
 </head>
 <body>
 <div class="wrap">
@@ -77,7 +77,7 @@
   var T = ES ? {
     title:'Su precio', plaque:'Su precio', loading:'Un momento…',
     bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
-    h1:'¡Su precio, {first}!', lede:'Mark cotizó sus decisiones con la naviera. Esto es lo que suma:',
+    h1:'¡Su cotización, {first}!', lede:'Mark cotizó sus decisiones con la naviera. Esta es su cotización:',
     note:'Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.',
     book:'Reservar', booking:'Un momento…', changes:'Necesito cambios',
     m_title:'¿Qué desea cambiar?', m_p:'Cuéntenos con sus palabras qué quiere cambiar. Mark lo cotiza de nuevo y le envía el precio nuevo.', send:'Enviar a Mark', sending:'Enviando…',
@@ -90,7 +90,7 @@
   } : {
     title:'Your price', plaque:'Your price', loading:'One moment…',
     bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
-    h1:'Your price, {first}!', lede:'Mark priced your choices with the cruise line. Here is what it comes to:',
+    h1:'Your quote, {first}!', lede:'Mark priced your choices with the cruise line. Here is your quote:',
     note:'These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.',
     book:'Book It', booking:'One moment…', changes:'I need changes',
     m_title:'What would you like changed?', m_p:'Tell us in your own words what you want changed. Mark re-prices it and emails you the new price.', send:'Send to Mark', sending:'Sending…',
@@ -122,10 +122,31 @@
     $('p-label').textContent = d.label || '';
     $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
     $('p-lede').textContent = T.lede;
-    $('p-lines').innerHTML = (d.lines || []).map(function(l){ return l.head ? '<p class="p-head">' + esc(l.label) + '</p>' : '<div class="p-line' + (l.strong ? ' strong' : '') + '"><span>' + esc(l.label) + '</span><span>' + esc(l.value) + '</span></div>'; }).join('');
+    $('p-lines').innerHTML = quoteHtml(d.doc || {});
     $('p-note').textContent = T.note;
     show('p-price');
     drawState(d.state);
+  }
+  // the quote, laid out like the email (Mark 2026-11-10): the cruise as ONE table (a column per guest), the add-ons named once, each piece of travel
+  // as its own block, the totals in bars
+  function quoteHtml(q){
+    var h = '', heads = q.heads || {};
+    h += '<div class="q-bar">' + esc(heads.cruise || '') + (q.cabin ? '<span> · ' + esc(q.cabin) + '</span>' : '') + '</div>';
+    if(q.matrix){
+      h += '<div class="q-scroll"><table class="q-table"><thead><tr><th></th>' + q.matrix.names.map(function(n){ return '<th>' + esc(n) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      q.matrix.rows.forEach(function(r){ h += '<tr' + (r.strong ? ' class="strong"' : '') + '><td>' + esc(r.label) + '</td>' + r.values.map(function(v){ return '<td>' + esc(v) + '</td>'; }).join('') + '</tr>'; });
+      h += '</tbody></table></div>';
+      (q.matrix.addons || []).forEach(function(a){ h += '<p class="q-sub">' + esc(a.title) + '</p><ul class="q-list">' + a.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul>'; });
+    } else {
+      (q.cruise || []).forEach(function(l){ h += '<div class="p-line"><span>' + esc(l.label) + '</span><span>' + esc(l.value) + '</span></div>'; });
+    }
+    if(q.cruiseTotal) h += '<div class="q-total"><span>' + esc(q.cruiseTotal.label) + '</span><span>' + esc(q.cruiseTotal.value) + '</span></div>';
+    if((q.travel || []).length){
+      h += '<div class="q-bar">' + esc(heads.travel || '') + '</div>';
+      q.travel.forEach(function(t){ h += '<div class="q-trip"><div><b>' + esc(t.title) + '</b>' + t.details.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('') + '</div><b>' + esc(t.value) + '</b></div>'; });
+    }
+    if(q.tripTotal) h += '<div class="q-total big"><span>' + esc(q.tripTotal.label) + '</span><span>' + esc(q.tripTotal.value) + '</span></div>';
+    return h;
   }
   function drawState(s){
     var open = s === 'open';

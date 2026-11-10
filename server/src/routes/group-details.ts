@@ -11,7 +11,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, planBookedEmail, priceEmail, type PriceLine, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -672,36 +672,76 @@ function storedPrice(quote: unknown): PriceState {
     approved_how: p["approved_how"] === "guest" || p["approved_how"] === "mark" ? p["approved_how"] : null, changes, changes_open: p["changes_open"] === true && changes.length > 0,
   };
 }
-const PRICE_WORDS = {
-  en: { cabin: "Cabin", cruise: "Total cruise price", trip: "Trip total (cruise and travel)", fare: "Cruise", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total", booking: "Total booking price" },
-  es: { cabin: "Cabina", cruise: "Precio total del crucero", trip: "Total del viaje (crucero y traslados)", fare: "Crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total", booking: "Precio total de la reservación" },
+const QUOTE_WORDS = {
+  en: { cruise: "Your cruise", travel: "Getting there", fare: "Cruise fare", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total per guest",
+    cruiseTotal: "Cruise total", tripTotal: "Trip total (cruise and travel)", addonsAll: "Add-ons for each guest", addonsFor: (n: string) => `Add-ons for ${n}`, cabin: "Cabin",
+    pkg: (post: boolean) => `Air and hotel package, ${post ? "after" : "before"} the cruise`, flights: "Flights", going: "Going", back: "Coming back", hotel: "Hotel", bed1: "1 bed", bed2: "2 beds",
+    breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight" },
+  es: { cruise: "Su crucero", travel: "Cómo llegar", fare: "Tarifa del crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total por pasajero",
+    cruiseTotal: "Total del crucero", tripTotal: "Total del viaje (crucero y traslados)", addonsAll: "Complementos de cada pasajero", addonsFor: (n: string) => `Complementos de ${n}`, cabin: "Cabina",
+    pkg: (post: boolean) => `Paquete de vuelo y hotel, ${post ? "después" : "antes"} del crucero`, flights: "Vuelos", going: "Ida", back: "Regreso", hotel: "Hotel", bed1: "1 cama", bed2: "2 camas",
+    breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo" },
 } as const;
-/** The price as the guest reads it. When the cruise line's quote prices each guest apart and those lines are on the file (and still add up to the
- *  total cruise price Mark saved), the guest sees THOSE lines, guest by guest, exactly as the quote prints them: nothing summed across guests. Otherwise
- *  the cabin, each cruise extra and the cruise total. Then each priced travel line and the trip total. */
-function priceLines(b: BookingFile, lang: Lang): PriceLine[] {
-  const v = bookingView(b), W = PRICE_WORDS[lang], lines: PriceLine[] = [];
+/** "MARK MILLHAM" as a quote prints it → "Mark Millham" for reading. */
+const properName = (n: string) => n.toLowerCase().replace(/(^|[\s'-])([a-záéíóúñ])/g, (_m, a: string, b: string) => a + b.toUpperCase());
+const longDay = (ymd: string | null | undefined, lang: Lang) => (ymd && /^\d{4}-\d{2}-\d{2}/.test(ymd)
+  ? new Date(`${ymd.slice(0, 10)}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "");
+const clockTime = (hm: string | null | undefined, lang: Lang) => {
+  const m = hm ? /^(\d{2}):(\d{2})$/.exec(hm) : null;
+  if (!m) return "";
+  if (lang === "es") return `${m[1]}:${m[2]}`;
+  const h = Number(m[1]);
+  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+};
+/** The quote as the guest reads it (Mark 2026-11-10): the cruise as ONE matrix (a column per guest, each cell the figure the cruise line's quote prints
+ *  for that guest), the add-ons named once, the cruise total; then each piece of travel as its own block, its details on their own lines; then the trip
+ *  total. The per-guest matrix shows only while the guests' printed totals still add up to the total cruise price Mark saved; otherwise the cabin and
+ *  each cruise extra as plain lines. Nothing here is worked out beyond the totals the booking confirmation already holds. */
+function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
+  const v = bookingView(b), W = QUOTE_WORDS[lang];
   const guests = v.guestPrices;
   const asPrinted = guests.length > 0 && v.totals.cruise !== null && guests.every((g) => g.total !== null) && Math.abs(guests.reduce((n, g) => n + (g.total as number), 0) - v.totals.cruise) < 0.005;
+  let matrix: QuoteDoc["matrix"] = null;
+  const cruise: QuoteDoc["cruise"] = [];
   if (asPrinted) {
-    for (const g of guests) {
-      lines.push({ label: g.name, value: "", head: true });
-      lines.push({ label: W.fare, value: usd(g.cruise) });
-      if (g.packaging > 0) lines.push({ label: W.packaging, value: usd(g.packaging) });
-      if (g.addons > 0) lines.push({ label: g.items.length ? `${W.addons}: ${g.items.join(", ")}` : W.addons, value: usd(g.addons) });
-      if (g.insurance > 0) lines.push({ label: W.insurance, value: usd(g.insurance) });
-      lines.push({ label: W.taxes, value: usd(g.taxes) });
-      lines.push({ label: `${W.guest}, ${g.name}`, value: usd(g.total as number), strong: true });
-    }
-    lines.push({ label: W.booking, value: usd(v.totals.cruise as number), strong: true });
+    const row = (label: string, pick: (g: (typeof guests)[number]) => number, strong = false) => ({ label, values: guests.map((g) => usd(pick(g))), ...(strong ? { strong } : {}) });
+    const rows = [row(W.fare, (g) => g.cruise)];
+    if (guests.some((g) => g.packaging > 0)) rows.push(row(W.packaging, (g) => g.packaging));
+    if (guests.some((g) => g.addons > 0)) rows.push(row(W.addons, (g) => g.addons));
+    if (guests.some((g) => g.insurance > 0)) rows.push(row(W.insurance, (g) => g.insurance));
+    rows.push(row(W.taxes, (g) => g.taxes), row(W.guest, (g) => g.total as number, true));
+    const withItems = guests.filter((g) => g.addons > 0 && g.items.length > 0);
+    const same = withItems.length === guests.length && withItems.every((g) => g.items.join("|") === withItems[0]!.items.join("|"));
+    const addons = same ? [{ title: W.addonsAll, items: withItems[0]!.items }] : withItems.map((g) => ({ title: W.addonsFor(properName(g.name)), items: g.items }));
+    matrix = { names: guests.map((g) => properName(g.name)), rows, addons };
   } else {
-    if (v.totals.cabin !== null) lines.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
-    for (const x of v.extras) lines.push({ label: x.name, value: usd(x.total) });
-    if (v.totals.cruise !== null) lines.push({ label: W.cruise, value: usd(v.totals.cruise), strong: true });
+    if (v.totals.cabin !== null) cruise.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
+    for (const x of v.extras) cruise.push({ label: x.name, value: usd(x.total) });
   }
-  for (const r of v.trip) if (r.price !== null) lines.push({ label: r.label, value: usd(r.price) });
-  if (v.totals.travel !== null && v.totals.trip !== null) lines.push({ label: W.trip, value: usd(v.totals.trip), strong: true });
-  return lines;
+  const travel: QuoteDoc["travel"] = [];
+  for (const r of v.trip) {
+    if (r.price === null) continue;
+    const post = r.direction === "post", k = r.pkg ?? null;
+    if (r.kind === "package") {
+      const leg = (word: string, no: string | null | undefined, from: string | null | undefined, to: string | null | undefined, day: string | null, dep: string | null | undefined, arr: string | null | undefined) => {
+        const bits = [no ? `${W.flight} ${no}` : "", [from, to].filter(Boolean).join(` ${W.to} `), longDay(day, lang), dep ? `${W.departs} ${clockTime(dep, lang)}` : "", arr ? `${W.arrives} ${clockTime(arr, lang)}` : ""].filter(Boolean);
+        return bits.length ? `${word}: ${bits.join(" · ")}` : "";
+      };
+      const air = [r.provider, k?.air_class].filter(Boolean).join(", ");
+      const hotel = [k?.hotel, k?.hotel_city, [longDay(k?.check_in, lang), longDay(k?.check_out, lang)].filter(Boolean).join(` ${W.to} `), k?.beds === "1" ? W.bed1 : k?.beds === "2" ? W.bed2 : "", k?.breakfast === true ? W.breakfast : k?.breakfast === false ? W.noBreakfast : ""].filter(Boolean).join(" · ");
+      travel.push({ title: W.pkg(post), value: usd(r.price), details: [
+        air ? `${W.flights}: ${air}` : "", leg(W.going, k?.flights, r.from_place, r.to_place, r.starts_at, k?.depart_time, k?.arrive_time),
+        leg(W.back, k?.return_flights, k?.return_from, k?.return_to, r.ends_at, k?.return_depart_time, k?.return_arrive_time), hotel ? `${W.hotel}: ${hotel}` : "",
+      ].filter(Boolean) });
+    } else {
+      travel.push({ title: r.label, value: usd(r.price), details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `)].filter(Boolean) });
+    }
+  }
+  return {
+    heads: { cruise: W.cruise, travel: W.travel }, cabin: text(b.cabin?.["category"]), matrix, cruise,
+    cruiseTotal: v.totals.cruise !== null ? { label: W.cruiseTotal, value: usd(v.totals.cruise) } : null,
+    travel, tripTotal: v.totals.travel !== null && v.totals.trip !== null ? { label: W.tripTotal, value: usd(v.totals.trip) } : null,
+  };
 }
 const priceKey = (iid: string) => `price:${iid}`;
 function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
@@ -897,13 +937,13 @@ router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req:
     const b = await loadBooking(groupId, iid);
     if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
     const lang: Lang = b.lead.lang === "es" ? "es" : "en";
-    const lines = priceLines(b, lang);
-    if (bookingView(b).totals.cruise === null || !lines.length) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to show yet." });
+    const doc = quoteDoc(b, lang);
+    if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to show yet." });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), lines, bookUrl: "#", changesUrl: "#" });
+    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: "#", changesUrl: "#" });
     return res.json({ success: true, subject: mail.subject, html: mail.html, to: (b.lead.email ?? b.reply.email ?? "").trim() });
   } catch (err) {
     return fail(req, res, err, "group price preview failed");
@@ -920,8 +960,8 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
     if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
     if (b.quote?.paperwork && b.quote.paperwork !== "booking") return res.status(409).json({ success: false, error: "The paperwork is already out to this guest." });
     const lang: Lang = b.lead.lang === "es" ? "es" : "en";
-    const lines = priceLines(b, lang);
-    if (bookingView(b).totals.cruise === null || !lines.length) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to send yet." });
+    const doc = quoteDoc(b, lang);
+    if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to send yet." });
     const book = pricePath(iid, lang, "book"), changes = pricePath(iid, lang, "changes");
     if (!book || !changes) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
@@ -935,7 +975,7 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
       sent = "held";
     } else {
-      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), lines, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}` });
+      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}` });
       const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
       const at = new Date().toISOString();
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
@@ -1000,7 +1040,7 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, lines: priceLines(b, lang), state: priceState(b, price), businessPhone: BUSINESS.phone });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), businessPhone: BUSINESS.phone });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
   }

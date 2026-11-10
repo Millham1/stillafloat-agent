@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, priceEmail } from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, priceEmail, type QuoteDoc } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
@@ -436,10 +436,27 @@ test("no em dash anywhere in either email, in either language", () => {
   }
 });
 
-// Mark 2026-11-09: "remove it from all 3 emails": no group email carries the Cornerstone logo or a Seller of Travel line.
-test("no group email carries the Cornerstone logo or the Seller of Travel line", () => {
-  const base = { firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark", lang: "en" as const, publicSite: "https://dev.example.test" };
-  for (const html of [callEmail({ ...CALL }).html, priceEmail({ ...base, lines: [{ label: "Total cruise price", value: "$1,000.00", strong: true }], bookUrl: "https://dev.example.test/price.html", changesUrl: "https://dev.example.test/price.html" }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
+// Mark 2026-11-09: the group's friendly emails carry no Cornerstone logo. Mark 2026-11-10: the QUOTE is his own business letter: it is signed Mark
+// alone ("this is a quote from me, not Mark and Ceci") and carries the Cornerstone logo with the Seller of Travel numbers under it.
+const QUOTE: QuoteDoc = {
+  heads: { cruise: "Your cruise", travel: "Getting there" }, cabin: "DELUXE BALCONY AUREA",
+  matrix: { names: ["Pat Example", "Ana Example"], rows: [{ label: "Cruise fare", values: ["$437.00", "$437.00"] }, { label: "Add-ons", values: ["$471.74", "$471.74"] }, { label: "Taxes", values: ["$145.39", "$145.39"] }, { label: "Total per guest", values: ["$1,054.13", "$1,054.13"], strong: true }],
+    addons: [{ title: "Add-ons for each guest", items: ["Dining package", "Drink package"] }] },
+  cruise: [], cruiseTotal: { label: "Cruise total", value: "$2,108.26" },
+  travel: [{ title: "Air and hotel package, before the cruise", value: "$367.00", details: ["Flights: Delta, Economy Plus", "Going: flight DL9914 · RDU to ORD · May 8, 2027", "Hotel: Fairfield Inn · Orlando · 1 bed"] }],
+  tripTotal: { label: "Trip total (cruise and travel)", value: "$2,475.26" },
+};
+test("the friendly group emails carry no Cornerstone logo; the quote is signed Mark alone and carries the logo with the Seller of Travel numbers under it", () => {
+  const base = { firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark & Ceci", lang: "en" as const, publicSite: "https://dev.example.test" };
+  for (const html of [callEmail({ ...CALL }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
     assert.ok(!/cornerstone/i.test(html) && !/Seller of Travel/.test(html));
   }
+  const q = priceEmail({ ...base, doc: QUOTE, bookUrl: "https://dev.example.test/price.html?do=book", changesUrl: "https://dev.example.test/price.html?do=changes" });
+  assert.equal(q.subject, "Your quote from Mark… Fam 2027");
+  assert.ok(q.html.indexOf("cornerstone-white.png") > 0 && q.html.indexOf("Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620") > q.html.indexOf("cornerstone-white.png"));
+  assert.match(q.html, /font-size:24px;color:#9a6b00">Mark<\/p>/, "signed Mark, not the group's hosts");
+  assert.ok(!q.html.includes("Mark &amp; Ceci"));
+  // one matrix: a column per guest, a row per printed line; the add-ons named once; each piece of travel its own block
+  for (const piece of [">Pat Example<", ">Ana Example<", ">Cruise fare<", ">Total per guest<", "Add-ons for each guest", "<li>Dining package</li>", "Cruise total", "$2,108.26", "Air and hotel package, before the cruise", "Going: flight DL9914 · RDU to ORD · May 8, 2027", "$2,475.26", ">Book It</a>", ">I need changes</a>"]) assert.ok(q.html.includes(piece), piece);
+  assert.match(q.text, /Pat Example: Cruise fare \$437\.00, Add-ons \$471\.74, Taxes \$145\.39, Total per guest \$1,054\.13/);
 });

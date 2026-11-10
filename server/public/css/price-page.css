@@ -12,3 +12,20 @@
 .p-body textarea{width:100%;min-height:150px;box-sizing:border-box;border:2px solid #c9d6ea;border-radius:12px;padding:12px;font:400 19px/1.4 'Baloo 2',sans-serif;color:var(--navy);background:#fff}
 .p-body textarea:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
 .p-head{margin:18px 0 2px;font-size:19px;font-weight:800;letter-spacing:.04em;color:#8a5f00}
+/* the quote laid out like the email (Mark 2026-11-10): section bars, one table for the cruise (a column per guest), travel blocks, totals in bars */
+.q-bar{margin:18px 0 0;padding:10px 12px;background:var(--navy);color:var(--gold);font-size:16px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:10px 10px 0 0}
+.q-bar span{color:#f7fbff;font-weight:600;letter-spacing:0;text-transform:none}
+.q-scroll{overflow-x:auto}
+.q-table{width:100%;border-collapse:collapse;font-size:18px;color:var(--navy)}
+.q-table th,.q-table td{padding:10px 12px;border-bottom:1px solid #d5dfee;text-align:right;white-space:nowrap}
+.q-table th:first-child,.q-table td:first-child{text-align:left;white-space:normal}
+.q-table th{font-weight:800}
+.q-table tr.strong td{font-weight:800}
+.q-sub{margin:12px 0 2px;font-size:17px;font-weight:800;color:var(--navy)}
+.q-list{margin:0 0 6px;padding-left:22px;font-size:17px;line-height:1.5;color:var(--navy)}
+.q-total{display:flex;justify-content:space-between;gap:16px;margin:10px 0 0;padding:12px;border-radius:10px;background:#e9f0fa;font-size:19px;font-weight:800;color:var(--navy)}
+.q-total.big{background:var(--yellow);font-size:22px;margin-top:14px}
+.q-total span:last-child{white-space:nowrap}
+.q-trip{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border-bottom:1px solid #d5dfee;font-size:18px;color:var(--navy)}
+.q-trip span{display:block;font-size:16px;line-height:1.45}
+.q-trip > b{white-space:nowrap}

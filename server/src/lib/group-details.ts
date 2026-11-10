@@ -467,9 +467,15 @@ interface MailBase {
 
 /** The yellow, card-on-navy frame of the group emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line.
  * Mark 2026-11-09: no Cornerstone logo on these emails (it stays on the pages, with the Seller of Travel numbers under it). `body` is already escaped html. */
-function mailFrame(i: MailBase, title: string, body: string, footer: string): string {
+/** The Seller of Travel registrations: printed under the Cornerstone logo wherever it shows (Mark 2026-11-09). */
+export const SELLER_OF_TRAVEL = "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620";
+function mailFrame(i: MailBase, title: string, body: string, footer: string, o: { sign?: string; cornerstone?: boolean } = {}): string {
   const logo = `${site(i.publicSite)}${BUSINESS.logoPath}`;
-  const sign = i.hostNames.trim() || "Mark";
+  const sign = o.sign ?? (i.hostNames.trim() || "Mark");
+  // Mark 2026-11-10: a QUOTE is Mark's own business letter: it carries the Cornerstone logo with the Seller of Travel numbers under it. The group's
+  // friendly emails (a call is set, a time is picked) carry neither (Mark 2026-11-09).
+  const cornerstone = o.cornerstone ? `<tr><td align="right" style="padding-top:12px"><img src="${esc(`${site(i.publicSite)}/assets/images/cornerstone-white.png`)}" alt="Cornerstone" width="56" style="display:inline-block;width:56px;height:auto"></td></tr>
+  <tr><td align="right" style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.4;color:#c9d3e8">${esc(SELLER_OF_TRAVEL)}</td></tr>` : "";
   return `<div style="margin:0;padding:0;background:#07183f">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#07183f"><tr><td align="center" style="padding:22px 16px 10px">
   <img src="${esc(logo)}" alt="Still Afloat" width="150" style="display:block;width:150px;height:auto"></td></tr>
@@ -483,7 +489,7 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string): st
 <tr><td align="center" style="padding:0 16px 26px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px"><tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#c9d3e8">${esc(BUSINESS.legalName)}<br>${esc(footer)}</td>
-  </tr></table></td></tr></table></div>`;
+  </tr>${cornerstone}</table></td></tr></table></div>`;
 }
 
 const para = (html: string) => `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;color:#07183f">${html}</p>`;
@@ -493,26 +499,40 @@ const para = (html: string) => `<p style="margin:0 0 14px;font-family:Arial,Helv
 // Mark sends it from the booking card once his re-quote is entered. Both buttons open the guest's own price page: "Book It" tells Mark to go ahead (the
 // paperwork follows from him), "I need changes" opens a box for what they want changed. The wording is a first draft for Mark to read.
 
-export interface PriceLine { label: string; value: string; strong?: boolean; /** a guest's name heading its own lines: no amount */ head?: boolean }
-export interface PriceInput extends MailBase { lines: readonly PriceLine[]; bookUrl: string; changesUrl: string }
+/** The quote as the guest reads it (Mark 2026-11-10: "this email is a mess. it's hard to read and confusing"). ONE matrix for the cruise (a column
+ *  per guest, a row per printed line: fare, add-ons, taxes, total), the add-ons named once under it, then each piece of travel as its own block with
+ *  its details on separate lines, then the trip total. Every figure is one Mark saved; nothing is worked out in the email. */
+export interface QuoteDoc {
+  heads: { cruise: string; travel: string };
+  /** the cabin as booked, beside the cruise heading */
+  cabin: string | null;
+  /** a column per guest; null when the quote does not price the guests apart */
+  matrix: null | { names: string[]; rows: Array<{ label: string; values: string[]; strong?: boolean }>; addons: Array<{ title: string; items: string[] }> };
+  /** the cruise in plain lines when there is no matrix */
+  cruise: Array<{ label: string; value: string }>;
+  cruiseTotal: { label: string; value: string } | null;
+  travel: Array<{ title: string; value: string; details: string[] }>;
+  tripTotal: { label: string; value: string } | null;
+}
+export interface PriceInput extends MailBase { doc: QuoteDoc; bookUrl: string; changesUrl: string }
 const PRICE = {
   en: {
-    subject: (label: string) => `Your price is ready… ${label}`,
-    title: "Your price is ready!",
+    subject: (label: string) => `Your quote from Mark… ${label}`,
+    title: "Your quote is ready!",
     hi: (first: string) => `Hi ${first},`,
-    p1: "Mark priced your choices with the cruise line. Here is what it comes to:",
-    p2: "Happy with it? Tap Book It and your paperwork follows by email. Want something different? Tap I need changes and tell us what you would like.",
+    p1: "I priced your choices with the cruise line. Here is your quote:",
+    p2: "Happy with it? Tap Book It and your paperwork follows by email. Want something different? Tap I need changes and tell me what you would like.",
     note: "These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.",
     book: "Book It", changes: "I need changes",
     close: "Cruise smarter, laugh more… see you at the muster drill!",
     footer: (label: string) => `You are receiving this because you sent your choices for your ${label} booking. Not you? Reply and we will take you off the list.`,
   },
   es: {
-    subject: (label: string) => `Su precio está listo… ${label}`,
-    title: "¡Su precio está listo!",
+    subject: (label: string) => `Su cotización de Mark… ${label}`,
+    title: "¡Su cotización está lista!",
     hi: (first: string) => `Hola ${first}:`,
-    p1: "Mark cotizó sus decisiones con la naviera. Esto es lo que suma:",
-    p2: "¿Le parece bien? Toque Reservar y sus documentos le llegan por correo. ¿Quiere algo distinto? Toque Necesito cambios y díganos qué desea.",
+    p1: "Coticé sus decisiones con la naviera. Esta es su cotización:",
+    p2: "¿Le parece bien? Toque Reservar y sus documentos le llegan por correo. ¿Quiere algo distinto? Toque Necesito cambios y dígame qué desea.",
     note: "Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.",
     book: "Reservar", changes: "Necesito cambios",
     close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
@@ -520,20 +540,56 @@ const PRICE = {
   },
 } as const;
 
+const Q_FONT = "font-family:Arial,Helvetica,sans-serif;color:#07183f";
+/** The quote's own block of the email: section bars, the per-guest matrix, the travel blocks, the totals. */
+function quoteHtml(d: QuoteDoc): string {
+  const bar = (text: string, extra = "") => `<tr><td colspan="9" style="padding:10px 12px;background:#07183f;color:#ffca4f;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase">${esc(text)}${extra ? `<span style="color:#f7fbff;font-weight:normal;letter-spacing:0;text-transform:none"> · ${esc(extra)}</span>` : ""}</td></tr>`;
+  const total = (t: { label: string; value: string }, big = false) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 ${big ? 18 : 22}px;background:${big ? "#f5c33b" : "#e9f0fa"};border-radius:10px"><tr>
+      <td style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 20 : 18}px;font-weight:bold">${esc(t.label)}</td>
+      <td align="right" style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 22 : 18}px;font-weight:bold;white-space:nowrap">${esc(t.value)}</td></tr></table>`;
+  const cell = `padding:9px 12px;border-bottom:1px solid #d5dfee;${Q_FONT};font-size:17px;line-height:1.35`;
+  const parts: string[] = [];
+  let cruise = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.cruise, d.cabin ?? "")}`;
+  if (d.matrix) {
+    cruise += `<tr><td style="${cell}"></td>${d.matrix.names.map((n) => `<td align="right" style="${cell};font-weight:bold">${esc(n)}</td>`).join("")}</tr>`;
+    cruise += d.matrix.rows.map((r) => `<tr><td style="${cell}${r.strong ? ";font-weight:bold" : ""}">${esc(r.label)}</td>${r.values.map((v) => `<td align="right" style="${cell};white-space:nowrap${r.strong ? ";font-weight:bold" : ""}">${esc(v)}</td>`).join("")}</tr>`).join("");
+  } else {
+    cruise += d.cruise.map((l) => `<tr><td style="${cell}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap">${esc(l.value)}</td></tr>`).join("");
+  }
+  parts.push(cruise + "</table>");
+  for (const a of d.matrix?.addons ?? []) {
+    parts.push(`<p style="margin:0 0 4px;${Q_FONT};font-size:16px;font-weight:bold">${esc(a.title)}</p><ul style="margin:0 0 12px;padding-left:22px;${Q_FONT};font-size:16px;line-height:1.5">${a.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`);
+  }
+  if (d.cruiseTotal) parts.push(total(d.cruiseTotal));
+  if (d.travel.length) {
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.travel)}` + d.travel.map((t) =>
+      `<tr><td style="${cell}"><b>${esc(t.title)}</b>${t.details.map((x) => `<br><span style="font-size:16px">${esc(x)}</span>`).join("")}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(t.value)}</td></tr>`).join("") + "</table>");
+  }
+  if (d.tripTotal) parts.push(total(d.tripTotal, true));
+  return parts.join("\n    ");
+}
+function quoteText(d: QuoteDoc): string {
+  const out: string[] = [[d.heads.cruise.toUpperCase(), d.cabin].filter(Boolean).join(" · ")];
+  if (d.matrix) for (const [gi, name] of d.matrix.names.entries()) out.push(`${name}: ${d.matrix.rows.map((r) => `${r.label} ${r.values[gi] ?? ""}`).join(", ")}`);
+  else for (const l of d.cruise) out.push(`${l.label}: ${l.value}`);
+  for (const a of d.matrix?.addons ?? []) out.push(`${a.title}: ${a.items.join("; ")}`);
+  if (d.cruiseTotal) out.push(`${d.cruiseTotal.label}: ${d.cruiseTotal.value}`);
+  if (d.travel.length) out.push("", d.heads.travel.toUpperCase());
+  for (const t of d.travel) out.push(`${t.title}: ${t.value}`, ...t.details.map((x) => `  ${x}`));
+  if (d.tripTotal) out.push("", `${d.tripTotal.label}: ${d.tripTotal.value}`);
+  return out.join("\n");
+}
+
 export function priceEmail(i: PriceInput): { subject: string; html: string; text: string } {
   const T = PRICE[i.lang];
-  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
-  const text = [T.hi(first), T.p1, i.lines.map((l) => (l.head ? `\n${l.label}` : `${l.label}: ${l.value}`)).join("\n").trim(), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
-  const cell = "padding:8px 0;border-bottom:1px solid #d5dfee;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.4;color:#07183f";
-  const rows = i.lines.map((l) => l.head
-    ? `<tr><td colspan="2" style="padding:14px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;letter-spacing:.04em;color:#9a6b00">${esc(l.label)}</td></tr>`
-    : `<tr><td style="${cell}${l.strong ? ";font-weight:bold" : ""}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap;padding-left:14px${l.strong ? ";font-weight:bold" : ""}">${esc(l.value)}</td></tr>`).join("");
-  const table = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">${rows}</table>`;
+  const first = i.firstName.trim(), label = i.groupLabel.trim();
+  const sign = "Mark";   // Mark 2026-11-10: "this is a quote from me, not Mark and Ceci"
+  const text = [T.hi(first), T.p1, quoteText(i.doc), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
   const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:12px 22px;text-decoration:none;font-size:18px;font-family:Arial,Helvetica,sans-serif;margin:0 8px 8px 0";
   const buttons = `<a href="${esc(i.bookUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.book)}</a>`
     + `<a href="${esc(i.changesUrl)}" style="${pill};background:#f7fbff;color:#07183f;border:2px solid #07183f">${esc(T.changes)}</a>`;
-  const body = [para(esc(T.hi(first))), para(esc(T.p1)), table, para(esc(T.p2)), para(buttons), para(`<span style="font-size:16px">${esc(T.note)}</span>`), para(esc(T.close))].join("\n    ");
-  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), quoteHtml(i.doc), para(esc(T.p2)), para(buttons), para(`<span style="font-size:16px">${esc(T.note)}</span>`), para(esc(T.close))].join("\n    ");
+  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label), { sign, cornerstone: true }), text };
 }
 
 // ── FlexPay: the time is picked (Mark 2026-11-05) ─────────────────────────────

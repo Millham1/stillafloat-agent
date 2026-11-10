@@ -149,7 +149,7 @@ const PAGES = [
   { path: "/flexpay-call.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Pick your time, {first name}!' into the <h1> once the link's times load" } },
   { path: "/es/flexpay-call.html", lang: "es", kind: "template", h1: { client: "the page script writes the Spanish heading into the <h1> once the link's times load" } },
   // the price page (Mark 2026-11-09): a guest's private link (?r=&k=) from Mark's price email, "Book It" and "I need changes".
-  { path: "/price.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Your price, {first name}!' into the <h1> once the link's price loads" } },
+  { path: "/price.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Your quote, {first name}!' into the <h1> once the link's quote loads" } },
   { path: "/es/price.html", lang: "es", kind: "template", h1: { client: "the page script writes the Spanish heading into the <h1> once the link's price loads" } },
   // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
   { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
