@@ -8,7 +8,8 @@
 import type { Row } from "./group-document-kit";
 
 export const QUOTE_NOTE = "Pricing subject to change until finalized.";
-export const AGENTMAX_URL = "https://agentmax.allianztravelinsurance.com/";
+// 2026-11-10: the agents' sign-in (Email + Password, "Log In") is here. agentmax.allianztravelinsurance.com answers with a bare welcome page and no way in.
+export const AGENTMAX_URL = "https://www.agentmaxonline.com/agentmaxweb/agentportal/index.html#/login";
 
 export interface QuoteInput {
   /** The traveler's home state, two letters (the premium depends on it). */
