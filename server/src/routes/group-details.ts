@@ -519,13 +519,13 @@ const money = (v: unknown): number | null | undefined => {
 const isoOrNull = (v: unknown): string | null => { const t = text(v, 40); return t && !Number.isNaN(Date.parse(t)) ? t : null; };
 
 /** What a package line says about its air and its hotel. */
-interface PackageDetail { flights: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null }
+interface PackageDetail { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null }
 const packageDetail = (v: unknown): PackageDetail | null => {
   if (!v || typeof v !== "object") return null;
   const r = v as Record<string, unknown>;
   const dayOf = (x: unknown) => { const t = text(x, 40); return t && /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null; };
   return {
-    flights: text(r["flights"], 120), air_class: text(r["air_class"], 60), hotel: text(r["hotel"], 120), hotel_city: text(r["hotel_city"], 120),
+    flights: text(r["flights"], 120), return_flights: text(r["return_flights"], 120), return_from: text(r["return_from"], 120), return_to: text(r["return_to"], 120), air_class: text(r["air_class"], 60), hotel: text(r["hotel"], 120), hotel_city: text(r["hotel_city"], 120),
     check_in: dayOf(r["check_in"]), check_out: dayOf(r["check_out"]), beds: r["beds"] === "1" || r["beds"] === "2" ? r["beds"] : null,
     breakfast: typeof r["breakfast"] === "boolean" ? r["breakfast"] : null,
   };
@@ -534,7 +534,9 @@ const packageDetail = (v: unknown): PackageDetail | null => {
 export function packageLabel(r: { direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; pkg?: PackageDetail | null }): string {
   const d = (x: string | null) => (x ? x.slice(0, 10) : "");
   const k = r.pkg;
-  const air = [r.provider, k?.flights ? `flight ${k.flights}` : "", k?.air_class, [r.from_place, r.to_place].filter(Boolean).join(" to "), [d(r.starts_at), d(r.ends_at)].filter(Boolean).join(" to ")].filter(Boolean).join(", ");
+  const out = [k?.flights ? `flight ${k.flights}` : "", [r.from_place, r.to_place].filter(Boolean).join(" to "), d(r.starts_at)].filter(Boolean).join(" ");
+  const back = [k?.return_flights ? `flight ${k.return_flights}` : "", [k?.return_from, k?.return_to].filter(Boolean).join(" to "), d(r.ends_at)].filter(Boolean).join(" ");
+  const air = [r.provider, k?.air_class, out ? `out: ${out}` : "", back ? `back: ${back}` : ""].filter(Boolean).join(", ");
   const hotel = [k?.hotel, k?.hotel_city, [d(k?.check_in ?? null), d(k?.check_out ?? null)].filter(Boolean).join(" to "), k?.beds === "1" ? "1 bed" : k?.beds === "2" ? "2 beds" : "", k?.breakfast === true ? "breakfast included" : k?.breakfast === false ? "no breakfast" : ""].filter(Boolean).join(", ");
   const parts = [air ? `air (${air})` : "", hotel ? `hotel (${hotel})` : ""].filter(Boolean).join(" and ");
   return `${r.direction === "post" ? "After" : "Before"} the cruise: package${parts ? `, ${parts}` : ""}`;
