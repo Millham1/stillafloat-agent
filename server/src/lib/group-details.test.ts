@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held,, callBookedEmail } from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
