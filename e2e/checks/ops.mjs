@@ -1641,6 +1641,59 @@ export default [
     },
   },
   {
+    id: "ops.price-confirm-public",
+    basis: "ruling: Mark 2026-11-09 — 'we need to send an email to confirm the pricing before we send the paperwork. the email should have cta's one Book It and one I need changes. the changes opens a pop up for the client to enter their narrative of what changes they want to make'; the page is the guest's private link from that email and carries the Seller of Travel numbers under the Cornerstone logo",
+    title: "The guest's price page opens in English and Spanish with Book It and I need changes, stays out of search, calls only its own API, and any wrong link gets one neutral 'not found'",
+    covers: ["page /price.html", "page /es/price.html", "GET /api/price-confirm/:iid/:key"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      for (const [p, lang] of [["/price.html", "en"], ["/es/price.html", "es"]]) {
+        const html = t.html(await t.get(p), { mustContain: ["/api/price-confirm/", 'id="p-book"', 'id="p-changes"', 'id="p-modal"', 'id="p-text"', "website: ''", "book:'Book It'", "changes:'I need changes'", "book:'Reservar'", "changes:'Necesito cambios'", "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620"] });
+        t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
+        t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
+        t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
+        const sheets = [...html.matchAll(/<link rel="stylesheet" href="(\/css\/[a-z-]+\.css)[^"]*"/g)].map((m) => m[1]);
+        t.ok(sheets.includes("/css/price-page.css"), `${p} does not link its own stylesheet /css/price-page.css`);
+        for (const sheet of sheets) {
+          const css = await t.get(sheet);
+          t.ok(css.status === 200 && /^text\/css/i.test(css.headers.get("content-type") || ""), `${p}'s stylesheet ${sheet} is not served as CSS: ${css.describe()}`);
+        }
+        t.observe(`${p} title`, H.title(html));
+      }
+      // Every kind of wrong link: the same answer, never a hint about which part was wrong (a real link exists only for a guest Mark emailed the price to).
+      const bodies = new Set();
+      for (const [iid, key] of [[ZERO, "A".repeat(43)], [ZERO, "short"], ["not-a-reply", "A".repeat(43)], [ZERO, "A".repeat(44)]]) {
+        const res = await t.get(`/api/price-confirm/${encodeURIComponent(iid)}/${encodeURIComponent(key)}`);
+        refused(t, res, 404, `a wrong price link (${iid.length}/${key.length} characters)`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the price page answer");
+        bodies.add(res.text);
+      }
+      t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+    },
+  },
+  {
+    id: "ops.price-confirm-writes-refuse",
+    basis: "ruling: Mark 2026-11-09 — the guest approves the price ('Book It') or asks for changes before the paperwork goes out; only the guest Mark emailed can answer, and only Mark can send the price or record a yes he got another way",
+    title: "Book It and I need changes refuse a link that does not exist, the bot trap records nothing, and sending the price or recording an approval is Mark's alone",
+    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap, no token, a guest that does not exist; nothing is approved and nobody is emailed); prod sweeps are read-only",
+    run: async (t) => {
+      const send = (p, body, auth = false) => t.send("POST", p, { auth, body });
+      for (const action of ["book", "changes"]) {
+        const res = await send(`/api/price-confirm/${ZERO}/${"A".repeat(43)}`, { action, text: "a different cabin, please" });
+        refused(t, res, 404, `POST /api/price-confirm/:iid/:key (${action}) with a link that does not exist`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused price answer");
+      }
+      const bot = await send(`/api/price-confirm/${ZERO}/${"A".repeat(43)}`, { action: "book", website: "http://spam.example" });
+      t.ok(bot.status === 200 && bot.json?.success === true && !("state" in (bot.json || {})), `the bot trap on the price page should pretend success and approve nothing: ${bot.describe()}`);
+      for (const step of ["price-email", "price-approved"]) {
+        unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}), `POST /api/groups/:id/interests/:iid/${step}`);
+        refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}, true), 404, `${step} for a guest who has not sent their choices`, /has not sent|not found/i);
+      }
+    },
+  },
+  {
     id: "ops.flexpay-call-writes-refuse",
     basis: "ruling: Mark 2026-11-05 — the guest picks the FlexPay video call on our own scheduler, 'M-S 10-8 and doesn't conflict with any meetings on my schedule already'; only the guest Mark emailed can book, so a link that does not exist books nothing",
     title: "Booking a FlexPay video call refuses a link that does not exist, and the bot trap books nothing",

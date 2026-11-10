@@ -997,16 +997,61 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.ok(String(said("Before the cruise: flight") ?? said("Flight") ?? JSON.stringify(priced.json["fills"])).includes("$272.40"), "the travel line shows its booked price");
   assert.deepEqual(tables["group_travelers"]![0]!["form_data"]["trip"]["extras"], [{ name: "Premium Extra drinks", total: 80 }], "the extras sit on the lead's file beside the travel");
   assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the extras keeps the travel just saved");
+  // Mark 2026-11-09: the guest approves the price BEFORE the paperwork goes out. Mark emails the price ("Book It" / "I need changes"); a change request
+  // comes back to his list in the guest's own words; sending the price again clears it; "Book It" opens the way for the paperwork.
+  const unapproved = await call("POST", path, { token: true });
+  assert.equal(unapproved.status, 409);
+  assert.match(String(unapproved.json["error"]), /has not approved the price/);
+  assert.equal(mails.length, 0);
+  const priceMail = `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-email`;
+  assert.equal((await call("POST", priceMail)).status, 401, "Mark's token only");
+  assert.match(String((await call("POST", priceMail, { token: true })).json["error"]), /link key is not set/, "no link key on the box, no link to send");
+  process.env["GROUP_PII_KEY"] = "ab".repeat(32);
+  try {
+  const firstPrice = await call("POST", priceMail, { token: true });
+  assert.equal(firstPrice.status, 200, JSON.stringify(firstPrice.json));
+  assert.deepEqual([firstPrice.status, firstPrice.json["price"]["sent"], firstPrice.json["price"]["approved_at"]], [200, "sent", null]);
+  assert.equal(mails.length, 1);
+  assert.equal(mails[0]!["subject"], "Your price is ready… Friends and Family 2027");
+  const priceHtml = String(mails[0]!["html"]);
+  for (const piece of ["Premium Extra drinks", "$80.00", "Total cruise price", "$1,153.58", "$272.40", "Trip total (cruise and travel)", "$1,425.98", ">Book It</a>", ">I need changes</a>", "Tapping Book It charges nothing."]) assert.ok(priceHtml.includes(piece), `the price email says ${piece}`);
+  assert.ok(!/cornerstone/i.test(priceHtml), "no Cornerstone logo on a group email");
+  const link = /\/price\.html\?r=([0-9a-f-]{36})&amp;k=([A-Za-z0-9_-]{43})&amp;do=book/.exec(priceHtml);
+  assert.ok(link, "the Book It button opens the guest's own price page");
+  assert.ok(priceHtml.includes(`/price.html?r=${link![1]}&amp;k=${link![2]}&amp;do=changes`), "I need changes opens the same page with the box open");
+  const pricePage = `/price-confirm/${link![1]}/${link![2]}`;
+  assert.equal((await call("GET", `/price-confirm/${link![1]}/${"A".repeat(43)}`)).status, 404, "a wrong key is not found");
+  const shown = await call("GET", pricePage);
+  assert.deepEqual([shown.status, shown.json["state"], shown.json["firstName"]], [200, "open", "Mark"]);
+  assert.deepEqual((shown.json["lines"] as Array<Record<string, unknown>>).filter((l) => l["strong"]).map((l) => [l["label"], l["value"]]), [["Total cruise price", "$1,153.58"], ["Trip total (cruise and travel)", "$1,425.98"]]);
+  assert.equal((await call("POST", pricePage, { body: { action: "changes", text: " " } })).status, 400, "a change request says what to change");
+  const asked = await call("POST", pricePage, { body: { action: "changes", text: "Can we look at an ocean view instead of the balcony?" } });
+  assert.deepEqual([asked.status, asked.json["state"]], [200, "changes"]);
+  const afterAsk = await call("GET", booking, { token: true });
+  assert.deepEqual([afterAsk.json["price"]["changes_open"], afterAsk.json["price"]["changes"][0]["text"], afterAsk.json["price"]["approved_at"]], [true, "Can we look at an ocean view instead of the balcony?", null]);
+  assert.equal((await call("POST", path, { token: true })).status, 409, "a change request is not an approval");
+  // Mark re-prices and sends it again: the request is closed, the price is open again, and the guest books it
+  const secondPrice = await call("POST", priceMail, { token: true });
+  assert.deepEqual([secondPrice.json["price"]["changes_open"], secondPrice.json["price"]["approved_at"], mails.length], [false, null, 2]);
+  const booked = await call("POST", pricePage, { body: { action: "book" } });
+  assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
+  assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
+  assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
+  mails.length = 0;
   const done = await call("POST", path, { token: true });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
   assert.equal(mails.length, 1);
   assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
   assert.equal(mails[0]!["subject"], "Your travel paperwork for Friends and Family 2027");
+  assert.equal((await call("POST", pricePage, { body: { action: "changes", text: "one more change" } })).status, 409, "once the paperwork is out a change goes through Mark");
   assert.ok(tables["group_travelers"]![0]!["form_token_hash"], "the link exists now");
   assert.deepEqual([replyRow()["status"], replyRow()["quote"]["paperwork"]], ["booked", "sent"]);
   const again = await call("POST", path, { token: true });
   assert.equal(again.json["already"], true);
   assert.equal(mails.length, 1, "pressed twice, sent once");
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+  }
 });
 
 test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking confirmation's own fields; the booking completes only once the paperwork is out and every document is signed", async () => {

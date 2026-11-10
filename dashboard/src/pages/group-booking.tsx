@@ -21,7 +21,10 @@ const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, re
 type Extra = { name: string; total: string };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
-  success: boolean; guest: { name: string; email: string | null }; quote: { category: string; party: number; total: string; deposit: string | null } | null;
+  success: boolean; guest: { name: string; email: string | null };
+  // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
+  price?: { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
+  quote: { category: string; party: number; total: string; deposit: string | null } | null;
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
   carrier: null | {
     id: string; filename: string; status: string; error: string | null;
@@ -98,6 +101,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const cruiseSum = round(amount(cabin["fare"]) + extrasSum);
   const travelSum = round(trip.reduce((n, r) => n + amount(r.price), 0));
   const quoteTotal = data.carrier?.status === "ready" ? data.carrier.read?.booking_total ?? null : null;
+  const price = data.price, approved = !!price?.approved_at;
+  const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
   const save = async (): Promise<boolean> => {
     setBusy(true);
@@ -150,6 +155,27 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       toast({ title: r.link === "sent" ? "FlexPay appointment link sent" : `Not sent: ${SENT[r.link] ?? r.link}` });
       qc.invalidateQueries({ queryKey: key });
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  // Mark 2026-11-09: the price goes to the guest first ("Book It" / "I need changes"); the paperwork waits for their yes
+  const emailPrice = async () => {
+    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}? They answer with "Book It" or "I need changes".`)) return;
+    setBusy(true);
+    try {
+      const r = await api<{ price: { sent: string } }>(`/groups/${groupId}/interests/${guest.id}/price-email`, "POST");
+      toast({ title: r.price.sent === "sent" ? "Price emailed to the guest" : `Not sent: ${SENT[r.price.sent] ?? r.price.sent}` });
+      qc.invalidateQueries({ queryKey: key });
+    } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const recordYes = async () => {
+    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
+    setBusy(true);
+    try {
+      await api(`/groups/${groupId}/interests/${guest.id}/price-approved`, "POST");
+      toast({ title: "Price approval recorded" });
+      qc.invalidateQueries({ queryKey: key });
+    } catch (e) { toast({ variant: "destructive", title: "Not recorded", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
   const send = async () => {
@@ -352,10 +378,35 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
-          <button className={`${btn} bg-primary text-primary-foreground`} disabled={busy || dirty || !data.ready} onClick={send} title={dirty ? "Save first" : data.ready ? "" : "Finish the list above"}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
-          {dirty && <span className="text-xs text-muted-foreground ml-2">Save first.</span>}
+        <div className="space-y-4">
+          {/* Mark 2026-11-09: the guest confirms the price by email before the paperwork goes out */}
+          <div className="rounded-md border p-3 space-y-2">
+            <h4 className="text-sm font-semibold">Confirm the price with {data.guest.name}</h4>
+            <p className="text-sm text-muted-foreground">Email the price above to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
+            {approved ? (
+              <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Price approved {price?.approved_how === "mark" ? "(you recorded their yes)" : "by the guest (Book It)"} · {when(price?.approved_at)}. Book it, enter the confirmation numbers, then send the paperwork.</p>
+            ) : price?.changes_open ? (
+              <div className="text-sm text-amber-700">
+                <p className="font-semibold">The guest asked for changes · {when(price.changes[price.changes.length - 1]?.at)}:</p>
+                <p className="whitespace-pre-wrap">"{price.changes[price.changes.length - 1]?.text}"</p>
+                <p>Re-quote, update the confirmation above, save, then email the price again.</p>
+              </div>
+            ) : price?.sent_at ? (
+              <p className="text-sm text-muted-foreground">{price.sent === "sent" ? "Price emailed" : `Not sent: ${SENT[price.sent ?? ""] ?? price.sent}`} · {when(price.sent_at)}. Waiting on the guest.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not sent yet.</p>
+            )}
+            <div className="flex flex-wrap gap-2 items-center">
+              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy || dirty || cruiseSum <= 0} onClick={emailPrice} title={dirty ? "Save first" : cruiseSum > 0 ? "" : "Enter the cabin fare first"}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
+              {!approved && <button className={btn} disabled={busy || dirty} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
+              {dirty && <span className="text-xs text-muted-foreground">Save first.</span>}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
+            <button className={`${btn} ${approved ? "bg-primary text-primary-foreground" : ""}`} disabled={busy || dirty || !data.ready || !approved} onClick={send} title={dirty ? "Save first" : !approved ? "The guest approves the price first" : data.ready ? "" : "Finish the list above"}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
+            {!approved && <span className="text-xs text-muted-foreground ml-2">Waits for the price approval.</span>}
+          </div>
         </div>
       )}
     </div>

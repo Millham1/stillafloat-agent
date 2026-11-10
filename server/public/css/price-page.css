@@ -1,0 +1,13 @@
+/* The guest's price page (Mark 2026-11-09): the price Mark quoted, "Book It" and "I need changes". Built on details-page.css. */
+.p-lines{margin:14px 0 6px}
+.p-line{display:flex;justify-content:space-between;gap:16px;align-items:baseline;padding:10px 0;border-bottom:1px solid #d5dfee;font-size:19px;color:var(--navy)}
+.p-line span:last-child{white-space:nowrap;font-weight:700}
+.p-line.strong{font-weight:800;font-size:21px}
+.p-note{font-size:18px;color:var(--navy);margin:14px 0 0}
+.btn.alt{background:var(--cloud);color:var(--navy);border:3px solid var(--navy);box-shadow:none;font-size:22px;padding:16px 10px;margin-top:6px}
+.p-done{font-size:22px;font-weight:700;color:var(--navy);margin:10px 0}
+.p-box{width:min(560px,100%);background:var(--cloud);border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.45);overflow:hidden}
+.p-body{padding:16px 18px 18px}
+.p-body p{margin:0 0 10px;font-size:19px;color:var(--navy)}
+.p-body textarea{width:100%;min-height:150px;box-sizing:border-box;border:2px solid #c9d6ea;border-radius:12px;padding:12px;font:400 19px/1.4 'Baloo 2',sans-serif;color:var(--navy);background:#fff}
+.p-body textarea:focus-visible{outline:3px solid var(--navy);outline-offset:2px}

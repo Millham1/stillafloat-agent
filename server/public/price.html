@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your price | Still Afloat Cruising</title>
+<!-- A guest's private link from Mark's price email (Mark 2026-11-09): never indexed, and the address (which carries the link) is never sent on to another site.
+     The price Mark quoted, then two buttons: "Book It" (Mark goes ahead; the paperwork follows from him) and "I need changes" (a box for what they want
+     changed, in their own words). Nothing here books, charges or signs anything. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/details-page.css?v=20261109c">
+<link rel="stylesheet" href="/css/price-page.css?v=20261109a">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <div class="d-banner"><div class="d-lockup"><div class="plaque"><span id="p-plaque">Your price</span></div></div></div>
+
+  <main>
+    <section class="panel" id="p-panel">
+      <p class="label" id="p-label"></p>
+      <h1 id="p-h1"></h1>
+      <p id="p-state"></p>
+
+      <!-- The price: one row a line, the totals in bold. -->
+      <div id="p-price" hidden>
+        <p id="p-lede"></p>
+        <div class="p-lines" id="p-lines"></div>
+        <p class="p-note" id="p-note"></p>
+      </div>
+
+      <!-- Still open: the two buttons. -->
+      <div id="p-ask" hidden>
+        <button type="button" class="btn" id="p-book"></button>
+        <button type="button" class="btn alt" id="p-changes"></button>
+        <p class="err center" id="p-err" hidden></p>
+      </div>
+
+      <!-- Answered: one line saying what happens next. -->
+      <p class="p-done" id="p-done" hidden></p>
+      <p class="small" id="p-after" hidden></p>
+    </section>
+  </main>
+
+  <!-- "I need changes": what the guest wants changed, in their own words. -->
+  <div class="fp-modal" id="p-modal" hidden role="dialog" aria-modal="true" aria-labelledby="p-modal-title">
+    <div class="p-box">
+      <div class="fp-bar"><span id="p-modal-title"></span><button type="button" class="fp-close" id="p-modal-close" aria-label="Close">&#10005;</button></div>
+      <div class="p-body">
+        <p id="p-modal-p"></p>
+        <textarea id="p-text" maxlength="2000"></textarea>
+        <p class="err" id="p-modal-err" hidden></p>
+        <button type="button" class="btn" id="p-send"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+    <p class="sot">Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620</p>
+  </div>
+
+</div>
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var T = ES ? {
+    title:'Su precio', plaque:'Su precio', loading:'Un momento…',
+    bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    h1:'¡Su precio, {first}!', lede:'Mark cotizó sus decisiones con la naviera. Esto es lo que suma:',
+    note:'Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.',
+    book:'Reservar', booking:'Un momento…', changes:'Necesito cambios',
+    m_title:'¿Qué desea cambiar?', m_p:'Cuéntenos con sus palabras qué quiere cambiar. Mark lo cotiza de nuevo y le envía el precio nuevo.', send:'Enviar a Mark', sending:'Enviando…',
+    m_short:'Díganos qué desea cambiar.',
+    done_book:'¡Listo! Mark hace la reservación y sus documentos le llegan por correo.',
+    done_changes:'¡Recibido! Mark lo cotiza de nuevo y le envía el precio nuevo por correo.',
+    done_paper:'Sus documentos ya van en camino a su correo.',
+    after:'¿Preguntas? Llame o escriba a Mark al ' + PHONE + '.',
+    fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.'
+  } : {
+    title:'Your price', plaque:'Your price', loading:'One moment…',
+    bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
+    h1:'Your price, {first}!', lede:'Mark priced your choices with the cruise line. Here is what it comes to:',
+    note:'These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.',
+    book:'Book It', booking:'One moment…', changes:'I need changes',
+    m_title:'What would you like changed?', m_p:'Tell us in your own words what you want changed. Mark re-prices it and emails you the new price.', send:'Send to Mark', sending:'Sending…',
+    m_short:'Please tell us what you would like changed.',
+    done_book:"You're set! Mark books it and your paperwork follows by email.",
+    done_changes:'Got it! Mark re-prices it and emails you the new price.',
+    done_paper:'Your paperwork is already on its way to your email.',
+    after:'Questions? Call or text Mark at ' + PHONE + '.',
+    fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
+  function show(id, on){ var e = $(id); if(e) e.hidden = on === false; }
+
+  document.title = T.title + ' | Still Afloat Cruising';
+  $('p-plaque').textContent = T.plaque;
+  var state = $('p-state');
+  state.textContent = T.loading;
+
+  var qs = new URLSearchParams(location.search);
+  var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim(), want = qs.get('do');
+  if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
+  var API = '/api/price-confirm/' + reply + '/' + key;
+  var busy = false;
+
+  function draw(d){
+    state.textContent = '';
+    $('p-label').textContent = d.label || '';
+    $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
+    $('p-lede').textContent = T.lede;
+    $('p-lines').innerHTML = (d.lines || []).map(function(l){ return '<div class="p-line' + (l.strong ? ' strong' : '') + '"><span>' + esc(l.label) + '</span><span>' + esc(l.value) + '</span></div>'; }).join('');
+    $('p-note').textContent = T.note;
+    show('p-price');
+    drawState(d.state);
+  }
+  function drawState(s){
+    var open = s === 'open';
+    show('p-ask', open);
+    $('p-book').textContent = busy ? T.booking : T.book;
+    $('p-changes').textContent = T.changes;
+    var done = $('p-done');
+    done.textContent = s === 'approved' ? T.done_book : s === 'changes' ? T.done_changes : s === 'paperwork' ? T.done_paper : '';
+    done.hidden = open;
+    $('p-after').textContent = T.after; show('p-after', !open);
+  }
+  function post(body){
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+    });
+  }
+  function openModal(){
+    $('p-modal-title').textContent = T.m_title; $('p-modal-p').textContent = T.m_p; $('p-send').textContent = T.send;
+    show('p-modal-err', false); show('p-modal'); $('p-text').focus();
+  }
+  function closeModal(){ show('p-modal', false); }
+
+  // "Book It": one tap on this page (the email's button opens the page; nothing is approved by a link being opened)
+  $('p-book').addEventListener('click', function(){
+    if(busy) return;
+    busy = true; show('p-err', false); drawState('open');
+    post({ action: 'book', website: '' }).then(function(x){
+      busy = false;
+      if(x.body && x.body.success){ drawState(x.body.state || 'approved'); return; }
+      var err = $('p-err'); err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false; drawState('open');
+    }).catch(function(){ busy = false; var err = $('p-err'); err.textContent = T.fail; err.hidden = false; drawState('open'); });
+  });
+  $('p-changes').addEventListener('click', openModal);
+  $('p-modal-close').addEventListener('click', closeModal);
+  $('p-send').addEventListener('click', function(){
+    if(busy) return;
+    var said = $('p-text').value.trim(), err = $('p-modal-err');
+    if(said.length < 3){ err.textContent = T.m_short; err.hidden = false; return; }
+    busy = true; err.hidden = true; $('p-send').textContent = T.sending;
+    post({ action: 'changes', text: said, website: '' }).then(function(x){
+      busy = false; $('p-send').textContent = T.send;
+      if(x.body && x.body.success){ closeModal(); drawState(x.body.state || 'changes'); return; }
+      err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false;
+    }).catch(function(){ busy = false; $('p-send').textContent = T.send; err.textContent = T.fail; err.hidden = false; });
+  });
+
+  fetch(API, { headers: { 'Accept': 'application/json' } }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+  }).then(function(x){
+    if(!x.body || !x.body.success){ state.textContent = T.bad; return; }
+    draw(x.body);
+    if(want === 'changes' && x.body.state === 'open') openModal();
+  }).catch(function(){ state.textContent = T.bad; });
+})();
+</script>
+</body>
+</html>

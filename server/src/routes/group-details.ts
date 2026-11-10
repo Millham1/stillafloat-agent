@@ -11,7 +11,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, callerPhone, detailsFacts, detailsTokenFresh, firstWord, flexpayEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, priceEmail, type PriceLine, callerPhone, detailsFacts, detailsTokenFresh, firstWord, flexpayEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -634,6 +634,40 @@ function carrierView(intake: Row | null) {
 }
 
 type BookingFile = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
+
+// ── The price, approved by the guest before the paperwork goes out (Mark 2026-11-09) ──
+// Kept on the reply's quote under "price": when Mark emailed it, when it was approved and by whom (the guest's "Book It", or Mark for a yes he got
+// another way), and what the guest asked to change. Sending the price again clears the approval and closes the open change request.
+interface PriceState { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean }
+function storedPrice(quote: unknown): PriceState {
+  const o = quote && typeof quote === "object" ? (quote as Row)["price"] : null;
+  const p = o && typeof o === "object" ? (o as Row) : {};
+  const changes = (Array.isArray(p["changes"]) ? p["changes"] : []).filter((c: unknown): c is Row => !!c && typeof c === "object")
+    .map((c: Row) => ({ at: String(c["at"] ?? ""), text: text(c["text"], 2000) ?? "" })).filter((c: { text: string }) => c.text);
+  return {
+    sent: text(p["sent"], 20), sent_at: text(p["sent_at"], 40), approved_at: text(p["approved_at"], 40),
+    approved_how: p["approved_how"] === "guest" || p["approved_how"] === "mark" ? p["approved_how"] : null, changes, changes_open: p["changes_open"] === true && changes.length > 0,
+  };
+}
+const PRICE_WORDS = {
+  en: { cabin: "Cabin", cruise: "Total cruise price", trip: "Trip total (cruise and travel)" },
+  es: { cabin: "Cabina", cruise: "Precio total del crucero", trip: "Total del viaje (crucero y traslados)" },
+} as const;
+/** The price as the guest reads it: the cabin, each cruise extra, the cruise total, each priced travel line, the trip total. */
+function priceLines(b: BookingFile, lang: Lang): PriceLine[] {
+  const v = bookingView(b), W = PRICE_WORDS[lang], lines: PriceLine[] = [];
+  if (v.totals.cabin !== null) lines.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
+  for (const x of v.extras) lines.push({ label: x.name, value: usd(x.total) });
+  if (v.totals.cruise !== null) lines.push({ label: W.cruise, value: usd(v.totals.cruise), strong: true });
+  for (const r of v.trip) if (r.price !== null) lines.push({ label: r.label, value: usd(r.price) });
+  if (v.totals.travel !== null && v.totals.trip !== null) lines.push({ label: W.trip, value: usd(v.totals.trip), strong: true });
+  return lines;
+}
+const priceKey = (iid: string) => `price:${iid}`;
+function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
+  const linkKey = hubKey();
+  return linkKey ? `${lang === "es" ? "/es" : ""}/price.html?r=${iid}&k=${deriveCallKey(priceKey(iid), linkKey)}${open ? `&do=${open}` : ""}` : null;
+}
 function bookingView(b: BookingFile) {
   const chosen = tripEntries(b.lead.form_data);
   const needs = ((b.lead.form_data as Record<string, any> | null)?.["trip"]?.["needs"] ?? {}) as Record<string, boolean>;
@@ -665,6 +699,8 @@ function bookingView(b: BookingFile) {
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
     paperwork: b.quote?.paperwork ?? "booking",
+    // the price the guest approves before the paperwork goes out
+    price: storedPrice(b.reply.quote),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
@@ -787,6 +823,8 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     const booking = await loadBooking(groupId, iid);
     const view = booking ? bookingView(booking) : null;
     if (!view || !view.ready) return res.status(409).json({ success: false, error: `Finish the booking confirmation first: ${(view?.missing ?? ["the cabin"]).join("; ")}.`, missing: view?.missing ?? [] });
+    // Mark 2026-11-09: the guest approves the price first ("Book It" in the price email, or Mark records a yes he got another way)
+    if (!storedPrice(reply.quote).approved_at) return res.status(409).json({ success: false, error: "The guest has not approved the price yet. Email the price to them, or record their yes if they gave it another way." });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
@@ -795,9 +833,159 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the paperwork link could not be sent after Booked"); paperwork = "failed"; }
     await db().from("group_interests").update({ quote: { ...(quote ?? {}), paperwork }, status: "booked", updated_at: new Date().toISOString() }).eq("id", iid);
     await resolveActionsForSource("lead", `group-quote-${iid}`, "done");
+    await resolveActionsForSource("lead", `group-price-ok-${iid}`, "done");
     return res.json({ success: true, paperwork });
   } catch (err) {
     return fail(req, res, err, "group booked failed");
+  }
+});
+
+/** Mark emails the price to the guest (Mark 2026-11-09). Refused once the paperwork is out, and until the cabin fare is entered. Sent again after a
+ *  change, it is a new price: the earlier approval is cleared and the open change request is closed. */
+router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    if (b.quote?.paperwork && b.quote.paperwork !== "booking") return res.status(409).json({ success: false, error: "The paperwork is already out to this guest." });
+    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+    const lines = priceLines(b, lang);
+    if (bookingView(b).totals.cruise === null || !lines.length) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to send yet." });
+    const book = pricePath(iid, lang, "book"), changes = pricePath(iid, lang, "changes");
+    if (!book || !changes) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const to = (b.lead.email ?? b.reply.email ?? "").trim();
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    let sent: "sent" | "held" | "no-email" | "failed";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) sent = "no-email";
+    else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
+      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
+      sent = "held";
+    } else {
+      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), lines, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}` });
+      const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+      const at = new Date().toISOString();
+      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
+      sent = ok ? "sent" : "failed";
+    }
+    const before = storedPrice(b.reply.quote);
+    const price: PriceState = { ...before, sent, sent_at: new Date().toISOString(), approved_at: null, approved_how: null, changes_open: false };
+    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price }, updated_at: new Date().toISOString() }).eq("id", iid);
+    if (error) throw new Error(error.message);
+    await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");
+    await resolveActionsForSource("lead", `group-price-ok-${iid}`, "done");
+    return res.json({ success: true, price });
+  } catch (err) {
+    return fail(req, res, err, "group price email failed");
+  }
+});
+
+/** Mark records a yes the guest gave another way (a call, a text): the price counts as approved and the paperwork can go. */
+router.post("/groups/:id/interests/:iid/price-approved", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const before = storedPrice(b.reply.quote);
+    if (before.approved_at) return res.json({ success: true, price: before, already: true });
+    const price: PriceState = { ...before, approved_at: new Date().toISOString(), approved_how: "mark", changes_open: false };
+    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price }, updated_at: new Date().toISOString() }).eq("id", iid);
+    if (error) throw new Error(error.message);
+    await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");
+    return res.json({ success: true, price });
+  } catch (err) {
+    return fail(req, res, err, "group price approved failed");
+  }
+});
+
+// The guest's own price page (public/price.html): the address carries the reply's id and a key derived from it, like the FlexPay scheduler's.
+async function loadPrice(iid: unknown, key: unknown): Promise<{ b: BookingFile; group: Row; lang: Lang; price: PriceState } | null> {
+  if (typeof iid !== "string" || !UUID_RE.test(iid) || !callKeyMatches(priceKey(iid), key, hubKey())) return null;
+  const { data: reply, error } = await db().from("group_interests").select("id, group_id, status").eq("id", iid).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!reply || reply.status === "spam") return null;
+  const b = await loadBooking(String(reply.group_id), iid);
+  if (!b) return null;
+  const price = storedPrice(b.reply.quote);
+  if (!price.sent_at) return null;   // nothing has been sent to approve
+  const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
+  if (ge) throw new Error(ge.message);
+  if (!group) return null;
+  return { b, group, lang: b.lead.lang === "es" ? "es" : "en", price };
+}
+const priceState = (b: BookingFile, p: PriceState): "approved" | "changes" | "open" | "paperwork" =>
+  b.quote?.paperwork && b.quote.paperwork !== "booking" ? "paperwork" : p.approved_at ? "approved" : p.changes_open ? "changes" : "open";
+
+router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { b, group, lang, price } = loaded;
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, lines: priceLines(b, lang), state: priceState(b, price), businessPhone: BUSINESS.phone });
+  } catch (err) {
+    return fail(req, res, err, "price confirm read failed");
+  }
+});
+
+/** { action: "book" } the guest's "Book It": Mark gets one item to book it and send the paperwork. { action: "changes", text } "I need changes": what
+ *  they want changed, in their own words, on Mark's list. Neither books, charges or signs anything. */
+router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    if (guardPost(req, res)) return;
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { b, group, lang, price } = loaded;
+    const iid = String(b.reply.id), body = (req.body ?? {}) as Row, action = body["action"];
+    const state = priceState(b, price);
+    const who = nameOf(b.reply) || "Guest";
+    const label = detailsFacts({ group, cabins: [] }, "en").label;
+    const save = async (next: PriceState) => {
+      const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price: next }, updated_at: new Date().toISOString() }).eq("id", iid);
+      if (error) throw new Error(error.message);
+    };
+    if (action === "book") {
+      if (state === "approved" || state === "paperwork") return res.json({ success: true, state, already: true });
+      const now = new Date().toISOString();
+      await save({ ...price, approved_at: now, approved_how: "guest", changes_open: false });
+      res.json({ success: true, state: "approved" });
+      void createAction({
+        type: "lead", source_ref: `group-price-ok-${iid}`, title: `Price approved: book it · ${who}`, priority: "lead",
+        body: `${label} · ${who} tapped "Book It" on the price you sent. Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}?book=${iid}#bookings` }],
+      }).then(async (made) => { if (made.created) await resolveActionsForSource("lead", `group-price-change-${iid}`, "done"); })
+        .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the price approval could not be put on the list"));
+      return;
+    }
+    if (action === "changes") {
+      if (state === "paperwork") return res.status(409).json({ success: false, error: lang === "es" ? `Sus documentos ya salieron. Para cambiar algo, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your paperwork is already out. To change anything, call or text Mark at ${BUSINESS.phone}.` });
+      const said = text(body["text"], 2000);
+      if (!said || said.length < 3) return res.status(400).json({ success: false, error: lang === "es" ? "Díganos qué desea cambiar." : "Please tell us what you would like changed." });
+      const now = new Date().toISOString();
+      await save({ ...price, approved_at: null, approved_how: null, changes: [...price.changes, { at: now, text: said }].slice(-10), changes_open: true });
+      res.json({ success: true, state: "changes" });
+      await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");   // a second request replaces the first on Mark's list
+      void createAction({
+        type: "lead", source_ref: `group-price-change-${iid}`, title: `Changes asked on the price · ${who}`, priority: "lead",
+        body: `${label} · ${who} tapped "I need changes" and wrote: "${said}". Do this: re-quote, update the booking confirmation, then email the price again.`,
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}?book=${iid}#bookings` }],
+      }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the change request could not be put on the list"));
+      return;
+    }
+    return res.status(400).json({ success: false, error: "Unknown action." });
+  } catch (err) {
+    return fail(req, res, err, "price confirm write failed");
   }
 });
 

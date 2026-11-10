@@ -148,6 +148,9 @@ const PAGES = [
   // the FlexPay video-call scheduler (Mark 2026-11-05): a guest's private link (?r=&k=) from Mark's FlexPay email, menu-free like the details page.
   { path: "/flexpay-call.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Pick your time, {first name}!' into the <h1> once the link's times load" } },
   { path: "/es/flexpay-call.html", lang: "es", kind: "template", h1: { client: "the page script writes the Spanish heading into the <h1> once the link's times load" } },
+  // the price page (Mark 2026-11-09): a guest's private link (?r=&k=) from Mark's price email, "Book It" and "I need changes".
+  { path: "/price.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Your price, {first name}!' into the <h1> once the link's price loads" } },
+  { path: "/es/price.html", lang: "es", kind: "template", h1: { client: "the page script writes the Spanish heading into the <h1> once the link's price loads" } },
   // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
   { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
   // the traveler's cruise page — NEW IN THE RELEASE THAT ADDS THE GROUP JOURNEY: one page for both languages (the traveler's own, or ?lang=es), every word from the API
@@ -183,6 +186,7 @@ const APIS = {
   "/group.html": ["/api/group-page/"],
   "/details.html": ["/api/group-details/", "/api/address/lookup"],
   "/flexpay-call.html": ["/api/flexpay-call/"],
+  "/price.html": ["/api/price-confirm/"],
   "/forms.html": ["/api/forms/"],
   "/my-cruise.html": ["/api/my-cruise/"],
   "/translate-loading.html": ["/api/translate-article"],

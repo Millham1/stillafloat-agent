@@ -525,6 +525,52 @@ export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; 
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }
 
+// ── The price, for the guest to approve (Mark 2026-11-09) ─────────────────────
+// "we need to send an email to confirm the pricing before we send the paperwork. the email should have cta's one 'Book It' and one 'I need changes'".
+// Mark sends it from the booking card once his re-quote is entered. Both buttons open the guest's own price page: "Book It" tells Mark to go ahead (the
+// paperwork follows from him), "I need changes" opens a box for what they want changed. The wording is a first draft for Mark to read.
+
+export interface PriceLine { label: string; value: string; strong?: boolean }
+export interface PriceInput extends MailBase { lines: readonly PriceLine[]; bookUrl: string; changesUrl: string }
+const PRICE = {
+  en: {
+    subject: (label: string) => `Your price is ready… ${label}`,
+    title: "Your price is ready!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: "Mark priced your choices with the cruise line. Here is what it comes to:",
+    p2: "Happy with it? Tap Book It and your paperwork follows by email. Want something different? Tap I need changes and tell us what you would like.",
+    note: "These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.",
+    book: "Book It", changes: "I need changes",
+    close: "Cruise smarter, laugh more… see you at the muster drill!",
+    footer: (label: string) => `You are receiving this because you sent your choices for your ${label} booking. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (label: string) => `Su precio está listo… ${label}`,
+    title: "¡Su precio está listo!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: "Mark cotizó sus decisiones con la naviera. Esto es lo que suma:",
+    p2: "¿Le parece bien? Toque Reservar y sus documentos le llegan por correo. ¿Quiere algo distinto? Toque Necesito cambios y díganos qué desea.",
+    note: "Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.",
+    book: "Reservar", changes: "Necesito cambios",
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
+    footer: (label: string) => `Recibió este correo porque envió sus decisiones para su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+
+export function priceEmail(i: PriceInput): { subject: string; html: string; text: string } {
+  const T = PRICE[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
+  const text = [T.hi(first), T.p1, i.lines.map((l) => `${l.label}: ${l.value}`).join("\n"), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  const cell = "padding:8px 0;border-bottom:1px solid #d5dfee;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.4;color:#07183f";
+  const rows = i.lines.map((l) => `<tr><td style="${cell}${l.strong ? ";font-weight:bold" : ""}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap;padding-left:14px${l.strong ? ";font-weight:bold" : ""}">${esc(l.value)}</td></tr>`).join("");
+  const table = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">${rows}</table>`;
+  const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:12px 22px;text-decoration:none;font-size:18px;font-family:Arial,Helvetica,sans-serif;margin:0 8px 8px 0";
+  const buttons = `<a href="${esc(i.bookUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.book)}</a>`
+    + `<a href="${esc(i.changesUrl)}" style="${pill};background:#f7fbff;color:#07183f;border:2px solid #07183f">${esc(T.changes)}</a>`;
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), table, para(esc(T.p2)), para(buttons), para(`<span style="font-size:16px">${esc(T.note)}</span>`), para(esc(T.close))].join("\n    ");
+  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+}
+
 // ── FlexPay: the time is picked (Mark 2026-11-05) ─────────────────────────────
 // The guest picked a time on our own scheduler: this is the one email that confirms it, with the video link. The wording is a first draft for Mark to read.
 
