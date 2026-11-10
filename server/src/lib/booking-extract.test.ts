@@ -663,7 +663,7 @@ test("an add-on with its own printed price is left as read", () => {
 // Mark 2026-11-10: "i dont understand this warning… the confirmation shows a deposit date of 11/12." An optioned booking prints when the hold ends; the
 // reader had filed that day as the final payment and warned that it was not "0 days before sailing".
 test("an optioned booking: 'Option valid until 6pm EST on: November 12, 2026' is the deposit's deadline, never the final payment, and raises no warning", () => {
-  const text = `CONFIRMATION PAGE\nBooking Status\nOptioned\nOption valid until 6pm EST on:  November 12,\n2026\n${MSC_CONFIRMATION}`;
+  const text = `CONFIRMATION PAGE\nBooking Status\nOptioned\nOption valid until 6pm EST on :   November 12, \n2026\n${MSC_CONFIRMATION}`;
   const out = verifyExtraction(normalizeExtraction({ sail_date: "2027-05-09", final_payment_due: "2026-11-12", final_payment_days_before: 0, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] }), text);
   assert.deepEqual([out.option_until, out.option_until_time, out.deposit_due, out.final_payment_due], ["2026-11-12", "6pm EST", "2026-11-12", null]);
   assert.ok(!(out.warnings ?? []).some((w) => /final payment/i.test(w)), JSON.stringify(out.warnings));
