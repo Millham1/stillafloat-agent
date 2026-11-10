@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download } from "lucide-react";
+import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
 import { api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,7 +20,8 @@ type Pkg = { flights: string | null; return_flights: string | null; return_from:
 const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, depart_time: null, arrive_time: null, return_depart_time: null, return_arrive_time: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
 type Extra = { name: string; total: string };
 // Mark 2026-11-10: travel protection priced for THIS booking (the cruise line's plan, Allianz plans): a price per person each. The guest picks one on the quote.
-type Plan = { name: string; per_person: string; line: boolean };
+// A price is per person (the cruise line's plan, one typed by hand) or ONE figure for the whole party (the way Allianz prices a trip).
+type Plan = { name: string; price: string; party: boolean; line: boolean };
 // one guest's price lines exactly as the cruise line's quote prints them (Mark 2026-11-09: read the quote, assume nothing)
 type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
@@ -28,7 +29,9 @@ type Booking = {
   success: boolean; guest: { name: string; email: string | null };
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
-  protection?: Array<{ name: string; per_person: number; line: boolean }>;
+  protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
+  // the Allianz quote the agent fetched for this trip: each plan with its one price for the party
+  allianz?: null | { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: Array<{ name: string; total: number }>; reason: string | null; travelers: number | null; trip_cost: number | null };
   protectionOnFile?: Array<{ name: string; per_person: number; line: boolean }>;
   price?: { protection?: { key: string; label: string } | null; sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
@@ -59,7 +62,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   // while the cruise line's quote is being read the form asks again every few seconds
   const { data, isLoading, error } = useQuery<Booking>({
     queryKey: key, queryFn: () => api(`/groups/${groupId}/interests/${guest.id}/booking`),
-    refetchInterval: (q) => (q.state.data?.carrier && READING.includes(q.state.data.carrier.status) ? 3000 : false),
+    refetchInterval: (q) => ((q.state.data?.carrier && READING.includes(q.state.data.carrier.status)) || q.state.data?.allianz?.status === "pending" ? 3000 : false),
   });
   const filled = useRef<string | null>(null);   // the read this form was last filled from: a refresh never overwrites what Mark typed
   const fileRef = useRef<HTMLInputElement>(null);
@@ -68,6 +71,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const [extras, setExtras] = useState<Extra[]>([]);
   const [guestPrices, setGuestPrices] = useState<GuestPrice[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [allianzStop, setAllianzStop] = useState<string | null>(null);   // every hook sits above the early returns below
   // Mark 2026-11-10: a button that cannot go ahead SAYS what has to be done first, in red beside it, when it is pressed. No silent grey buttons.
   const [stop, setStop] = useState<{ at: "price" | "paperwork"; text: string } | null>(null);
   const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" above, then press this again.';
@@ -80,7 +84,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setTrip(data.trip);
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setGuestPrices(data.guestPrices ?? []);
-    setPlans((data.protection ?? []).map((x) => ({ name: x.name, per_person: String(x.per_person), line: x.line })));
+    setPlans((data.protection ?? []).map((x) => ({ name: x.name, price: String(x.total ?? x.per_person ?? ""), party: x.total != null, line: x.line })));
     setDirty(false);
     // Mark 2026-11-10: the quote's add-ons (the dining and drink packages) belong in the Cruise extras section. When the quote has been read with
     // add-ons and this booking has no extras saved yet, the section fills from the quote by itself (unsaved, for Mark to check), with no button to press.
@@ -125,12 +129,19 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const price = data.price, approved = !!price?.approved_at;
   const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
+  const askAllianz = async (again: boolean) => {
+    try {
+      await api(`/groups/${groupId}/interests/${guest.id}/protection-quote`, "POST", again ? { again: true } : {});
+      setAllianzStop(null);
+      qc.invalidateQueries({ queryKey: key });
+    } catch (e) { setAllianzStop((e as Error).message); }
+  };
   const save = async (): Promise<boolean> => {
     setBusy(true);
     try {
       const clean = (v: unknown) => (v === null || v === "" ? null : String(v).replace(/[$,\s]/g, ""));
       const body: Record<string, unknown> = { guest_prices: guestPrices, trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })),
-        protection: plans.filter((x) => x.name.trim() || x.per_person.trim()).map((x) => ({ name: x.name.trim(), per_person: clean(x.per_person), line: x.line })) };
+        protection: plans.filter((x) => x.name.trim() || x.price.trim()).map((x) => ({ name: x.name.trim(), ...(x.party ? { total: clean(x.price) } : { per_person: clean(x.price) }), line: x.line })) };
       // the cabin row keeps the whole cruise price: the cabin fare and the cruise line's extras together
       if (data.cabin) { const { fare, ...rest } = cabin; body["cabin"] = { ...rest, price_total: fare === "" && !extras.length ? "" : String(cruiseSum) }; }
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
@@ -138,6 +149,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       qc.invalidateQueries({ queryKey: ["group", groupId] });
       setDirty(false); setStop(null);
       toast({ title: "Booking confirmation saved" });
+      // Mark 2026-11-10: once the costs are saved the agent goes to Allianz with the whole trip and brings the plans back (the same trip is not asked twice)
+      if ((next.totals?.trip ?? 0) > 0 && next.paperwork === "booking") void askAllianz(false);
       return true;
     } catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); return false; }
     finally { setBusy(false); }
@@ -306,21 +319,50 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Travel protection (the guest picks one on the quote)</h4>
-          {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", per_person: "", line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
+          {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", price: "", party: false, line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
         </div>
         {guestPrices.some((g) => g.insurance > 0) && <p className="text-sm text-muted-foreground">The cruise line's quote already has its protection plan in the price ({guestPrices.map((g) => `${g.name}: ${usd(g.insurance)}`).join("; ")}). It shows on the quote as printed; do not add it again here.</p>}
+        {/* Mark 2026-11-10: "once I complete adding the travel costs the agent goes out to Allianz and enters the information to get the quotes."
+            Saving the confirmation sends it; the plans Allianz returns for THIS trip list here, each with its one price for the party. */}
+        <div className="rounded-md border p-2 mb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-sm font-semibold">Allianz quote for this trip</p>
+            {!sent && <button className={btn} disabled={busy || data.allianz?.status === "pending"} onClick={() => { if (dirty) { setAllianzStop(UNSAVED); return; } void askAllianz(true); }}>{data.allianz ? "Ask Allianz again" : "Ask Allianz now"}</button>}
+          </div>
+          {allianzStop && <p className="text-sm font-semibold text-red-600">{allianzStop}</p>}
+          {!data.allianz && !allianzStop && <p className="text-sm text-muted-foreground">Not asked yet. Save the confirmation with the cruise and travel costs in, and the agent goes to Allianz with the whole trip.</p>}
+          {data.allianz?.status === "pending" && <p className="text-sm text-muted-foreground flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Getting the Allianz quotes… (about a minute)</p>}
+          {data.allianz?.status === "unavailable" && <p className="text-sm font-semibold text-red-600">Allianz could not be quoted: {data.allianz.reason ?? "no reason given"}. Nothing was made up; press "Ask Allianz again" once that is fixed.</p>}
+          {data.allianz?.status === "ready" && (
+            <>
+              <p className="text-sm text-muted-foreground mb-1">Quoted {when(data.allianz.quoted_at)} for a trip of {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Each price is Allianz's one figure for the whole party. Pick the ones to put on this quote:</p>
+              <div className="space-y-1">
+                {data.allianz.plans.map((q, i) => {
+                  const on = plans.some((x) => x.name.trim() === `${q.name} (Allianz)` && x.party);
+                  return (
+                    <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
+                      <span><b>{q.name}</b> · {usd(q.total)} for the party</span>
+                      {on ? <span className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> On this quote</span>
+                        : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.price.trim()), { name: `${q.name} (Allianz)`, price: String(q.total), party: true, line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
         {/* Mark 2026-11-10: the quotes on file for this sailing show here, each with its own button: he picks which ones go on this guest's quote */}
         {(data.protectionOnFile ?? []).length > 0 ? (
           <div className="rounded-md border p-2 mb-2">
             <p className="text-sm font-semibold mb-1">Quotes on file for this sailing (from the group file). Pick the ones to put on this quote:</p>
             <div className="space-y-1">
               {(data.protectionOnFile ?? []).map((q, i) => {
-                const on = plans.some((x) => x.name.trim() === q.name && x.line === q.line);
+                const on = plans.some((x) => x.name.trim() === q.name && x.line === q.line && !x.party);
                 return (
                   <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
                     <span><b>{q.name}</b> · {usd(q.per_person)} per person · {q.line ? "the cruise line's own plan" : "Allianz"}</span>
                     {on ? <span className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> On this quote</span>
-                      : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.per_person.trim()), { name: q.name, per_person: String(q.per_person), line: q.line }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
+                      : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.price.trim()), { name: q.name, price: String(q.per_person), party: false, line: q.line }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
                   </div>
                 );
               })}
@@ -332,9 +374,10 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
         {plans.length === 0 && <p className="text-sm text-muted-foreground">Nothing is on this guest's quote yet: with no plan added, the quote has no travel protection section.</p>}
         <div className="space-y-2">
           {plans.map((x, i) => (
-            <div key={i} className="grid grid-cols-[1fr_11rem_auto_auto] gap-2 items-end">
-              <Field label="Plan"><input className={input} placeholder="OneTrip Prime (Allianz)" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} /></Field>
-              <Field label="Quoted price per person ($)"><input className={input} inputMode="decimal" value={x.per_person} onChange={(e) => setPl(i, { per_person: e.target.value })} disabled={sent} /></Field>
+            <div key={i} className="grid grid-cols-[1fr_9rem_11rem_auto_auto] gap-2 items-end">
+              <Field label="Plan on this quote"><input className={input} placeholder="Plan name" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} /></Field>
+              <Field label="Quoted price ($)"><input className={input} inputMode="decimal" value={x.price} onChange={(e) => setPl(i, { price: e.target.value })} disabled={sent} /></Field>
+              <Field label="The price is"><select className={input} value={x.party ? "party" : "person"} onChange={(e) => setPl(i, { party: e.target.value === "party" })} disabled={sent}><option value="person">per person</option><option value="party">for the whole party</option></select></Field>
               <label className="text-sm flex items-center gap-1 pb-2"><input type="checkbox" checked={x.line} onChange={(e) => setPl(i, { line: e.target.checked })} disabled={sent} /> The cruise line's own plan</label>
               {!sent && <button className={btn} aria-label="Remove this plan" onClick={() => { setPlans((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
             </div>

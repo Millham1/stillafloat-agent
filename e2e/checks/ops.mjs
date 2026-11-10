@@ -1675,7 +1675,7 @@ export default [
     id: "ops.price-confirm-writes-refuse",
     basis: "ruling: Mark 2026-11-09 — the guest approves the price ('Book It') or asks for changes before the paperwork goes out; only the guest Mark emailed can answer, and only Mark can send the price or record a yes he got another way",
     title: "Book It and I need changes refuse a link that does not exist, the bot trap records nothing, and sending the price or recording an approval is Mark's alone",
-    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview"],
+    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap, no token, a guest that does not exist; nothing is approved and nobody is emailed); prod sweeps are read-only",
     run: async (t) => {
@@ -1690,7 +1690,7 @@ export default [
       // the preview of the price email is Mark's alone too, and shows nothing for a guest that does not exist
       unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: false }), "GET /api/groups/:id/interests/:iid/price-preview");
       refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: true }), 404, "the price preview of a guest who has not sent their choices", /has not sent|not found/i);
-      for (const step of ["price-email", "price-approved"]) {
+      for (const step of ["price-email", "price-approved", "protection-quote"]) {
         unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}), `POST /api/groups/:id/interests/:iid/${step}`);
         refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}, true), 404, `${step} for a guest who has not sent their choices`, /has not sent|not found/i);
       }

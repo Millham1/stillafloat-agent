@@ -16,7 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { planLabel, plansFromText } from "../lib/allianz-quote";
+import { ageOnDay, fetchAllianzTripQuote, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -586,12 +586,23 @@ const cruiseExtras = (formData: unknown): CruiseExtra[] => {
 };
 /** Travel protection as Mark priced it for THIS booking (Mark 2026-11-10: "create an insurance section on the quote… add Allianz too"): each plan
  *  with its price per person, typed on the booking card and kept on the lead's file (form_data.trip.protection). The guest picks one on the quote page. */
-interface ProtectionPlan { name: string; per_person: number; line: boolean }
+/** A plan is priced EITHER per person (the cruise line's plan, a plan typed by hand) OR as one total for the whole party (the way Allianz's site prices
+ *  a trip: one figure for everyone, never divided). */
+interface ProtectionPlan { name: string; per_person: number | null; total: number | null; line: boolean }
+const posNum = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v > 0 ? cents(v) : null);
 const protectionPlans = (formData: unknown): ProtectionPlan[] => {
   const list = ((formData as Record<string, any> | null)?.["trip"] ?? {})["protection"];
   if (!Array.isArray(list)) return [];
-  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r["per_person"] === "number" && Number.isFinite(r["per_person"]) && (r["per_person"] as number) > 0 && !!text(r["name"], 120))
-    .slice(0, 8).map((r) => ({ name: text(r["name"], 120)!, per_person: cents(r["per_person"] as number), line: r["line"] === true }));
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && (posNum(r["per_person"]) !== null || posNum(r["total"]) !== null) && !!text(r["name"], 120))
+    .slice(0, 12).map((r) => ({ name: text(r["name"], 120)!, per_person: posNum(r["total"]) !== null ? null : posNum(r["per_person"]), total: posNum(r["total"]), line: r["line"] === true }));
+};
+/** Where the Allianz quote for this booking stands (lead's file, trip.allianz): asked from the booking card once the costs are in. */
+interface AllianzRecord { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: TripPlan[]; reason: string | null; input: TripQuoteInput | null }
+const allianzRecord = (formData: unknown): AllianzRecord | null => {
+  const a = ((formData as Record<string, any> | null)?.["trip"] ?? {})["allianz"];
+  if (!a || typeof a !== "object" || !["pending", "ready", "unavailable"].includes(a["status"])) return null;
+  const plans = (Array.isArray(a["plans"]) ? a["plans"] : []).filter((p: unknown): p is Row => !!p && typeof p === "object").map((p: Row) => ({ name: text(p["name"], 120) ?? "", total: posNum(p["total"]) ?? 0 })).filter((p: TripPlan) => p.name && p.total > 0);
+  return { status: a["status"], requested_at: String(a["requested_at"] ?? ""), quoted_at: text(a["quoted_at"], 40), plans, reason: text(a["reason"], 400), input: a["input"] && typeof a["input"] === "object" ? (a["input"] as TripQuoteInput) : null };
 };
 const cents = (n: number) => Math.round(n * 100) / 100;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -614,7 +625,7 @@ async function loadBooking(groupId: string, iid: string) {
   let signed: SignedView | null = null;
   if (quote?.paperwork && quote.paperwork !== "booking") signed = await signedFor(groupId, lead);
   // the sailing's protection quotes on the group file (the cruise line's plan and the Allianz plans, as Mark typed them there)
-  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans").eq("id", groupId).maybeSingle();
+  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans, sail_date, return_date").eq("id", groupId).maybeSingle();
   if (fe) throw new Error(fe.message);
   return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null };
 }
@@ -694,13 +705,13 @@ const QUOTE_WORDS = {
     pkg: (post: boolean) => `Air and hotel package, ${post ? "after" : "before"} the cruise`, flights: "Flights", going: "Going", back: "Coming back", hotel: "Hotel", bed1: "1 bed", bed2: "2 beds",
     breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight",
     protect: "Travel protection", protectLede: "Priced for your trip. Pick one on your quote page before you tap Book It.", perPerson: "per person", linePlan: "The cruise line's protection plan",
-    inCruise: "already in your cruise total above", lineOwn: "the cruise line's own plan", own: "I have my own policy", none: "No insurance for us", tripWith: (n: string) => `Trip total with ${n}` },
+    forParty: (n: number) => (n === 1 ? "total for 1 traveler" : `total for ${n} travelers`), inCruise: "already in your cruise total above", lineOwn: "the cruise line's own plan", own: "I have my own policy", none: "No insurance for us", tripWith: (n: string) => `Trip total with ${n}` },
   es: { cruise: "Su crucero", travel: "Cómo llegar", fare: "Tarifa del crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total por pasajero",
     cruiseTotal: "Total del crucero", tripTotal: "Total del viaje (crucero y traslados)", addonsAll: "Complementos de cada pasajero", addonsFor: (n: string) => `Complementos de ${n}`, cabin: "Cabina",
     pkg: (post: boolean) => `Paquete de vuelo y hotel, ${post ? "después" : "antes"} del crucero`, flights: "Vuelos", going: "Ida", back: "Regreso", hotel: "Hotel", bed1: "1 cama", bed2: "2 camas",
     breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo",
     protect: "Protección de viaje", protectLede: "Cotizada para su viaje. Elija una en la página de su cotización antes de tocar Reservar.", perPerson: "por persona", linePlan: "El plan de protección de la naviera",
-    inCruise: "ya está en el total de su crucero, arriba", lineOwn: "el plan propio de la naviera", own: "Tengo mi propia póliza", none: "Sin seguro para nosotros", tripWith: (n: string) => `Total del viaje con ${n}` },
+    forParty: (n: number) => (n === 1 ? "total para 1 pasajero" : `total para ${n} pasajeros`), inCruise: "ya está en el total de su crucero, arriba", lineOwn: "el plan propio de la naviera", own: "Tengo mi propia póliza", none: "Sin seguro para nosotros", tripWith: (n: string) => `Total del viaje con ${n}` },
 } as const;
 /** "MARK MILLHAM" as a quote prints it → "Mark Millham" for reading. */
 const properName = (n: string) => n.toLowerCase().replace(/(^|[\s'-])([a-záéíóúñ])/g, (_m, a: string, b: string) => a + b.toUpperCase());
@@ -767,8 +778,8 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     plans.push({ key: "included", name: W.linePlan, price: same ? `${usd(insured[0]!.insurance)} ${W.perPerson}` : insured.map((g) => `${properName(g.name)} ${usd(g.insurance)}`).join(" · "), note: W.inCruise, withTotal: null });
   }
   v.protection.forEach((p, i) => plans.push({
-    key: `p${i}`, name: p.name, price: `${usd(p.per_person)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
-    withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + p.per_person * count)) } : null,
+    key: `p${i}`, name: p.name, price: p.total !== null ? `${usd(p.total)} ${W.forParty(count)}` : `${usd(p.per_person ?? 0)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
+    withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + (p.total ?? (p.per_person ?? 0) * count))) } : null,
   }));
   return {
     heads: { cruise: W.cruise, travel: W.travel }, cabin: text(b.cabin?.["category"]), matrix, cruise,
@@ -825,6 +836,8 @@ function bookingView(b: BookingFile) {
       ...plansFromText(b.file?.["line_protection"]).slice(0, 1).map((q) => ({ name: q.name, per_person: q.price_per_person, line: true })),
       ...plansFromText(b.file?.["insurance_plans"]).map((q) => ({ name: q.name, per_person: q.price_per_person, line: false })),
     ],
+    // the Allianz quote the agent fetched for THIS trip (the whole trip cost, each traveler's age): each plan with its one price for the party
+    allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: a.plans, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
@@ -934,10 +947,11 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       if (!Array.isArray(body["protection"]) || body["protection"].length > 8) return bad("The travel protection list is not valid.");
       const plans: ProtectionPlan[] = [];
       for (const r of body["protection"] as Array<Record<string, unknown>>) {
-        const name = text(r?.["name"], 120), per = money(r?.["per_person"] ?? null);
+        const name = text(r?.["name"], 120), per = money(r?.["per_person"] ?? null), tot = money(r?.["total"] ?? null);
         if (!name) return bad("Each travel protection plan needs a name.");
-        if (per === undefined || per === null || per <= 0) return bad(`The price per person of ${name} is not an amount.`);
-        plans.push({ name, per_person: cents(per), line: r["line"] === true });
+        if (tot !== null && tot !== undefined && tot > 0) { plans.push({ name, per_person: null, total: cents(tot), line: r["line"] === true }); continue; }
+        if (tot === undefined || per === undefined || per === null || per <= 0) return bad(`The price of ${name} is not an amount.`);
+        plans.push({ name, per_person: cents(per), total: null, line: r["line"] === true });
       }
       const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
       if (fe) throw new Error(fe.message);
@@ -951,6 +965,61 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
     return fail(req, res, err, "group booking save failed");
   }
 });
+
+/** Mark 2026-11-10: "once I complete adding the travel costs (cruise, air, hotel, transfers) the agent goes out to Allianz and enters the information
+ *  to get the quotes." Asked by the booking card after a save: the whole trip cost for everyone, the lead's home state, each traveler's age, the first
+ *  and last day of the trip, today as the deposit day until one is paid. The agent drives Allianz's agent site in the background; the card polls the
+ *  booking for the plans. The same trip is not quoted twice; a trip that changed is. What is missing is named, never guessed. */
+function allianzInputFor(b: BookingFile, party: Row[], today: string): TripQuoteInput | { missing: string[] } {
+  const v = bookingView(b), missing: string[] = [];
+  const csz = text((b.lead.form_data as Record<string, any> | null)?.["city_state_zip"], 120) ?? "";
+  const state = (/,\s*([A-Za-z]{2})\s+\d{5}/.exec(csz)?.[1] ?? "").toUpperCase();
+  if (!state) missing.push("the lead guest's home state (their address on the group file)");
+  if (v.totals.trip === null || v.totals.trip <= 0) missing.push("the cruise price (enter the cabin fare and save)");
+  const days = [text(b.file?.["sail_date"], 10), text(b.file?.["return_date"], 10), ...v.trip.flatMap((r) => [r.starts_at, r.ends_at]).map((d) => (d ? d.slice(0, 10) : null))].filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  if (!text(b.file?.["sail_date"], 10) || !text(b.file?.["return_date"], 10)) missing.push("the sailing dates on the group file");
+  const dobs = party.map((t) => text(t["dob"], 10)).filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d));
+  if (!dobs.length || dobs.length < party.length) missing.push("every traveler's birth date");
+  if (missing.length) return { missing };
+  return { state, total_trip_cost: v.totals.trip as number, ages: dobs.map((d) => ageOnDay(d, today)), depart_date: days[0]!, return_date: days[days.length - 1]!, deposit_date: today };
+}
+router.post("/groups/:id/interests/:iid/protection-quote", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const { data: party, error: pe } = b.lead.cabin_id
+      ? await db().from("group_travelers").select("id, dob").eq("cabin_id", b.lead.cabin_id)
+      : await db().from("group_travelers").select("id, dob").eq("id", b.lead.id);
+    if (pe) throw new Error(pe.message);
+    const now = new Date(), input = allianzInputFor(b, (party ?? []) as Row[], now.toISOString().slice(0, 10));
+    if ("missing" in input) return res.status(409).json({ success: false, error: `Allianz cannot be quoted yet. Still needed: ${input.missing.join("; ")}.`, missing: input.missing });
+    const have = allianzRecord(b.lead.form_data), force = (req.body as Row | undefined)?.["again"] === true;
+    const same = !!have?.input && JSON.stringify(have.input) === JSON.stringify(input);
+    if (!force && same && have.status === "ready") return res.json({ success: true, status: "ready", already: true });
+    if (same && have.status === "pending" && now.getTime() - Date.parse(have.requested_at) < 5 * 60_000) return res.json({ success: true, status: "pending", already: true });
+    const saveRecord = async (rec: AllianzRecord) => {
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), allianz: rec } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    };
+    const base: AllianzRecord = { status: "pending", requested_at: now.toISOString(), quoted_at: null, plans: [], reason: null, input };
+    await saveRecord(base);
+    res.status(202).json({ success: true, status: "pending" });
+    void allianzFetch(input, { chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"] })
+      .then((out) => saveRecord(out.status === "ready" ? { ...base, status: "ready", quoted_at: new Date().toISOString(), plans: out.plans } : { ...base, status: "unavailable", reason: out.reason }))
+      .catch((e: unknown) => saveRecord({ ...base, status: "unavailable", reason: e instanceof Error ? e.message.slice(0, 300) : String(e) }).catch(() => undefined));
+    return;
+  } catch (err) {
+    return fail(req, res, err, "group protection quote failed");
+  }
+});
+/** The fetch itself, swappable in tests (no browser, no sign-in there). */
+let allianzFetch: typeof fetchAllianzTripQuote = fetchAllianzTripQuote;
+export function setAllianzFetchForTests(f: typeof fetchAllianzTripQuote | null): void { allianzFetch = f ?? fetchAllianzTripQuote; }
 
 /** Mark's "Booked" (2026-11-03): the cabin is booked with the cruise line and its number is on the file; the travel is validated. Only then does the
  *  guest's paperwork link go out. Refused until the cabin number is in the group file. Pressed twice, it sends nothing twice. */
@@ -1140,7 +1209,7 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
           + (typed?.line ? " Add the cruise line's protection plan when you book." : "");
         // the pick goes on the file of everyone on the cabin, in the paperwork's own words, so the insurance step opens with it chosen
         const choice = key === "own" ? "own" : key === "none" ? "decline" : key === "included" || typed?.line ? "line" : "quote";
-        const planText = choice === "quote" && typed ? planLabel({ name: typed.name, price_per_person: typed.per_person }) : choice === "line" ? text(group["line_protection"], 300) : null;
+        const planText = choice === "quote" && typed ? (typed.total !== null ? `${typed.name}: ${plan?.price ?? usd(typed.total)}` : planLabel({ name: typed.name, price_per_person: typed.per_person })) : choice === "line" ? text(group["line_protection"], 300) : null;
         const { data: party, error: pe } = b.lead.cabin_id
           ? await db().from("group_travelers").select("id, form_data").eq("cabin_id", b.lead.cabin_id)
           : await db().from("group_travelers").select("id, form_data").eq("id", b.lead.id);

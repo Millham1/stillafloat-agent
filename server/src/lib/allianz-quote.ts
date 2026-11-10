@@ -141,3 +141,92 @@ export async function fetchAllianzQuote(input: QuoteInput, env: QuoteEnv, portal
     await browser.close().catch(() => undefined);
   }
 }
+
+// ── The whole TRIP quoted for a booking (Mark 2026-11-10) ─────────────────────
+// "once I complete adding the travel costs (cruise, air, hotel, transfers) the agent goes out to Allianz and enters the information to get the quotes."
+// The agents' site was walked in Mark's own signed-in session on 2026-11-10: the Get Quote form on the home screen takes the home state, the TOTAL
+// trip cost for everyone, each traveler's age (a pop-up, one box a traveler), the departure, return and first-deposit dates; the next screen lists
+// every plan with ONE price for the whole party. That price is kept as printed: it is never divided per person. "Select product" starts a sale and
+// is never pressed.
+
+export interface TripQuoteInput { state: string; total_trip_cost: number; ages: number[]; depart_date: string; return_date: string; deposit_date: string }
+export interface TripPlan { name: string; total: number }
+export type TripQuoteOutcome = { status: "ready"; plans: TripPlan[] } | { status: "unavailable"; reason: string };
+
+export const ALLIANZ_SITE = {
+  email: 'input[type="email"]', password: 'input[type="password"]', logIn: 'button[type="submit"]',
+  state: "#StateOfResidence", tripCost: "#tripCost", ages: "#TravelerAges", age: (i: number) => `#age-traveler-${i}`,
+  addTraveler: "popover-container button.btn-link:not(.done-button)", agesDone: "popover-container .done-button",
+  depart: "#DepartureDate", back: "#ReturnDate", deposit: "#InitialDepositDate", getQuote: "Get Quote",
+  planRow: ".panel-heading", planName: ".col-xs-9", planPrice: ".product-price",
+} as const;
+
+/** 2027-05-09 → 05/09/2027, the way the site's date boxes take it. */
+export const usDate = (ymd: string): string => `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}/${ymd.slice(0, 4)}`;
+/** Whole years between a birth date and a day (the age the site asks for). */
+export function ageOnDay(dob: string, day: string): number {
+  const [y, m, d] = dob.slice(0, 10).split("-").map(Number) as [number, number, number], [Y, M, D] = day.slice(0, 10).split("-").map(Number) as [number, number, number];
+  return Y - y - (M < m || (M === m && D < d) ? 1 : 0);
+}
+/** A plan row's text as the site prints it → the plan: "Classic Plan  ✓ Recommended" + "$265.00" → { name: "Classic Plan", total: 265 }. */
+export function tripPlanFrom(nameText: string, priceText: string): TripPlan | null {
+  const name = nameText.replace(/\bRecommended\b/gi, "").replace(/\s+/g, " ").trim();
+  const m = /\$\s*([\d,]+(?:\.\d{1,2})?)/.exec(priceText);
+  const total = m ? Number(m[1]!.replace(/,/g, "")) : NaN;
+  return name && Number.isFinite(total) && total > 0 ? { name, total } : null;
+}
+
+/** Sign in, fill the Get Quote form, read every plan and its price. Nothing is invented: no browser or no sign-in → unavailable, with the reason. */
+export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv): Promise<TripQuoteOutcome> {
+  if (!env.chromePath) return { status: "unavailable", reason: "no browser on this box (CHROME_PATH)" };
+  if (!env.user || !env.password) return { status: "unavailable", reason: "the Allianz sign-in is not on this box yet (ALLIANZ_AGENT_USER / ALLIANZ_AGENT_PASSWORD in shared.env)" };
+  const S = ALLIANZ_SITE;
+  const { default: puppeteer } = await import("puppeteer-core");
+  const browser = await puppeteer.launch({ executablePath: env.chromePath, headless: true, args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--window-size=1280,1000"] });
+  let at = "opening the sign-in page";
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 1000 });
+    page.setDefaultTimeout(45_000);
+    await page.goto(AGENTMAX_URL, { waitUntil: "networkidle2" });
+    at = "signing in";
+    await page.waitForSelector(S.email, { visible: true });
+    await page.type(S.email, env.user);
+    await page.type(S.password, env.password);
+    await page.click(S.logIn);
+    at = "waiting for the quote form after sign-in (a wrong password stops here)";
+    await page.waitForSelector(S.state, { visible: true });
+    at = "filling the quote form";
+    await page.select(S.state, input.state);
+    await page.click(S.tripCost, { clickCount: 3 });
+    await page.type(S.tripCost, input.total_trip_cost.toFixed(2));
+    await page.click(S.ages);
+    for (const [i, age] of input.ages.entries()) {
+      if (i > 0) await page.click(S.addTraveler);
+      await page.waitForSelector(S.age(i), { visible: true });
+      await page.type(S.age(i), String(age));
+    }
+    await page.click(S.agesDone);
+    for (const [sel, ymd] of [[S.depart, input.depart_date], [S.back, input.return_date], [S.deposit, input.deposit_date]] as const) {
+      await page.click(sel, { clickCount: 3 });
+      await page.type(sel, usDate(ymd));
+      await page.keyboard.press("Tab");
+    }
+    at = "pressing Get Quote";
+    const pressed = await page.$$eval("button", (els, label) => {
+      const b = els.find((x) => (x.textContent ?? "").trim() === label);
+      if (b) (b as unknown as { click(): void }).click();
+      return !!b;
+    }, S.getQuote);
+    if (!pressed) return { status: "unavailable", reason: "the Get Quote button was not found on Allianz's site (its screens may have changed)" };
+    at = "waiting for the plans";
+    await page.waitForSelector(S.planPrice, { visible: true });
+    const rows = await page.$$eval(S.planRow, (els, nameSel, priceSel) => els.map((r) => ({ name: r.querySelector(nameSel as string)?.textContent ?? "", price: r.querySelector(priceSel as string)?.textContent ?? "" })), S.planName, S.planPrice);
+    const plans = rows.map((r) => tripPlanFrom(r.name, r.price)).filter((p): p is TripPlan => !!p);
+    return plans.length ? { status: "ready", plans } : { status: "unavailable", reason: "Allianz's site showed no plan with a price" };
+  } catch (err) {
+    return { status: "unavailable", reason: `Allianz's site could not be quoted while ${at}: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}` };
+  } finally {
+    await browser.close().catch(() => undefined);
+  }
+}

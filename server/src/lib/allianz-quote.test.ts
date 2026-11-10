@@ -35,3 +35,19 @@ test("the plans Mark types on the group file, one per line with a dollar figure,
   assert.deepEqual(plansFromText(null), []);
   assert.deepEqual(plansFromText("Prime: $0"), [], "a free plan is not a plan");
 });
+
+// Mark 2026-11-10: the whole trip quoted on Allianz's agent site. The pieces that turn the file into what the site takes, and its rows into plans.
+test("the trip quote's helpers: dates the way the site takes them, a traveler's age in whole years, a plan row read as printed (one price for the party)", async () => {
+  const { usDate, ageOnDay, tripPlanFrom, fetchAllianzTripQuote, AGENTMAX_URL } = await import("./allianz-quote");
+  assert.equal(usDate("2027-05-09"), "05/09/2027");
+  assert.deepEqual([ageOnDay("1964-05-09", "2026-11-10"), ageOnDay("1973-03-15", "2026-11-10"), ageOnDay("2000-11-10", "2026-11-10"), ageOnDay("2000-11-11", "2026-11-10")], [62, 53, 26, 25]);
+  assert.deepEqual(tripPlanFrom(" Classic Plan   Recommended ", " $265.00 "), { name: "Classic Plan", total: 265 });
+  assert.deepEqual(tripPlanFrom("Annual Premier $10K", "$1,050.00"), { name: "Annual Premier $10K", total: 1050 });
+  assert.equal(tripPlanFrom("Basic Plan", "call us"), null, "a row with no price is not a plan");
+  assert.match(AGENTMAX_URL, /^https:\/\/www\.agentmaxonline\.com\/.*#\/login$/);
+  const input = { state: "NC", total_trip_cost: 2475.26, ages: [62, 53], depart_date: "2027-05-09", return_date: "2027-05-13", deposit_date: "2026-11-10" };
+  assert.deepEqual(await fetchAllianzTripQuote(input, { chromePath: undefined, user: "u", password: "p" }), { status: "unavailable", reason: "no browser on this box (CHROME_PATH)" });
+  const noSignIn = await fetchAllianzTripQuote(input, { chromePath: "/x", user: undefined, password: undefined });
+  assert.equal(noSignIn.status, "unavailable");
+  assert.match((noSignIn as { reason: string }).reason, /sign-in is not on this box/);
+});

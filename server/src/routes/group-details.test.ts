@@ -1039,11 +1039,41 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal((await call("GET", pricePage)).json["doc"]["protection"], null, "no plan priced: no travel protection on the quote, and Book It asks nothing more");
   for (const bad of ["x", [{ name: "", per_person: "10" }], [{ name: "OneTrip Prime", per_person: "abc" }], [{ name: "OneTrip Prime", per_person: "0" }]]) assert.equal((await call("PUT", booking, { token: true, body: { protection: bad } })).status, 400, JSON.stringify(bad));
   const planned = await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } });
-  assert.deepEqual(planned.json["protection"], [{ name: "MSC Cruise Protection", per_person: 99, line: true }, { name: "OneTrip Prime (Allianz)", per_person: 129.5, line: false }]);
+  assert.deepEqual(planned.json["protection"], [{ name: "MSC Cruise Protection", per_person: 99, total: null, line: true }, { name: "OneTrip Prime (Allianz)", per_person: 129.5, total: null, line: false }]);
   assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the plans keeps the travel");
   // Mark 2026-11-10: the booking card shows the sailing's quotes from the group file, for him to pick which ones go on this guest's quote
   assert.ok(Array.isArray(planned.json["protectionOnFile"]), "the quotes on the group file come with the booking");
   for (const q of planned.json["protectionOnFile"] as Row[]) assert.ok(typeof q["name"] === "string" && typeof q["per_person"] === "number" && q["per_person"] > 0 && typeof q["line"] === "boolean");
+  // Mark 2026-11-10: "once I complete adding the travel costs (cruise, air, hotel, transfers) the agent goes out to Allianz and enters the information
+  // to get the quotes." The card asks; the agent is sent with the WHOLE trip cost, the home state, each traveler's age and the trip's dates; the plans
+  // come back with ONE price for the party, and one of them can go on the quote as that total (never divided per person).
+  const allianzPath = `/groups/${GROUP_ID}/interests/${REPLY_ID}/protection-quote`;
+  assert.equal((await call("POST", allianzPath)).status, 401, "Mark's token only");
+  const { setAllianzFetchForTests } = await import("./group-details");
+  const sentToAllianz: Row[] = [];
+  setAllianzFetchForTests(async (input) => { sentToAllianz.push(input as unknown as Row); return { status: "ready", plans: [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }] }; });
+  try {
+    const askedA = await call("POST", allianzPath, { token: true });
+    assert.deepEqual([askedA.status, askedA.json["status"]], [202, "pending"], JSON.stringify(askedA.json));
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(sentToAllianz.length, 1);
+    assert.equal(sentToAllianz[0]!["total_trip_cost"], 1425.98, "the whole trip: the cruise and the travel together");
+    assert.match(String(sentToAllianz[0]!["state"]), /^[A-Z]{2}$/);
+    assert.ok(Array.isArray(sentToAllianz[0]!["ages"]) && (sentToAllianz[0]!["ages"] as number[]).length === 2 && (sentToAllianz[0]!["ages"] as number[]).every((n) => n > 0 && n < 120), "an age for each traveler on the cabin");
+    const got = (await call("GET", booking, { token: true })).json["allianz"];
+    assert.deepEqual([got["status"], got["plans"], got["travelers"], got["trip_cost"]], ["ready", [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }], 2, 1425.98]);
+    assert.equal((await call("POST", allianzPath, { token: true })).json["already"], true, "the same trip is not quoted twice");
+    assert.equal(sentToAllianz.length, 1);
+    setAllianzFetchForTests(async () => ({ status: "unavailable", reason: "the Allianz sign-in is not on this box yet" }));
+    assert.equal((await call("POST", allianzPath, { token: true, body: { again: true } })).status, 202);
+    await new Promise((r) => setTimeout(r, 20));
+    const down = (await call("GET", booking, { token: true })).json["allianz"];
+    assert.deepEqual([down["status"], down["reason"], down["plans"]], ["unavailable", "the Allianz sign-in is not on this box yet", []], "when Allianz cannot be quoted the card is told why, and no price is made up");
+  } finally { setAllianzFetchForTests(null); }
+  const asTotal = await call("PUT", booking, { token: true, body: { protection: [{ name: "Classic Plan (Allianz)", total: "265", line: false }] } });
+  assert.deepEqual(asTotal.json["protection"], [{ name: "Classic Plan (Allianz)", per_person: null, total: 265, line: false }]);
+  assert.deepEqual((await call("GET", pricePage)).json["doc"]["protection"]["plans"], [{ key: "p0", name: "Classic Plan (Allianz)", price: "$265.00 total for 2 travelers", note: null, withTotal: { label: "Trip total with Classic Plan (Allianz)", value: "$1,690.98" } }], "Allianz's one price for the party shows as that total");
+  assert.equal((await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } })).status, 200);
   const offer = (await call("GET", pricePage)).json["doc"]["protection"];
   assert.deepEqual([offer["head"], offer["own"], offer["none"]], ["Travel protection", "I have my own policy", "No insurance for us"]);
   assert.deepEqual(offer["plans"], [
