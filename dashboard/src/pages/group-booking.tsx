@@ -75,9 +75,9 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setDirty(false);
   }, [data?.cabin, data?.trip, data?.extras]);
   // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
-  useEffect(() => {
+  const fillFromRead = (force = false) => {
     const r = data?.carrier?.status === "ready" ? data.carrier.read : null;
-    if (!r || !data?.carrier || filled.current !== `wait:${guest.id}`) return;
+    if (!r || !data?.carrier || (!force && filled.current !== `wait:${guest.id}`)) return;
     filled.current = data.carrier.id;
     setCabin((c) => ({
       ...c,
@@ -89,7 +89,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     if (r.addons.length) setExtras(r.addons.map((a) => ({ name: a.name, total: String(a.total) })));
     setGuestPrices(r.guests ?? []);   // the quote's own per-guest lines go on the file with the save
     setDirty(true);
-  }, [data?.carrier, guest.id]);
+  };
+  useEffect(() => { fillFromRead(); }, [data?.carrier, guest.id]);
 
   if (isLoading) return <p className="px-4 py-3 text-sm text-muted-foreground">Loading…</p>;
   if (error || !data) return <p className="px-4 py-3 text-sm text-destructive">Could not load this booking: {(error as Error)?.message}</p>;
@@ -212,7 +213,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <p className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Read {data.carrier.filename}. Check every figure below against the quote, then save.</p>
               {(data.carrier.read.guests ?? []).length > 0 ? (
                 <div className="mt-2">
-                  <p className="font-semibold">The quote, guest by guest, exactly as printed:</p>
+                  <p className="font-semibold flex items-center gap-3 flex-wrap">The quote, guest by guest, exactly as printed: {!sent && <button className={btn} onClick={() => fillFromRead(true)}>Fill the form below from these figures</button>}</p>
                   <table className="w-full text-sm mt-1">
                     <thead><tr className="text-left text-muted-foreground"><th className="font-normal py-1">Guest</th><th className="font-normal">Cruise</th><th className="font-normal">Add-ons</th><th className="font-normal">Taxes</th><th className="font-normal">Guest total</th></tr></thead>
                     <tbody>
