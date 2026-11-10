@@ -979,6 +979,18 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual([priced.status, priced.json["ready"]], [200, true]);
   assert.deepEqual(priced.json["extras"], [{ name: "Premium Extra drinks", total: 80 }]);
   assert.deepEqual(priced.json["totals"], { cabin: 1073.58, extras: 80, cruise: 1153.58, travel: 272.4, trip: 1425.98 }, "cabin + extras = the total cruise price; + travel = the trip");
+  // Mark 2026-11-09: a PACKAGE (air and hotel sold as one) has its own fields: the air (carrier, flight numbers, class), the hotel (beds, breakfast)
+  // and ONE quoted price; the line is written from them, so the booking confirmation and the agreement print what he entered
+  const pack = await call("PUT", booking, { token: true, body: { trip: [{ kind: "package", direction: "pre", provider: "Delta", from_place: "RDU", to_place: "MCO", starts_at: "2027-05-08", ends_at: "2027-05-16", confirmation: "PKG77", price: "910.00",
+    pkg: { flights: "DL 1234, DL 5678", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true, junk: "x" } }] } });
+  assert.equal(pack.status, 200);
+  const packLine = (pack.json["trip"] as Array<Record<string, any>>)[0]!;
+  assert.equal(packLine["label"], "Before the cruise: package, air (Delta, flight DL 1234, DL 5678, Main Cabin, RDU to MCO, 2027-05-08 to 2027-05-16) and hotel (Hyatt Regency, Orlando, 2027-05-08 to 2027-05-09, 2 beds, breakfast included)");
+  assert.deepEqual(packLine["pkg"], { flights: "DL 1234, DL 5678", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true });
+  assert.equal(packLine["price"], 910);
+  assert.equal((pack.json["totals"] as Record<string, number>)["travel"], 910);
+  // put the flight back for the lines below
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }] } })).status, 200);
   assert.equal(priced.json["trip"][0]["price"], 272.4);
   const said = (label: string) => (priced.json["fills"] as Array<Record<string, string>>).find((f) => f["label"] === label)?.["value"];
   assert.deepEqual([said("Cruise extra: Premium Extra drinks"), said("Total cruise price (cabin and cruise extras)"), said("Trip total (cruise and travel)")], ["$80.00", "$1,153.58", "$1,425.98"]);

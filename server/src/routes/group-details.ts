@@ -518,16 +518,38 @@ const money = (v: unknown): number | null | undefined => {
 };
 const isoOrNull = (v: unknown): string | null => { const t = text(v, 40); return t && !Number.isNaN(Date.parse(t)) ? t : null; };
 
-interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** what Mark booked it for, the whole line (Mark 2026-11-09) */ price: number | null }
+/** What a package line says about its air and its hotel. */
+interface PackageDetail { flights: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null }
+const packageDetail = (v: unknown): PackageDetail | null => {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  const dayOf = (x: unknown) => { const t = text(x, 40); return t && /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null; };
+  return {
+    flights: text(r["flights"], 120), air_class: text(r["air_class"], 60), hotel: text(r["hotel"], 120), hotel_city: text(r["hotel_city"], 120),
+    check_in: dayOf(r["check_in"]), check_out: dayOf(r["check_out"]), beds: r["beds"] === "1" || r["beds"] === "2" ? r["beds"] : null,
+    breakfast: typeof r["breakfast"] === "boolean" ? r["breakfast"] : null,
+  };
+};
+/** A package in one line, as the booking confirmation and the agreement print it: the air, then the hotel, each with what Mark entered. */
+export function packageLabel(r: { direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; pkg?: PackageDetail | null }): string {
+  const d = (x: string | null) => (x ? x.slice(0, 10) : "");
+  const k = r.pkg;
+  const air = [r.provider, k?.flights ? `flight ${k.flights}` : "", k?.air_class, [r.from_place, r.to_place].filter(Boolean).join(" to "), [d(r.starts_at), d(r.ends_at)].filter(Boolean).join(" to ")].filter(Boolean).join(", ");
+  const hotel = [k?.hotel, k?.hotel_city, [d(k?.check_in ?? null), d(k?.check_out ?? null)].filter(Boolean).join(" to "), k?.beds === "1" ? "1 bed" : k?.beds === "2" ? "2 beds" : "", k?.breakfast === true ? "breakfast included" : k?.breakfast === false ? "no breakfast" : ""].filter(Boolean).join(", ");
+  const parts = [air ? `air (${air})` : "", hotel ? `hotel (${hotel})` : ""].filter(Boolean).join(" and ");
+  return `${r.direction === "post" ? "After" : "Before"} the cruise: package${parts ? `, ${parts}` : ""}`;
+}
+interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** the quoted price of the whole line (Mark 2026-11-09) */ price: number | null; /** A package (air and hotel sold as one, Mark 2026-11-09): the air and the hotel in their own fields; the line's price is the package price. */ pkg?: PackageDetail | null }
 const tripEntries = (formData: unknown): TripEntry[] => {
   const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
   const list = t && typeof t === "object" ? (t as Record<string, unknown>)["chosen"] : null;
   if (!Array.isArray(list)) return [];
-  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r) => ({
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r): TripEntry => ({
     kind: String(r["kind"] ?? ""), direction: text(r["direction"], 10), provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
     starts_at: text(r["starts_at"], 40), ends_at: text(r["ends_at"], 40), label: text(r["label"]) ?? String(r["kind"] ?? ""), confirmation: text(r["confirmation"]),
     price: typeof r["price"] === "number" && Number.isFinite(r["price"]) ? r["price"] : null,
-  }));
+    ...(String(r["kind"] ?? "") === "package" ? { pkg: packageDetail(r["pkg"]) } : {}),
+  })).map((e) => (e.kind === "package" ? { ...e, label: packageLabel(e) } : e));   // a package's line is always written from its fields
 };
 /** The cruise line's own paid extras on this booking (a dining package, a drink package): read off the uploaded quote, checked by Mark (Mark 2026-11-09). */
 interface CruiseExtra { name: string; total: number }
@@ -705,12 +727,15 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
         const kind = String(r?.["kind"] ?? "");
         if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel, transfer or package.");
         const dir = r["direction"] === "post" ? "post" : "pre";
-        chosen.push({
+        const entry: TripEntry = {
           kind, direction: dir, provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
           starts_at: isoOrNull(r["starts_at"]), ends_at: isoOrNull(r["ends_at"]), confirmation: text(r["confirmation"]),
           price: ((m) => (m === undefined ? NaN : m))(money(r["price"] ?? null)),
           label: text(r["label"]) ?? `${dir === "post" ? "After" : "Before"} the cruise: ${kind}`,
-        });
+        };
+        // a package says its air and its hotel in the line itself: the label is written from the fields, so the paperwork prints what was entered
+        if (kind === "package") { entry.pkg = packageDetail(r["pkg"]); entry.label = packageLabel(entry); }
+        chosen.push(entry);
       }
       if (chosen.some((r) => Number.isNaN(r.price))) return bad("A travel price is not an amount.");
       const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;

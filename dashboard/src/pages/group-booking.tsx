@@ -11,10 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 // it. When the signed documents are back he uploads them and closes the booking. The cabin numbers live on the cabin row, the flights, hotels and
 // transfers on the lead's file; the Cruise Booking Agreement and the room-number lines fill from them. Rules: server/src/routes/group-details.ts.
 // Mark 2026-11-09: every price has a place. The cabin fare and the cruise line's extras (dining, drinks; read off the uploaded quote) add up
-// to the total cruise price, shown against the quote's own total; each flight, hotel and transfer carries the price it was booked for.
+// to the total cruise price, shown against the quote's own total; each flight, hotel, transfer and package carries its quoted price.
 
 type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; requested_at: string; completed_at: string | null };
-type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null };
+type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null; pkg?: Pkg | null };
+// A package (air and hotel sold as one): the air and the hotel each have their own fields; the line's price is the package price.
+type Pkg = { flights: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
+const NO_PKG: Pkg = { flights: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
 type Extra = { name: string; total: string };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
@@ -85,7 +88,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
 
   const setC = (k: string, v: string) => { setCabin((c) => ({ ...c, [k]: v })); setDirty(true); };
   const setT = (i: number, k: keyof TripLine, v: string) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, [k]: v || null } : r))); setDirty(true); };
-  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null }]); setDirty(true); };
+  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null, ...(kind === "package" ? { pkg: { ...NO_PKG } } : {}) }]); setDirty(true); };
+  const setP = (i: number, k: keyof Pkg, v: string | boolean | null) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, pkg: { ...NO_PKG, ...(r.pkg ?? {}), [k]: v === "" ? null : v } } : r))); setDirty(true); };
   const setX = (i: number, k: keyof Extra, v: string) => { setExtras((x) => x.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
   // the sums as typed, before saving: cabin fare + cruise extras = total cruise price; + travel = trip total
   const amount = (v: unknown) => { const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[$,\s]/g, "")); return Number.isFinite(n) ? n : 0; };
@@ -219,13 +223,40 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
 
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-          <h4 className="text-sm font-semibold">Flights, hotels and transfers</h4>
+          <h4 className="text-sm font-semibold">Flights, hotels, transfers and packages</h4>
           {!sent && <div className="flex gap-2">{["flight", "hotel", "transfer", "package"].map((k) => <button key={k} className={btn} onClick={() => addLine(k)}><Plus className="w-3 h-3" /> {k}</button>)}</div>}
         </div>
         {Object.entries(data.needs).filter(([, v]) => v).length > 0 && <p className="text-xs text-muted-foreground mb-1">The guest asked you to quote: {Object.entries(data.needs).filter(([, v]) => v).map(([k]) => k).join(", ")}.</p>}
         {trip.length === 0 && <p className="text-sm text-muted-foreground">None on this booking.</p>}
         <div className="space-y-2">
-          {trip.map((r, i) => (
+          {trip.map((r, i) => r.kind === "package" ? (
+            <div key={i} className="border rounded-md p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Package (air and hotel)</p>
+                {!sent && <button className={btn} aria-label="Remove this line" onClick={() => { setTrip((t) => t.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 items-end">
+                <Field label="When"><select className={input} value={r.direction ?? "pre"} onChange={(e) => setT(i, "direction", e.target.value)} disabled={sent}><option value="pre">Before the cruise</option><option value="post">After the cruise</option></select></Field>
+                <Field label="Air: carrier"><input className={input} value={r.provider ?? ""} onChange={(e) => setT(i, "provider", e.target.value)} disabled={sent} /></Field>
+                <Field label="Flight #s"><input className={input} value={r.pkg?.flights ?? ""} onChange={(e) => setP(i, "flights", e.target.value)} disabled={sent} /></Field>
+                <Field label="Class"><input className={input} value={r.pkg?.air_class ?? ""} onChange={(e) => setP(i, "air_class", e.target.value)} disabled={sent} /></Field>
+                <Field label="From"><input className={input} value={r.from_place ?? ""} onChange={(e) => setT(i, "from_place", e.target.value)} disabled={sent} /></Field>
+                <Field label="To"><input className={input} value={r.to_place ?? ""} onChange={(e) => setT(i, "to_place", e.target.value)} disabled={sent} /></Field>
+                <Field label="Departs"><input type="date" className={input} value={day(r.starts_at)} onChange={(e) => setT(i, "starts_at", e.target.value)} disabled={sent} /></Field>
+                <Field label="Returns"><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 items-end">
+                <Field label="Hotel"><input className={input} value={r.pkg?.hotel ?? ""} onChange={(e) => setP(i, "hotel", e.target.value)} disabled={sent} /></Field>
+                <Field label="City"><input className={input} value={r.pkg?.hotel_city ?? ""} onChange={(e) => setP(i, "hotel_city", e.target.value)} disabled={sent} /></Field>
+                <Field label="Check in"><input type="date" className={input} value={day(r.pkg?.check_in ?? null)} onChange={(e) => setP(i, "check_in", e.target.value)} disabled={sent} /></Field>
+                <Field label="Check out"><input type="date" className={input} value={day(r.pkg?.check_out ?? null)} onChange={(e) => setP(i, "check_out", e.target.value)} disabled={sent} /></Field>
+                <Field label="Beds"><select className={input} value={r.pkg?.beds ?? ""} onChange={(e) => setP(i, "beds", e.target.value)} disabled={sent}><option value="">Not set</option><option value="1">1 bed</option><option value="2">2 beds</option></select></Field>
+                <Field label="Breakfast"><select className={input} value={r.pkg?.breakfast == null ? "" : r.pkg.breakfast ? "yes" : "no"} onChange={(e) => setP(i, "breakfast", e.target.value === "" ? null : e.target.value === "yes")} disabled={sent}><option value="">Not set</option><option value="yes">Included</option><option value="no">Not included</option></select></Field>
+                <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
+                <Field label="Quoted package price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
+              </div>
+            </div>
+          ) : (
             <div key={i} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2 items-end border rounded-md p-2">
               <Field label={`${r.kind} · ${r.label}`}>
                 <select className={input} value={r.direction ?? "pre"} onChange={(e) => setT(i, "direction", e.target.value)} disabled={sent}><option value="pre">Before the cruise</option><option value="post">After the cruise</option></select>
@@ -236,7 +267,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <Field label={r.kind === "hotel" ? "Check in" : "Date"}><input type="date" className={input} value={day(r.starts_at)} onChange={(e) => setT(i, "starts_at", e.target.value)} disabled={sent} /></Field>
               <Field label={r.kind === "hotel" ? "Check out" : "Arrives"}><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
               <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
-              <Field label="Booked price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
+              <Field label="Quoted price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
               {!sent && <button className={btn} aria-label="Remove this line" onClick={() => { setTrip((t) => t.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
             </div>
           ))}
