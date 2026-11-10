@@ -63,6 +63,9 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const [trip, setTrip] = useState<TripLine[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [guestPrices, setGuestPrices] = useState<GuestPrice[]>([]);
+  // Mark 2026-11-10: a button that cannot go ahead SAYS what has to be done first, in red beside it, when it is pressed. No silent grey buttons.
+  const [stop, setStop] = useState<{ at: "price" | "paperwork"; text: string } | null>(null);
+  const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" above, then press this again.';
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -125,7 +128,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
       qc.setQueryData(key, next);
       qc.invalidateQueries({ queryKey: ["group", groupId] });
-      setDirty(false);
+      setDirty(false); setStop(null);
       toast({ title: "Booking confirmation saved" });
       return true;
     } catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); return false; }
@@ -159,11 +162,11 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   // Mark 2026-11-09: the price goes to the guest first ("Book It" / "I need changes"); the paperwork waits for their yes
-  // Mark 2026-11-10 ("these buttons still do not work"): the buttons never wait on a separate Save any more. Unsaved figures are saved first, then the
-  // button does its job; a save that is refused stops there and says why.
+  // what stops a price button, in words; null when it can go ahead
+  const priceStop = (): string | null => (dirty ? UNSAVED : cruiseSum <= 0 ? "There is no price to send yet. Enter the cabin fare, then save the confirmation." : null);
   const emailPrice = async () => {
-    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?${dirty ? " The figures on this page are saved first." : ""} They answer with "Book It" or "I need changes".`)) return;
-    if (dirty && !(await save())) return;
+    const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
+    if (!window.confirm(`Email the price to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}? They answer with "Book It" or "I need changes".`)) return;
     setBusy(true);
     try {
       const r = await api<{ price: { sent: string } }>(`/groups/${groupId}/interests/${guest.id}/price-email`, "POST");
@@ -173,9 +176,9 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   const previewPrice = async () => {
+    const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
     // the preview window is opened at the click itself (a browser blocks one opened later), then filled
     const win = window.open("", "_blank");
-    if (dirty && !(await save())) { win?.close(); return; }
     setBusy(true);
     try {
       const r = await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`);
@@ -186,8 +189,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   const recordYes = async () => {
-    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?${dirty ? " The figures on this page are saved first." : ""}`)) return;
-    if (dirty && !(await save())) return;
+    const why = dirty ? UNSAVED : null; setStop(why ? { at: "price", text: why } : null); if (why) return;
+    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
     setBusy(true);
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/price-approved`, "POST");
@@ -197,6 +200,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     finally { setBusy(false); }
   };
   const send = async () => {
+    const why = dirty ? UNSAVED : !data.ready ? `Finish the booking confirmation first: ${data.missing.join("; ")}.` : !approved ? "The guest has not approved the price yet. Email the price to them (or record their yes), then send the paperwork." : null;
+    setStop(why ? { at: "paperwork", text: why } : null); if (why) return;
     if (!window.confirm(`Send the paperwork link to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?`)) return;
     setBusy(true);
     try {
@@ -429,16 +434,17 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <p className="text-sm text-muted-foreground">Not sent yet.</p>
             )}
             <div className="flex flex-wrap gap-2 items-center">
-              <button className={btn} disabled={busy || cruiseSum <= 0} onClick={previewPrice} title={cruiseSum > 0 ? "" : "Enter the cabin fare first"}>Preview the price email</button>
-              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy || cruiseSum <= 0} onClick={emailPrice} title={cruiseSum > 0 ? "" : "Enter the cabin fare first"}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
+              <button className={btn} disabled={busy} onClick={previewPrice}>Preview the price email</button>
+              <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy} onClick={emailPrice}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
               {!approved && <button className={btn} disabled={busy} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
-              {dirty && <span className="text-xs text-muted-foreground">The figures above are not saved yet: these buttons save them first.</span>}
             </div>
+            {stop?.at === "price" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
           <div className="space-y-2">
             {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
-            <button className={`${btn} ${approved ? "bg-primary text-primary-foreground" : ""}`} disabled={busy || dirty || !data.ready || !approved} onClick={send} title={dirty ? "Save first" : !approved ? "The guest approves the price first" : data.ready ? "" : "Finish the list above"}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
+            <button className={`${btn} ${approved ? "bg-primary text-primary-foreground" : ""}`} disabled={busy} onClick={send}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
             {!approved && <span className="text-xs text-muted-foreground ml-2">Waits for the price approval.</span>}
+            {stop?.at === "paperwork" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
         </div>
       )}
