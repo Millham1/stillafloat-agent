@@ -6,8 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held,
-} from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held,, callBookedEmail } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
@@ -435,4 +434,12 @@ test("no em dash anywhere in either email, in either language", () => {
     const b = holdEmail({ ...HOLD, lang });
     for (const t of [a.subject, a.text, a.html, b.subject, b.text, b.html]) assert.ok(!/—/.test(t), `an em dash in the ${lang} email`);
   }
+});
+
+// Mark 2026-11-09: the Seller of Travel numbers sit under the Cornerstone logo wherever it shows; the FlexPay call confirmation carries neither.
+test("the Seller of Travel line follows the Cornerstone logo: on Road A's email, and neither is on the FlexPay call confirmation", () => {
+  const a = callEmail({ ...CALL }).html;
+  assert.ok(a.indexOf("cornerstone-white.png") > 0 && a.indexOf("Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620") > a.indexOf("cornerstone-white.png"));
+  const b = callBookedEmail({ firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark", lang: "en", publicSite: "https://dev.example.test", whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html;
+  assert.ok(!/cornerstone/i.test(b) && !/Seller of Travel/.test(b));
 });
