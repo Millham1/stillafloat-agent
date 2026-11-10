@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail } from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, flexpayEmail } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
@@ -358,7 +358,7 @@ test("Road A's email repeats each answer in its own words, and names neither a c
 test("Road A's email: the logos are the site's own hosted images, every value is escaped, and a missing host name signs Mark", () => {
   const m = callEmail({ ...CALL, groupLabel: 'Fam <b>& "Friends"', firstName: "<i>Pat</i>", hostNames: "  ", publicSite: "https://dev.example.test/" });
   assert.ok(m.html.includes('src="https://dev.example.test/assets/images/still_afloat_logo.png"'));
-  assert.ok(m.html.includes('src="https://dev.example.test/assets/images/cornerstone-white.png"'));
+  assert.ok(!/cornerstone/i.test(m.html), "Mark 2026-11-09: no Cornerstone logo on the group emails");
   assert.ok(!/<i>Pat|<b>& "Friends"/.test(m.html), "markup from a person or a file is escaped");
   assert.match(m.html, /&lt;i&gt;Pat&lt;\/i&gt;/);
   assert.match(m.text, /\n\nMark\n\nStill Afloat LLC/);
@@ -436,10 +436,10 @@ test("no em dash anywhere in either email, in either language", () => {
   }
 });
 
-// Mark 2026-11-09: the Seller of Travel numbers sit under the Cornerstone logo wherever it shows; the FlexPay call confirmation carries neither.
-test("the Seller of Travel line follows the Cornerstone logo: on Road A's email, and neither is on the FlexPay call confirmation", () => {
-  const a = callEmail({ ...CALL }).html;
-  assert.ok(a.indexOf("cornerstone-white.png") > 0 && a.indexOf("Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620") > a.indexOf("cornerstone-white.png"));
-  const b = callBookedEmail({ firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark", lang: "en", publicSite: "https://dev.example.test", whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html;
-  assert.ok(!/cornerstone/i.test(b) && !/Seller of Travel/.test(b));
+// Mark 2026-11-09: "remove it from all 3 emails": no group email carries the Cornerstone logo or a Seller of Travel line.
+test("no group email carries the Cornerstone logo or the Seller of Travel line", () => {
+  const base = { firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark", lang: "en" as const, publicSite: "https://dev.example.test" };
+  for (const html of [callEmail({ ...CALL }).html, flexpayEmail({ ...base, appointmentUrl: "https://dev.example.test/flexpay-call.html" }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
+    assert.ok(!/cornerstone/i.test(html) && !/Seller of Travel/.test(html));
+  }
 });

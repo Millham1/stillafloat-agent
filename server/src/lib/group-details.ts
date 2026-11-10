@@ -465,13 +465,10 @@ interface MailBase {
   publicSite: string;
 }
 
-/** The Seller of Travel registrations: printed under the Cornerstone logo wherever it shows (Mark 2026-11-09). */
-export const SELLER_OF_TRAVEL = "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620";
-
-/** The yellow, card-on-navy frame of both emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line. `body` is already escaped html. */
-function mailFrame(i: MailBase, title: string, body: string, footer: string, o: { cornerstone?: boolean } = {}): string {
+/** The yellow, card-on-navy frame of the group emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line.
+ * Mark 2026-11-09: no Cornerstone logo on these emails (it stays on the pages, with the Seller of Travel numbers under it). `body` is already escaped html. */
+function mailFrame(i: MailBase, title: string, body: string, footer: string): string {
   const logo = `${site(i.publicSite)}${BUSINESS.logoPath}`;
-  const cornerstone = `${site(i.publicSite)}/assets/images/cornerstone-white.png`;
   const sign = i.hostNames.trim() || "Mark";
   return `<div style="margin:0;padding:0;background:#07183f">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#07183f"><tr><td align="center" style="padding:22px 16px 10px">
@@ -486,9 +483,6 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string, o: 
 <tr><td align="center" style="padding:0 16px 26px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px"><tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#c9d3e8">${esc(BUSINESS.legalName)}<br>${esc(footer)}</td>
-${o.cornerstone === false ? "" : `
-    <td align="right" valign="bottom" style="padding-left:12px"><img src="${esc(cornerstone)}" alt="" width="44" style="display:block;width:44px;height:auto"></td>
-  </tr><tr><td colspan="2" align="right" style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#c9d3e8">${esc(SELLER_OF_TRAVEL)}</td>`}
   </tr></table></td></tr></table></div>`;
 }
 
@@ -570,8 +564,7 @@ export function callBookedEmail(i: CallBookedInput): { subject: string; html: st
   const button = i.meetLink ? `<a href="${esc(i.meetLink)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.join)}</a>` : "";
   const linkHtml = i.meetLink ? [para(button), para(esc(T.p2))] : [para(esc(T.noLink))];
   const body = [para(esc(T.hi(first))), para(esc(T.p1(i.whenText))), ...linkHtml, para(esc(T.p3(BUSINESS.phone))), para(esc(T.close))].join("\n    ");
-  // Mark 2026-11-09: this email carries no Cornerstone logo (so no Seller of Travel line under one)
-  return { subject: T.subject(i.whenText), html: mailFrame(i, T.title, body, T.footer(label), { cornerstone: false }), text };
+  return { subject: T.subject(i.whenText), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }
 
 // ── Road A: "Good call… literally!" ───────────────────────────────────────────
