@@ -176,6 +176,10 @@ export function tripPlanFrom(nameText: string, priceText: string): TripPlan | nu
   return name && Number.isFinite(total) && total > 0 ? { name, total } : null;
 }
 
+/** Mark 2026-11-10: the list he picks from holds the plans for THIS trip only. Allianz's site also returns its annual plans, the rental car plan and
+ *  the "Professional Travel Program"; they are kept on the record as read, and left off the list. */
+export const offeredTripPlans = (plans: TripPlan[]): TripPlan[] => plans.filter((p) => !/^annual\b|rental car|professional travel program/i.test(p.name));
+
 /** Sign in, fill the Get Quote form, read every plan and its price. Nothing is invented: no browser or no sign-in → unavailable, with the reason. */
 export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv): Promise<TripQuoteOutcome> {
   if (!env.chromePath) return { status: "unavailable", reason: "no browser on this box (CHROME_PATH)" };

@@ -31,7 +31,7 @@ type Booking = {
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
   // the Allianz quote the agent fetched for this trip: each plan with its one price for the party
-  allianz?: null | { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: Array<{ name: string; total: number }>; reason: string | null; travelers: number | null; trip_cost: number | null };
+  allianz?: null | { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: Array<{ name: string; total: number }>; hidden?: number; reason: string | null; travelers: number | null; trip_cost: number | null };
   protectionOnFile?: Array<{ name: string; per_person: number; line: boolean }>;
   price?: { protection?: { key: string; label: string } | null; sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
@@ -335,7 +335,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           {data.allianz?.status === "unavailable" && <p className="text-sm font-semibold text-red-600">Allianz could not be quoted: {data.allianz.reason ?? "no reason given"}. Nothing was made up; press "Ask Allianz again" once that is fixed.</p>}
           {data.allianz?.status === "ready" && (
             <>
-              <p className="text-sm text-muted-foreground mb-1">Quoted {when(data.allianz.quoted_at)} for a trip of {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Each price is Allianz's one figure for the whole party. Pick the ones to put on this quote:</p>
+              <p className="text-sm text-muted-foreground mb-1">Quoted {when(data.allianz.quoted_at)} for a trip of {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Each price is Allianz's one figure for the whole party.{(data.allianz.hidden ?? 0) > 0 ? ` Left off this list: ${data.allianz.hidden} plans that are not for a single trip (annual plans, rental car, Professional Travel Program).` : ""} Pick the ones to put on this quote:</p>
               <div className="space-y-1">
                 {data.allianz.plans.map((q, i) => {
                   const on = plans.some((x) => x.name.trim() === `${q.name} (Allianz)` && x.party);

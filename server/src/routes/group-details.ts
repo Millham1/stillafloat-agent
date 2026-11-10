@@ -16,7 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { ageOnDay, fetchAllianzTripQuote, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
+import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -837,7 +837,7 @@ function bookingView(b: BookingFile) {
       ...plansFromText(b.file?.["insurance_plans"]).map((q) => ({ name: q.name, per_person: q.price_per_person, line: false })),
     ],
     // the Allianz quote the agent fetched for THIS trip (the whole trip cost, each traveler's age): each plan with its one price for the party
-    allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: a.plans, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
+    allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: offeredTripPlans(a.plans), hidden: a.plans.length - offeredTripPlans(a.plans).length, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay

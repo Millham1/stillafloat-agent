@@ -44,6 +44,9 @@ test("the trip quote's helpers: dates the way the site takes them, a traveler's 
   assert.deepEqual(tripPlanFrom(" Classic Plan   Recommended ", " $265.00 "), { name: "Classic Plan", total: 265 });
   assert.deepEqual(tripPlanFrom("Annual Premier $10K", "$1,050.00"), { name: "Annual Premier $10K", total: 1050 });
   assert.equal(tripPlanFrom("Basic Plan", "call us"), null, "a row with no price is not a plan");
+  const { offeredTripPlans } = await import("./allianz-quote");
+  assert.deepEqual(offeredTripPlans(["Classic Plan", "Basic Plan", "Classic Plan with Cancel Anytime", "Premier Plan", "Rental Car Damage Protector", "Professional Travel Program", "Annual Premier $5K", "Annual Deluxe"].map((name) => ({ name, total: 1 }))).map((p) => p.name),
+    ["Classic Plan", "Basic Plan", "Classic Plan with Cancel Anytime", "Premier Plan"], "Mark 2026-11-10: the annual plans, the rental car plan and the Professional Travel Program are left off the list he picks from");
   assert.match(AGENTMAX_URL, /^https:\/\/www\.agentmaxonline\.com\/.*#\/login$/);
   const input = { state: "NC", total_trip_cost: 2475.26, ages: [62, 53], depart_date: "2027-05-09", return_date: "2027-05-13", deposit_date: "2026-11-10" };
   assert.deepEqual(await fetchAllianzTripQuote(input, { chromePath: undefined, user: "u", password: "p" }), { status: "unavailable", reason: "no browser on this box (CHROME_PATH)" });
