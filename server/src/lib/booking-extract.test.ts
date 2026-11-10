@@ -634,6 +634,17 @@ test("add-ons priced as one amount per guest are one extra, once per guest, and 
   assert.ok(!(out.warnings ?? []).some((w) => /add-ons/.test(w)), "2 × (437 + 145.39) + 943.48 is the 2,108.26 printed");
 });
 
+test("the per-guest add-ons figure comes from the printed lines whatever the read answered (the amount split three ways, or no add-on at all)", () => {
+  const text = ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "GUEST ONE • Cruise $ 437.00", "• Add Ons $ 471.74", "• Taxes (where applicable) $ 145.39",
+    "GUEST TWO • Cruise $ 437.00", "• Add Ons $ 471.74", "• Taxes (where applicable) $ 145.39", "Total Booking Price", "$ 2,108.26"].join("\n");
+  const base = { total_price: 2108.26, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] };
+  const split = verifyExtraction(normalizeExtraction({ ...base, addons: [{ name: "Trilogy - Three Exclusive Dining Experiences", price: 235.87, qty: 1, total: 235.87 }, { name: "PREMIUM EXTRA DRINK PACKAGE", price: 235.87, qty: 1, total: 235.87 }] }), text);
+  assert.deepEqual((split.addons ?? []).map((a) => [a.name, a.qty, a.total]), [["Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE", 2, 943.48]]);
+  assert.ok(!(split.warnings ?? []).some((w) => /Left out|add-ons/.test(w)));
+  const none = verifyExtraction(normalizeExtraction({ ...base, addons: [] }), text);
+  assert.deepEqual((none.addons ?? []).map((a) => [a.name, a.qty, a.total]), [["Cruise add-ons", 2, 943.48]]);
+});
+
 test("an add-on with its own printed price is left as read", () => {
   const text = "Cruise Enhancements\nPREMIUM PLUS BEVERAGE PACKAGE $ 300.00 1 $ 300.00\nTotal Booking Amount $ 1,300.00";
   const x = normalizeExtraction({ total_price: 1300, cabin_categories: [{ category: "Balcony", price_per_person: 1000, count: 1 }], addons: [{ name: "PREMIUM PLUS BEVERAGE PACKAGE", price: 300, qty: 1, total: 300 }] });
