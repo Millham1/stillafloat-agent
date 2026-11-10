@@ -73,7 +73,11 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setGuestPrices(data.guestPrices ?? []);
     setDirty(false);
-  }, [data?.cabin, data?.trip, data?.extras]);
+    // Mark 2026-11-10: the quote's add-ons (the dining and drink packages) belong in the Cruise extras section. When the quote has been read with
+    // add-ons and this booking has no extras saved yet, the section fills from the quote by itself (unsaved, for Mark to check), with no button to press.
+    const read = data.carrier?.status === "ready" ? data.carrier.read : null;
+    if (data.paperwork === "booking" && (data.extras ?? []).length === 0 && read && read.addons.length > 0) fillFromRead(true);
+  }, [data?.cabin, data?.trip, data?.extras, data?.carrier]);
   // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
   const fillFromRead = (force = false) => {
     const r = data?.carrier?.status === "ready" ? data.carrier.read : null;
@@ -255,12 +259,14 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
             {extras.map((x, i) => (
               <div key={i} className="grid grid-cols-[1fr_9rem_auto] gap-2 items-end">
                 <Field label="Extra"><input className={input} value={x.name} onChange={(e) => setX(i, "name", e.target.value)} disabled={sent} /></Field>
-                <Field label="Price ($, whole booking)"><input className={input} inputMode="decimal" value={x.total} onChange={(e) => setX(i, "total", e.target.value)} disabled={sent} /></Field>
+                <Field label="Price ($, as the quote prints it)"><input className={input} inputMode="decimal" value={x.total} onChange={(e) => setX(i, "total", e.target.value)} disabled={sent} /></Field>
                 {!sent && <button className={btn} aria-label="Remove this extra" onClick={() => { setExtras((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
               </div>
             ))}
           </div>
-          <p className="text-sm mt-2">Total cruise price: <b>{usd(cruiseSum)}</b> <span className="text-muted-foreground">(cabin fare {usd(amount(cabin["fare"]))} + extras {usd(extrasSum)})</span></p>
+          <p className="text-sm mt-2">Total cruise price: <b>{usd(cruiseSum)}</b> <span className="text-muted-foreground">{guestPrices.length > 0
+            ? `(${guestPrices.map((g) => `${g.name}: cruise ${usd(g.cruise)} + add-ons ${usd(g.addons)} + taxes ${usd(g.taxes)}${g.total != null ? ` = ${usd(g.total)}` : ""}`).join("; ")})`
+            : `(cabin fare ${usd(amount(cabin["fare"]))} + extras ${usd(extrasSum)})`}</span></p>
           {quoteTotal != null && (Math.abs(quoteTotal - cruiseSum) < 0.005
             ? <p className="text-sm text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Matches the quote's Total Booking Amount, {usd(quoteTotal)}.</p>
             : <p className="text-sm text-amber-700 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> The quote's Total Booking Amount is {usd(quoteTotal)}: this is {usd(Math.abs(round(quoteTotal - cruiseSum)))} {cruiseSum > quoteTotal ? "over" : "under"}.</p>)}
