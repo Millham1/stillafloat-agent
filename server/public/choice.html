@@ -32,9 +32,16 @@
         <p id="gp-choice-lead"></p>
         <a class="btn" id="gp-finish" href="#"></a>
         <button type="button" class="btn" id="gp-talk"></button>
-        <p class="dd-line" id="gp-call-line" hidden></p>
         <p class="small center" id="gp-choice-foot" style="margin-top:14px"></p>
         <div class="msg" id="gp-choice-msg" role="status"></div>
+      </div>
+      <!-- Mark 2026-11-10: once the call is booked there is nothing more for the guest to do until Mark rings: the two buttons go and this one
+           card says the appointment was sent. No Continue, no way back to the choice. -->
+      <div id="gp-sent" hidden>
+        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-sent-h"></h2></div>
+        <p id="gp-sent-when" style="font-weight:800"></p>
+        <p id="gp-sent-p"></p>
+        <p class="small" id="gp-sent-foot" style="margin-top:14px"></p>
       </div>
     </section>
   </main>
@@ -66,14 +73,16 @@
     choice_h:'Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, {first}!', choice_lead:'Ahora, ¿cómo le gusta planear un crucero?',
     finish:'¡Yo me encargo… déjeme llenarlo!', talk:'¡Guíeme paso a paso, Mark!',
     choice_foot:'De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.',
-    call_title:'Elija la hora de su llamada con Mark', call_set:'Su llamada con Mark está lista: {when}. Mark le llama a esa hora.',
+    call_title:'Elija la hora de su llamada con Mark',
+    sent_h:'¡Su cita ha sido enviada, {first}!', sent_h_plain:'¡Su cita ha sido enviada!', sent_p:'Es una llamada telefónica: Mark le llama a esa hora. No hay nada más que hacer hasta entonces.', sent_mail:'La cita también está en su correo.', sent_foot:'¿Necesita otra hora? Llame o escriba a Mark al {phone}.',
     err_call:'El calendario no está disponible en este momento. Llame o escriba a Mark al {phone}.'
   } : {
     title:"You're on the list", loading:'One moment…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     choice_h:"You tapped, we cheered… YOU'RE ON THE LIST, {first}!", choice_lead:'Now, how do you like to plan a cruise?',
     finish:"I've got this… let me fill it in!", talk:'Walk me through it, Mark!',
     choice_foot:'Either way: nothing to pay or sign tonight… and a laugh or two along the way.',
-    call_title:'Pick a time for your call with Mark', call_set:'Your call with Mark is set: {when}. Mark rings you then.',
+    call_title:'Pick a time for your call with Mark',
+    sent_h:'Your appointment has been sent, {first}!', sent_h_plain:'Your appointment has been sent!', sent_p:'It is a phone call: Mark rings you at that time. Nothing more to do until then.', sent_mail:'The appointment is in your email too.', sent_foot:'Need a different time? Call or text Mark at {phone}.',
     err_call:'The scheduler is not available right now. Call or text Mark at {phone}.'
   };
   var DETAILS = ES ? '/es/details.html' : '/details.html';
@@ -88,7 +97,7 @@
   state.textContent = T.loading;
   if(!/^[A-Za-z0-9_-]{43}$/.test(token)){ state.textContent = T.gone; return; }
 
-  var callPhone = PHONE, talkDone = false, planUrl = '';
+  var callPhone = PHONE, talkDone = false, planUrl = '', firstName = '';
   $('gp-choice-lead').textContent = T.choice_lead;
   $('gp-finish').textContent = T.finish;
   $('gp-talk').textContent = T.talk;
@@ -99,13 +108,17 @@
     .then(render)
     .catch(function(){ state.textContent = T.gone; });
 
-  // Mark 2026-11-09: once a time is picked in the scheduler pop-up, the one line under the button says when Mark rings
-  function callSet(when){
+  // Mark 2026-11-10: once a time is booked the choice goes away and ONE card says the appointment was sent ("there's nothing more to do
+  // until I call them"). The email is named only when the scheduler says it went out.
+  function callSet(when, email){
     talkDone = true;
-    var line = $('gp-call-line');
-    line.textContent = fill(T.call_set, { when: when });
-    line.hidden = false;
-    $('gp-finish').className = 'btn dim';
+    closeCall();
+    $('gp-sent-h').textContent = firstName ? fill(T.sent_h, { first: firstName }) : T.sent_h_plain;
+    $('gp-sent-when').textContent = when;
+    $('gp-sent-p').textContent = T.sent_p + (email === 'sent' ? ' ' + T.sent_mail : '');
+    $('gp-sent-foot').textContent = fill(T.sent_foot, { phone: callPhone });
+    $('gp-choice').hidden = true;
+    $('gp-sent').hidden = false;
   }
   function openCall(){
     var f = $('gp-fp-frame'), src = planUrl + (planUrl.indexOf('?') >= 0 ? '&' : '?') + 'embed=1';
@@ -123,10 +136,11 @@
     $('gp-plaque').textContent = label;
     document.title = T.title + ' · ' + label + ' | Still Afloat Cruising';
     var first = (typeof d.firstName === 'string' && d.firstName.trim()) || '';
+    firstName = first.split(' ')[0];
     $('gp-choice-h').textContent = fill(T.choice_h, { first: first.split(' ')[0].toLocaleUpperCase(ES ? 'es' : 'en') });
     if(typeof d.businessPhone === 'string' && d.businessPhone.trim()) callPhone = d.businessPhone.trim();
     $('gp-finish').href = DETAILS + '?t=' + token; $('gp-finish').className = 'btn'; $('gp-talk').className = 'btn';   // two EQUAL pills
-    // Road A already taken: the time they picked shows in the one line the next time they open the link
+    // Road A already taken: the appointment card shows the next time they open the link
     planUrl = typeof d.planCallUrl === 'string' ? d.planCallUrl : '';
     if(d.planCall && d.planCall.whenText) callSet(d.planCall.whenText);
     state.hidden = true; $('gp-main').hidden = false;
@@ -141,12 +155,11 @@
   });
   $('gp-fp-close').addEventListener('click', closeCall);
   $('gp-fp').addEventListener('click', function(e){ if(e && e.target === $('gp-fp')) closeCall(); });
-  // the scheduler in the pop-up says when the time is booked; its Continue closes the pop-up
+  // the scheduler in the pop-up says when the time is booked: the pop-up closes and the appointment card takes the page
   if(window.addEventListener) window.addEventListener('message', function(ev){
     var m = ev.data;
     if(ev.origin !== location.origin || !m || m.saf !== 'flexpay-call' || typeof m.booked !== 'string') return;
-    callSet(m.booked);
-    if(m.close === true) closeCall();
+    callSet(m.booked, m.email);
   });
 })();
 </script>

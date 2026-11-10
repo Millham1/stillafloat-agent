@@ -119,7 +119,9 @@ test("a private page: never indexed, no referrer, the group's name in the header
     assert.match(choice, /<a class="btn" id="gp-finish" href="#"><\/a>/);
     assert.match(choice, /<button type="button" class="btn" id="gp-talk"><\/button>/);
     // Mark 2026-11-09: the call is booked in the scheduler pop-up (the one FlexPay uses): no time-of-day pills on this page any more
-    assert.ok(choice.indexOf('id="gp-finish"') < choice.indexOf('id="gp-talk"') && choice.indexOf('id="gp-talk"') < choice.indexOf('id="gp-call-line"'), `${lang}: the one line sits under the Talk button`);
+    assert.ok(choice.indexOf('id="gp-finish"') < choice.indexOf('id="gp-talk"') && choice.indexOf('id="gp-talk"') < choice.indexOf('id="gp-sent" hidden'), `${lang}: the appointment card waits, hidden, after the two pills`);
+    // Mark 2026-11-10: the appointment card has no button and no link ("there should be no continue")
+    assert.ok(!/<a\b|<button\b/.test(h.slice(h.indexOf('id="gp-sent"'), h.indexOf("</section>"))), `${lang}: a button or link on the appointment card`);
     assert.ok(!/data-when=|id="gp-dd"/.test(h), `${lang}: the time-of-day drop-down is gone`);
     assert.match(h, /<div class="fp-modal" id="gp-fp" hidden role="dialog" aria-modal="true"[^>]*>\s*<div class="fp-box">[\s\S]*?<iframe id="gp-fp-frame" title="Call" src="about:blank"><\/iframe>/, `${lang}: the scheduler pop-up`);
     assert.ok(h.includes('<img class="sa" src="/assets/images/still_afloat_logo.png"') && h.includes("cornerstone-white.png"), `${lang}: the footer logos`);
@@ -144,7 +146,7 @@ test("the page opens on the cheer with the FIRST WORD of the name in capitals, o
   assert.equal(p.el("gp-talk").textContent, "Walk me through it, Mark!");
   assert.equal(p.el("gp-choice-foot").textContent, "Either way: nothing to pay or sign tonight… and a laugh or two along the way.");
   assert.equal(p.el("gp-fp").hidden, true, "the scheduler pop-up is closed until they tap Walk me through it");
-  assert.equal(p.el("gp-call-line").hidden, true);
+  assert.equal(p.el("gp-sent").hidden, true); assert.equal(p.el("gp-choice").hidden, false);
   assert.equal(p.el("gp-finish").className, "btn"); assert.equal(p.el("gp-talk").className, "btn", "two equal pills");
   assert.equal(p.sent.length, 0, "opening the page asks for nothing");
 
@@ -174,7 +176,7 @@ test("'Walk me through it, Mark!' opens the scheduler pop-up on the guest's own 
   assert.equal((p.el("gp-fp-frame") as unknown as { src: string }).src, `${PLAN_URL}&embed=1`);
   assert.equal(p.el("gp-fp-title").textContent, "Pick a time for your call with Mark");
   assert.equal(p.sent.length, 0, "the page itself asks for nothing: the scheduler books the time");
-  assert.equal(p.el("gp-call-line").hidden, true, "nothing is promised until a time is picked");
+  assert.equal(p.el("gp-sent").hidden, true, "nothing is promised until a time is picked");
   p.closePop();
   assert.equal(p.el("gp-fp").hidden, true);
   const es = visit("es", { get: answer({ lang: "es", planCallUrl: `/es${PLAN_URL}` }) });
@@ -184,25 +186,33 @@ test("'Walk me through it, Mark!' opens the scheduler pop-up on the guest's own 
   assert.equal((es.el("gp-fp-frame") as unknown as { src: string }).src, `/es${PLAN_URL}&embed=1`);
 });
 
-test("when the scheduler says the time is booked, the one line under the button says when Mark rings, the other pill dims, and Continue closes the pop-up", async () => {
-  const p = visit("en", { get: answer({ planCallUrl: PLAN_URL }) });
+// Mark 2026-11-10: "there should be no continue, just a card saying the appointment has been sent, since there's nothing more to do until I call them."
+test("when the scheduler says the time is booked, the pop-up closes at once and ONE card says the appointment was sent: no Continue, no pills, the email named only when it went out", async () => {
+  const p = visit("en", { get: answer({ planCallUrl: PLAN_URL, businessPhone: "555-0100" }) });
   await p.ready();
   p.talk();
   p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern" }, "https://elsewhere.test");
-  assert.equal(p.el("gp-call-line").hidden, true, "a message from another site is ignored");
-  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern" });
-  assert.equal(p.el("gp-call-line").hidden, false);
-  assert.equal(p.el("gp-call-line").textContent, "Your call with Mark is set: Tuesday, November 10 at 2:00 PM Eastern. Mark rings you then.");
-  assert.equal(p.el("gp-finish").className, "btn dim", "the pill not chosen is dimmed (and is still a link)");
-  assert.equal(p.el("gp-fp").hidden, false, "the pop-up stays until Continue");
-  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern", close: true });
-  assert.equal(p.el("gp-fp").hidden, true);
+  assert.equal(p.el("gp-sent").hidden, true, "a message from another site is ignored");
+  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern", email: "sent", close: true });
+  assert.equal(p.el("gp-fp").hidden, true, "the pop-up closes by itself");
+  assert.equal(p.el("gp-choice").hidden, true, "the cheer and the two pills are gone");
+  assert.equal(p.el("gp-sent").hidden, false);
+  assert.equal(p.el("gp-sent-h").textContent, "Your appointment has been sent, Mark!");
+  assert.equal(p.el("gp-sent-when").textContent, "Tuesday, November 10 at 2:00 PM Eastern");
+  assert.equal(p.el("gp-sent-p").textContent, "It is a phone call: Mark rings you at that time. Nothing more to do until then. The appointment is in your email too.");
+  assert.equal(p.el("gp-sent-foot").textContent, "Need a different time? Call or text Mark at 555-0100.");
   p.talk();
   assert.equal(p.el("gp-fp").hidden, true, "one call per guest: a second tap opens nothing");
-  const es = visit("es", { get: answer({ lang: "es", planCallUrl: `/es${PLAN_URL}` }) });
+  const held = visit("en", { get: answer({ planCallUrl: PLAN_URL }) });
+  await held.ready();
+  held.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern", email: "held", close: true });
+  assert.equal(held.el("gp-sent-p").textContent, "It is a phone call: Mark rings you at that time. Nothing more to do until then.", "no email is promised when none went out");
+  const es = visit("es", { get: answer({ firstName: "Ana", lang: "es", planCallUrl: `/es${PLAN_URL}` }) });
   await es.ready();
-  es.message({ saf: "flexpay-call", booked: "martes, 10 de noviembre a las 2:00 p. m., hora del Este" });
-  assert.equal(es.el("gp-call-line").textContent, "Su llamada con Mark está lista: martes, 10 de noviembre a las 2:00 p. m., hora del Este. Mark le llama a esa hora.");
+  es.message({ saf: "flexpay-call", booked: "martes, 10 de noviembre a las 2:00 p. m., hora del Este", email: "sent" });
+  assert.equal(es.el("gp-sent-h").textContent, "¡Su cita ha sido enviada, Ana!");
+  assert.equal(es.el("gp-sent-when").textContent, "martes, 10 de noviembre a las 2:00 p. m., hora del Este");
+  assert.equal(es.el("gp-sent-p").textContent, "Es una llamada telefónica: Mark le llama a esa hora. No hay nada más que hacer hasta entonces. La cita también está en su correo.");
 });
 
 test("with no scheduler link nothing is promised: the pop-up stays closed and the red note says to call or text Mark at the group's own number", async () => {
@@ -225,12 +235,12 @@ test("'I've got this' is a plain link to their details page and sends nothing by
 
 // ── Coming back on the same link ──────────────────────────────────────────────────────────────────────────────
 
-test("a guest who already booked the call sees when Mark rings in the one line and cannot book twice; 'I've got this' is still there", async () => {
+test("a guest who already booked the call comes back to the appointment card alone (no pills) and cannot book twice", async () => {
   const p = visit("en", { get: answer({ choice: "call", planCallUrl: PLAN_URL, planCall: { start: "2026-11-10T19:00:00.000Z", whenText: "Tuesday, November 10 at 2:00 PM Eastern" } }) });
   await p.ready();
-  assert.equal(p.el("gp-call-line").hidden, false);
-  assert.equal(p.el("gp-call-line").textContent, "Your call with Mark is set: Tuesday, November 10 at 2:00 PM Eastern. Mark rings you then.");
-  assert.equal(p.el("gp-finish").href, `/details.html?t=${TOKEN}`);
+  assert.equal(p.el("gp-sent").hidden, false); assert.equal(p.el("gp-choice").hidden, true);
+  assert.equal(p.el("gp-sent-when").textContent, "Tuesday, November 10 at 2:00 PM Eastern");
+  assert.equal(p.el("gp-sent-p").textContent, "It is a phone call: Mark rings you at that time. Nothing more to do until then.");
   p.talk();
   await p.ready();
   assert.equal(p.el("gp-fp").hidden, true, "the scheduler does not open again");

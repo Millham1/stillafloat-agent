@@ -219,6 +219,15 @@
     var j = $('c-join'), go = $('c-continue');
     // Mark 2026-11-09: in the quote page's pop-up there is no video button: the confirmation email carries the link, and Continue takes
     // the guest back to their questions. The page opened on its own (from the email) keeps the video button.
+    // Mark 2026-11-10: a planning call booked in the choice page's pop-up has NO Continue: the pop-up closes at once and that page shows
+    // one card saying the appointment was sent (nothing more for the guest to do until Mark rings).
+    if(EMBED && KIND === 'plan'){
+      j.hidden = true; go.hidden = true;
+      $('c-done-p').textContent = T.done_embed;
+      try { window.parent.postMessage({ saf: 'flexpay-call', booked: b.whenText || '', email: email || '', close: true }, location.origin); } catch(e){}
+      $('c-change').textContent = T.change;
+      return;
+    }
     if(EMBED){
       j.hidden = true;
       $('c-done-p').textContent = email === 'sent' || (email === undefined && b.meetLink) ? T.done_embed : T.done_nolink;
