@@ -63,9 +63,11 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
   const requested: string[] = [];
   const sent: Sent[] = [];
   const post = o.post ?? (() => ({ ok: true, json: { success: true } }));
-  const loc: { search: string; hash: string; href?: string } = { search: o.search ?? `?t=${TOKEN}`, hash: "" };
+  const loc: { search: string; hash: string; href?: string; origin: string } = { search: o.search ?? `?t=${TOKEN}`, hash: "", origin: "https://site.test" };
+  const winHandlers: Record<string, (ev: { origin: string; data: unknown }) => void> = {};
+  const win = { addEventListener: (type: string, fn: (ev: { origin: string; data: unknown }) => void) => { winHandlers[type] = fn; } };
   const sandbox = {
-    document: doc, window: {}, location: loc, URLSearchParams, console, JSON, String, Promise, Error,
+    document: doc, window: win, location: loc, URLSearchParams, console, JSON, String, Promise, Error,
     fetch: (url: string, init?: { method?: string; body?: string }) => {
       if (init?.method === "POST") {
         const body = JSON.parse(init.body ?? "{}") as Record<string, unknown>;
@@ -84,7 +86,9 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
   return {
     el, doc, requested, sent, loc, ready: flush,
     talk: () => el("gp-talk").handlers["click"]!(quiet),
-    when: (k: string) => el(`gp-when-${k}`).handlers["click"]!(quiet),
+    closePop: () => el("gp-fp-close").handlers["click"]!(quiet),
+    /** what the scheduler in the pop-up posts to the page */
+    message: (data: unknown, origin = "https://site.test") => winHandlers["message"]!({ origin, data }),
   };
 }
 
@@ -114,13 +118,13 @@ test("a private page: never indexed, no referrer, the group's name in the header
     const choice = h.slice(h.indexOf('id="gp-choice"'));
     assert.match(choice, /<a class="btn" id="gp-finish" href="#"><\/a>/);
     assert.match(choice, /<button type="button" class="btn" id="gp-talk"><\/button>/);
-    assert.ok(choice.indexOf('id="gp-finish"') < choice.indexOf('id="gp-talk"') && choice.indexOf('id="gp-talk"') < choice.indexOf('id="gp-dd"'), `${lang}: the drop-down sits under the Talk button`);
-    assert.deepEqual([...choice.matchAll(/data-when="(\w+)"/g)].map((m) => m[1]), ["morning", "afternoon", "evening", "anytime"]);
+    // Mark 2026-11-09: the call is booked in the scheduler pop-up (the one FlexPay uses): no time-of-day pills on this page any more
+    assert.ok(choice.indexOf('id="gp-finish"') < choice.indexOf('id="gp-talk"') && choice.indexOf('id="gp-talk"') < choice.indexOf('id="gp-call-line"'), `${lang}: the one line sits under the Talk button`);
+    assert.ok(!/data-when=|id="gp-dd"/.test(h), `${lang}: the time-of-day drop-down is gone`);
+    assert.match(h, /<div class="fp-modal" id="gp-fp" hidden role="dialog" aria-modal="true"[^>]*>\s*<div class="fp-box">[\s\S]*?<iframe id="gp-fp-frame" title="Call" src="about:blank"><\/iframe>/, `${lang}: the scheduler pop-up`);
     assert.ok(h.includes('<img class="sa" src="/assets/images/still_afloat_logo.png"') && h.includes("cornerstone-white.png"), `${lang}: the footer logos`);
   }
-  // the drop-down is a white box with a yellow border, joined to the button (no top border); the chosen time lights yellow
-  assert.match(css(), /\.dd\{[^}]*border:2px solid var\(--yellow\);border-top:0;[^}]*background:#fff/);
-  assert.match(css(), /\.opt\.on\{background:var\(--yellow\)/);
+  assert.match(css(), /\.fp-modal\{position:fixed;inset:0/, "the pop-up's styles are on this page's stylesheet");
   assert.match(css(), /#gp-choice \.btn\.dim\{opacity:\.45\}/);
 });
 
@@ -139,7 +143,8 @@ test("the page opens on the cheer with the FIRST WORD of the name in capitals, o
   assert.equal(p.el("gp-finish").href, `/details.html?t=${TOKEN}`, "a plain link to their own details page, on the same private link");
   assert.equal(p.el("gp-talk").textContent, "Walk me through it, Mark!");
   assert.equal(p.el("gp-choice-foot").textContent, "Either way: nothing to pay or sign tonight… and a laugh or two along the way.");
-  assert.equal(p.el("gp-dd").hidden, true, "the drop-down is closed until they tap Walk me through it");
+  assert.equal(p.el("gp-fp").hidden, true, "the scheduler pop-up is closed until they tap Walk me through it");
+  assert.equal(p.el("gp-call-line").hidden, true);
   assert.equal(p.el("gp-finish").className, "btn"); assert.equal(p.el("gp-talk").className, "btn", "two equal pills");
   assert.equal(p.sent.length, 0, "opening the page asks for nothing");
 
@@ -158,99 +163,56 @@ test("the page opens on the cheer with the FIRST WORD of the name in capitals, o
   assert.equal(es.doc.title, "Ya está en la lista · Friends and Family 2027 | Still Afloat Cruising");
 });
 
-test("'Walk me through it, Mark!' opens a drop-down under the button ('When's a good time to catch you?' and four pills); the other pill dims; a second tap closes it", async () => {
-  const p = visit("en");
+// Mark 2026-11-09: "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like flexpay."
+const PLAN_URL = "/flexpay-call.html?r=11111111-1111-4111-8111-111111111111&k=KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK&kind=plan";
+
+test("'Walk me through it, Mark!' opens the scheduler pop-up on the guest's own planning-call link (embedded), and sends nothing by itself", async () => {
+  const p = visit("en", { get: answer({ planCallUrl: PLAN_URL, planCall: null }) });
   await p.ready();
-  assert.equal(p.el("gp-dd-q").textContent, "When's a good time to catch you?");
-  assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => p.el(`gp-when-${k}`).textContent), ["Mornings", "Afternoons", "Evenings", "Whenever… I'm easy"]);
   p.talk();
-  assert.equal(p.el("gp-dd").hidden, false);
+  assert.equal(p.el("gp-fp").hidden, false);
+  assert.equal((p.el("gp-fp-frame") as unknown as { src: string }).src, `${PLAN_URL}&embed=1`);
+  assert.equal(p.el("gp-fp-title").textContent, "Pick a time for your call with Mark");
+  assert.equal(p.sent.length, 0, "the page itself asks for nothing: the scheduler books the time");
+  assert.equal(p.el("gp-call-line").hidden, true, "nothing is promised until a time is picked");
+  p.closePop();
+  assert.equal(p.el("gp-fp").hidden, true);
+  const es = visit("es", { get: answer({ lang: "es", planCallUrl: `/es${PLAN_URL}` }) });
+  await es.ready();
+  es.talk();
+  assert.equal(es.el("gp-fp-title").textContent, "Elija la hora de su llamada con Mark");
+  assert.equal((es.el("gp-fp-frame") as unknown as { src: string }).src, `/es${PLAN_URL}&embed=1`);
+});
+
+test("when the scheduler says the time is booked, the one line under the button says when Mark rings, the other pill dims, and Continue closes the pop-up", async () => {
+  const p = visit("en", { get: answer({ planCallUrl: PLAN_URL }) });
+  await p.ready();
+  p.talk();
+  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern" }, "https://elsewhere.test");
+  assert.equal(p.el("gp-call-line").hidden, true, "a message from another site is ignored");
+  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern" });
+  assert.equal(p.el("gp-call-line").hidden, false);
+  assert.equal(p.el("gp-call-line").textContent, "Your call with Mark is set: Tuesday, November 10 at 2:00 PM Eastern. Mark rings you then.");
   assert.equal(p.el("gp-finish").className, "btn dim", "the pill not chosen is dimmed (and is still a link)");
-  assert.equal(p.sent.length, 0, "opening the drop-down asks for nothing");
+  assert.equal(p.el("gp-fp").hidden, false, "the pop-up stays until Continue");
+  p.message({ saf: "flexpay-call", booked: "Tuesday, November 10 at 2:00 PM Eastern", close: true });
+  assert.equal(p.el("gp-fp").hidden, true);
   p.talk();
-  assert.equal(p.el("gp-dd").hidden, true); assert.equal(p.el("gp-finish").className, "btn");
-  const es = visit("es", { get: answer({ lang: "es" }) });
+  assert.equal(p.el("gp-fp").hidden, true, "one call per guest: a second tap opens nothing");
+  const es = visit("es", { get: answer({ lang: "es", planCallUrl: `/es${PLAN_URL}` }) });
   await es.ready();
-  assert.equal(es.el("gp-dd-q").textContent, "¿Cuándo es buen momento para llamarle?");
-  assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => es.el(`gp-when-${k}`).textContent), ["Por la mañana", "Por la tarde", "Por la noche", "Cuando sea… me adapto"]);
+  es.message({ saf: "flexpay-call", booked: "martes, 10 de noviembre a las 2:00 p. m., hora del Este" });
+  assert.equal(es.el("gp-call-line").textContent, "Su llamada con Mark está lista: martes, 10 de noviembre a las 2:00 p. m., hora del Este. Mark le llama a esa hora.");
 });
 
-test("picking a time is the whole request: it goes to the choice route of their own link, the chosen pill stays lit, and the one line sits under the pills", async () => {
-  const p = visit("en");
+test("with no scheduler link nothing is promised: the pop-up stays closed and the red note says to call or text Mark at the group's own number", async () => {
+  const p = visit("en", { get: answer({ planCallUrl: null, businessPhone: "555-0100" }) });
   await p.ready();
-  p.talk(); p.when("evening");
-  await p.ready();
-  assert.equal(p.sent.length, 1);
-  assert.equal(p.sent[0]!.url, `/api/group-details/${TOKEN}/choice`);
-  assert.deepEqual(p.sent[0]!.body, { choice: "call", when: "evening", lang: "en", website: "" });
-  assert.equal(p.el("gp-dd-line").hidden, false);
-  assert.equal(p.el("gp-dd-line").innerHTML, "Evenings it is… Mark rings you from <b>919-346-6127</b>. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.");
-  // Mark 2026-10-24 (Road A v5): the question and the pills stay, the chosen time is lit, and the one line sits under them
-  assert.equal(p.el("gp-dd-q").hidden, false); assert.equal(p.el("gp-whens").hidden, false, "the question and the pills stay");
-  assert.equal(p.el("gp-when-evening").className, "opt on"); assert.equal(p.el("gp-when-morning").className, "opt");
-  assert.equal(p.el("gp-choice-msg").textContent, "");
-  // a second tap on a pill (a double tap) asks for nothing more
-  p.when("morning");
-  await p.ready();
-  assert.equal(p.sent.length, 1);
-});
-
-test("the one line for each answer, in English and Spanish; the number is the one in the group's own line beside the button (the server's businessPhone), else the business number", async () => {
-  const lead: Record<string, string> = { morning: "Mornings it is…", afternoon: "Afternoons it is…", evening: "Evenings it is…", anytime: "Whenever works…" };
-  const tail = (n: string) => ` Mark rings you from <b>${n}</b>. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.`;
-  for (const when of ["morning", "afternoon", "evening", "anytime"]) {
-    const p = visit("en");
-    await p.ready();
-    p.when(when);
-    await p.ready();
-    assert.equal(p.el("gp-dd-line").innerHTML, lead[when] + tail("919-346-6127"), when);
-  }
-  const own = visit("en", { get: answer({ businessPhone: "(704) 555-0100" }) });
-  await own.ready();
-  own.when("anytime");
-  await own.ready();
-  assert.equal(own.el("gp-dd-line").innerHTML, "Whenever works…" + tail("(704) 555-0100"));
-  const none = visit("en", { get: answer({ businessPhone: null, phoneLine: null }) });
-  await none.ready();
-  none.when("evening");
-  await none.ready();
-  assert.equal(none.el("gp-dd-line").innerHTML, lead["evening"] + tail("919-346-6127"));
-  const es = visit("es", { get: answer({ lang: "es" }) });
-  await es.ready();
-  es.when("morning");
-  await es.ready();
-  assert.equal(es.el("gp-dd-line").innerHTML, "Por la mañana, entonces… Mark le llama desde el <b>919-346-6127</b>. Esté pendiente de su correo: los detalles van en camino, con una jugada inteligente de crucerista para hacer mientras espera.");
-  // the line is markup only because of its own <b>: anything else in the number is text
-  const odd = visit("en", { get: answer({ businessPhone: "919-346-6127 <img src=x>" }) });
-  await odd.ready();
-  odd.when("evening");
-  await odd.ready();
-  assert.ok(!odd.el("gp-dd-line").innerHTML.includes("<img"));
-});
-
-test("if the request does not go through nothing is promised: the pills stay, the line is not shown, and the red note says to call or text Mark; a retry works once the server is back", async () => {
-  const p = visit("en", { post: () => ({ ok: false, json: { success: false } }) });
-  await p.ready();
-  p.talk(); p.when("evening");
-  await p.ready();
-  assert.equal(p.el("gp-dd-line").hidden, true);
-  assert.equal(p.el("gp-whens").hidden, false); assert.equal(p.el("gp-dd-q").hidden, false);
-  assert.equal(p.el("gp-choice-msg").textContent, "That did not go through. Call or text Mark at 919-346-6127.");
+  p.talk();
+  assert.equal(p.el("gp-fp").hidden, true);
   assert.equal(p.el("gp-choice-msg").className, "msg err");
-  const es = visit("es", { get: answer({ lang: "es" }), post: () => ({ ok: false, json: { success: false } }) });
-  await es.ready();
-  es.when("evening");
-  await es.ready();
-  assert.equal(es.el("gp-choice-msg").textContent, "No se pudo enviar. Llame o escriba a Mark al 919-346-6127.");
-  let up = false;
-  const r = visit("en", { post: () => ({ ok: up, json: { success: up } }) });
-  await r.ready();
-  r.when("evening");
-  await r.ready();
-  up = true;
-  r.when("morning");
-  await r.ready();
-  assert.match(r.el("gp-dd-line").innerHTML, /^Mornings it is…/);
+  assert.equal(p.el("gp-choice-msg").textContent, "The scheduler is not available right now. Call or text Mark at 555-0100.");
+  assert.equal(p.sent.length, 0);
 });
 
 test("'I've got this' is a plain link to their details page and sends nothing by itself", async () => {
@@ -263,17 +225,16 @@ test("'I've got this' is a plain link to their details page and sends nothing by
 
 // ── Coming back on the same link ──────────────────────────────────────────────────────────────────────────────
 
-test("a guest who already asked for the call sees the time they picked lit and the one line, and cannot ask twice; 'I've got this' is still there", async () => {
-  const p = visit("en", { get: answer({ choice: "call", callWhen: "afternoon" }) });
+test("a guest who already booked the call sees when Mark rings in the one line and cannot book twice; 'I've got this' is still there", async () => {
+  const p = visit("en", { get: answer({ choice: "call", planCallUrl: PLAN_URL, planCall: { start: "2026-11-10T19:00:00.000Z", whenText: "Tuesday, November 10 at 2:00 PM Eastern" } }) });
   await p.ready();
-  assert.equal(p.el("gp-dd").hidden, false);
-  assert.equal(p.el("gp-when-afternoon").className, "opt on");
-  assert.match(p.el("gp-dd-line").innerHTML, /^Afternoons it is… Mark rings you from <b>919-346-6127<\/b>/);
+  assert.equal(p.el("gp-call-line").hidden, false);
+  assert.equal(p.el("gp-call-line").textContent, "Your call with Mark is set: Tuesday, November 10 at 2:00 PM Eastern. Mark rings you then.");
   assert.equal(p.el("gp-finish").href, `/details.html?t=${TOKEN}`);
-  p.when("morning"); p.talk();
+  p.talk();
   await p.ready();
+  assert.equal(p.el("gp-fp").hidden, true, "the scheduler does not open again");
   assert.equal(p.sent.length, 0, "nothing is asked again");
-  assert.equal(p.el("gp-dd").hidden, false, "the drop-down stays open");
 });
 
 test("a guest whose names are in (Road B taken) or whose quote step is open is sent on to their details page, which knows where they are", async () => {

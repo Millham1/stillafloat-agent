@@ -926,7 +926,7 @@ test("'Send my choices to Mark!' (Mark 2026-11-05): the first press wins; the tr
   const item = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
   assert.equal(item.title, "Re-quote and book · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; (2) upload that quote in the group file: it fills the booking confirmation; (3) validate Flights and enter the suppliers' confirmations; (4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors, and send the FlexPay appointment link.");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; (2) upload that quote in the group file: it fills the booking confirmation; (3) validate Flights and enter the suppliers' confirmations; (4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors.");
   assert.deepEqual(item.buttons, [
     { label: "Upload the cruise line's quote", href: `/groups/${GROUP_ID}?book=${REPLY_ID}#booking` },
     { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
@@ -1214,6 +1214,49 @@ test("the FlexPay video call: the scheduler opens once the names are in (Mark 20
     assert.deepEqual([replyRow()["quote"]["answers"]["flexpay"], replyRow()["quote"]["flexpay_call"]["start"], replyRow()["quote"]["flexpay_call"]["event_id"]], [true, free, "ev-1"]);
     assert.equal(JSON.stringify(repriced.json).includes("meet.google.com"), false, "the re-priced answer carries no video link");
     assert.equal(JSON.stringify(repriced.json).includes("flexpay_call"), false, "the re-priced answer carries no call row");
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+  }
+});
+
+// Mark 2026-11-09: "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like flexpay. we need to identify the
+// type of meeting in my schedule so i know what im talking about."
+test("the planning call: the same scheduler books a PHONE call from the choice page, before any names; the calendar entry names the type and the number to ring; Mark gets one item, the guest one email", async () => {
+  const KEY_HEX = "ab".repeat(32);
+  process.env["GROUP_PII_KEY"] = KEY_HEX;
+  actionsAccept = true;
+  try {
+    const key = deriveCallKey(REPLY_ID, KEY_HEX), page = `/flexpay-call/${REPLY_ID}/${key}`;
+    const details = await call("GET", `/group-details/${LINK}`);
+    assert.deepEqual([details.json["planCallUrl"], details.json["planCall"]], [`/flexpay-call.html?r=${REPLY_ID}&k=${key}&kind=plan`, null], "the way in is there from the moment the spot is saved");
+    assert.equal((await call("GET", page)).status, 404, "the FlexPay call still waits for the names");
+    const day = ruleSlots(new Date()).sort((a, b) => b.slots.length - a.slots.length)[0]!;
+    const free = day.slots[1]!;
+    replyRow()["phone"] = null;
+    const open = await call("GET", `${page}?kind=plan`);
+    assert.deepEqual([open.status, open.json["kind"], open.json["booked"], open.json["needsPhone"]], [200, "plan", null, true]);
+    // a phone call needs a number to ring
+    const noPhone = await call("POST", page, { body: { kind: "plan", start: free } });
+    assert.deepEqual([noPhone.status, noPhone.json["field"], noPhone.json["error"]], [400, "phone", "Please enter the phone number Mark should call."]);
+    assert.equal(opsBooked.length, 0);
+    const ok = await call("POST", page, { body: { kind: "plan", start: free, phone: "919-555-0142" } });
+    assert.deepEqual([ok.status, ok.json["booked"]["start"], ok.json["booked"]["meetLink"], ok.json["email"]], [200, free, null, "sent"]);
+    assert.deepEqual([opsBooked.length, opsBooked[0]!["title"]], [1, "Trip planning call (phone): Mark Millham (Friends and Family 2027)"]);
+    assert.match(opsBooked[0]!["description"], /PHONE call to plan the trip[\s\S]*Ring: 919-555-0142/);
+    assert.match(opsBooked[0]!["request_id"], /^plan-[0-9a-f-]{36}-\d+$/);
+    assert.deepEqual([replyRow()["quote"]["plan_call"]["start"], replyRow()["phone"], replyRow()["choice"]], [free, "919-555-0142", "call"]);
+    assert.equal(replyRow()["quote"]["flexpay_call"], undefined, "a planning call is not the FlexPay call");
+    assert.equal(mails.length, 1);
+    assert.match(mails[0]!["subject"], /^Your planning call with Mark: /);
+    assert.ok(String(mails[0]!["html"]).includes("It is a phone call: Mark rings you at 919-555-0142.") && !/meet\.google|cornerstone/i.test(String(mails[0]!["html"])));
+    const item = tables["actions"]!.find((x) => x["source_ref"] === `group-call-${REPLY_ID}`)!;
+    assert.match(String(item["title"]), /^Planning call booked · Mark Millham · /);
+    assert.match(String(item["body"]), /PHONE planning call[\s\S]*Ring 919-555-0142/);
+    // once picked: shown, not booked twice, and the choice page gets the time
+    const second = await call("POST", page, { body: { kind: "plan", start: day.slots[3]! } });
+    assert.equal(second.status, 409);
+    assert.equal(opsBooked.length, 1);
+    assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["planCall"], { start: free, whenText: ok.json["booked"]["whenText"] });
   } finally {
     delete process.env["GROUP_PII_KEY"];
   }

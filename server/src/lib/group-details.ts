@@ -567,6 +567,40 @@ const CALL_BOOKED = {
   },
 } as const;
 
+// ── The planning call: the time is picked (Mark 2026-11-09) ───────────────────
+// "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like flexpay." The guest picked the time on our
+// own scheduler: this is the one email that confirms it. A phone call: Mark rings the number they gave. The wording is a first draft for Mark to read.
+export interface PlanBookedInput extends MailBase { groupLabel: string; whenText: string; phone: string | null }
+const PLAN_BOOKED = {
+  en: {
+    subject: (when: string) => `Your planning call with Mark: ${when}`,
+    title: "Your call with Mark is set!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: (when: string) => `You and Mark are set for ${when}. Plan on about half an hour.`,
+    p2: (phone: string | null) => (phone ? `It is a phone call: Mark rings you at ${phone}.` : "It is a phone call: Mark rings you at the number you gave."),
+    p3: (phone: string) => `Need a different time? Call or text Mark at ${phone}.`,
+    close: "Cruise smarter, laugh more… talk soon!",
+    footer: (label: string) => `You are receiving this because you picked a time for a planning call on our ${label} page. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (when: string) => `Su llamada de planeación con Mark: ${when}`,
+    title: "¡Su llamada con Mark está lista!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: (when: string) => `Usted y Mark quedaron para el ${when}. Reserve una media hora.`,
+    p2: (phone: string | null) => (phone ? `Es una llamada telefónica: Mark le llama al ${phone}.` : "Es una llamada telefónica: Mark le llama al número que nos dio."),
+    p3: (phone: string) => `¿Necesita otra hora? Llame o escriba a Mark al ${phone}.`,
+    close: "Navegue con inteligencia, ría más… ¡hablamos pronto!",
+    footer: (label: string) => `Recibió este correo porque eligió una hora para una llamada de planeación en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+export function planBookedEmail(i: PlanBookedInput): { subject: string; html: string; text: string } {
+  const T = PLAN_BOOKED[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
+  const parts = [T.hi(first), T.p1(i.whenText), T.p2(i.phone), T.p3(BUSINESS.phone), T.close];
+  const text = [...parts, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  return { subject: T.subject(i.whenText), html: mailFrame(i, T.title, parts.map((x) => para(esc(x))).join("\n    "), T.footer(label)), text };
+}
+
 export function callBookedEmail(i: CallBookedInput): { subject: string; html: string; text: string } {
   const T = CALL_BOOKED[i.lang];
   const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";

@@ -10,7 +10,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109b">
-<link rel="stylesheet" href="/css/flexpay-call.css?v=20261108a">
+<link rel="stylesheet" href="/css/flexpay-call.css?v=20261110a">
 </head>
 <body>
 <div class="wrap">
@@ -34,6 +34,8 @@
         <div class="c-days" id="c-days" role="tablist"></div>
         <p class="c-dayname" id="c-dayname"></p>
         <div class="c-times" id="c-times"></div>
+        <!-- a planning call is a phone call: the number to ring, asked only when the guest gave just an email -->
+        <label class="c-phone" id="c-phone-row" hidden><span id="c-phone-label"></span><input type="tel" id="c-phone" autocomplete="tel" inputmode="tel"></label>
         <p class="err center" id="c-err" hidden></p>
         <button type="button" class="btn" id="c-book" disabled></button>
         <p class="small" id="c-note"></p>
@@ -97,6 +99,27 @@
     change:'Need a different time? Call or text Mark at ' + PHONE + '.',
     fail:'The time could not be booked. Try again, or call or text Mark at ' + PHONE + '.'
   };
+  // Mark 2026-11-09: the same scheduler books a PHONE call to plan the trip ("Walk me through it, Mark!" on the choice page): ?kind=plan
+  var KIND = new URLSearchParams(location.search).get('kind') === 'plan' ? 'plan' : 'flexpay';
+  if(KIND === 'plan'){
+    var P = ES ? {
+      title:'Su llamada con Mark', plaque:'Su llamada con Mark', label:'Llamada telefónica con Mark para planear su viaje',
+      bad:'Este enlace no es válido. Ábralo de nuevo desde su página, o llame o escriba a Mark al ' + PHONE + '.',
+      lede:'Una llamada telefónica de media hora con Mark para planear su viaje juntos. De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este.',
+      note:'Al apartarla le llega un correo con la hora. Mark le llama a usted. No se cobra nada en esta página.',
+      phone_label:'El número al que Mark debe llamar', phone_bad:'Escriba el número de teléfono al que Mark debe llamar.',
+      done_p:'Es una llamada telefónica: Mark le llama a esa hora.', done_nolink:'Es una llamada telefónica: Mark le llama a esa hora.', done_embed:'Es una llamada telefónica: Mark le llama a esa hora.'
+    } : {
+      title:'Your call with Mark', plaque:'Your call with Mark', label:'Phone call with Mark to plan your trip',
+      bad:'This link is not valid. Open it again from your page, or call or text Mark at ' + PHONE + '.',
+      lede:'A half-hour phone call with Mark to plan your trip together. Monday to Saturday, 10 AM to 8 PM Eastern.',
+      note:'Booking it sends you an email with the time. Mark calls you. Nothing is charged on this page.',
+      phone_label:'The number Mark should call', phone_bad:'Please enter the phone number Mark should call.',
+      done_p:'It is a phone call: Mark rings you at that time.', done_nolink:'It is a phone call: Mark rings you at that time.', done_embed:'It is a phone call: Mark rings you at that time.'
+    };
+    for(var pk in P) T[pk] = P[pk];
+  }
+  var needPhone = false;
   var LOCALE = ES ? 'es-US' : 'en-US';
 
   function $(id){ return document.getElementById(id); }
@@ -115,7 +138,7 @@
   if(EMBED) document.documentElement.className += ' embed';
   var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim();
   if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
-  var API = '/api/flexpay-call/' + reply + '/' + key;
+  var API = '/api/flexpay-call/' + reply + '/' + key + (KIND === 'plan' ? '?kind=plan' : '');
 
   var first = '';
   var days = [];        // [{ key:'2026-11-06', label, name, slots:[iso] }] grouped by the guest's OWN calendar day
@@ -158,6 +181,7 @@
     var z = zoneName();
     $('c-zone').textContent = z ? fill(T.zone, { zone: z }) : '';
     $('c-note').textContent = T.note;
+    show('c-phone-row', needPhone); if(needPhone) $('c-phone-label').textContent = T.phone_label;
     if(dayAt >= days.length) dayAt = 0;
     var dl = $('c-days'); dl.innerHTML = '';
     days.forEach(function(d, i){
@@ -216,6 +240,7 @@
       if(!x.body || !x.body.success){ state.textContent = (x.body && x.body.error) || T.quiet; return; }
       first = String(x.body.firstName || '').trim().split(/\s+/)[0] || '';
       if(x.body.booked){ drawDone(x.body.booked); return; }
+      needPhone = KIND === 'plan' && x.body.needsPhone === true;
       days = regroup(x.body.days); dayAt = 0; chosen = '';
       drawPick();
     }).catch(function(){ state.textContent = T.quiet; });
@@ -223,8 +248,10 @@
 
   $('c-book').addEventListener('click', function(){
     if(busy || !chosen) return;
+    var phone = needPhone ? $('c-phone').value.trim() : '';
+    if(needPhone && phone.replace(/\D/g, '').length < 10){ var pe = $('c-err'); pe.textContent = T.phone_bad; pe.hidden = false; return; }
     busy = true; show('c-err', false); drawPick();
-    fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ start: chosen, website: '' }) }).then(function(r){
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ start: chosen, website: '', kind: KIND, phone: phone }) }).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
     }).then(function(x){
       busy = false;
