@@ -29,3 +29,10 @@
 .q-trip{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border-bottom:1px solid #d5dfee;font-size:18px;color:var(--navy)}
 .q-trip span{display:block;font-size:16px;line-height:1.45}
 .q-trip > b{white-space:nowrap}
+/* travel protection on the quote (Mark 2026-11-10): one pill a plan, its price per person under the name; the one picked turns navy */
+.q-opts{display:flex;flex-direction:column;gap:10px;margin:8px 0 4px}
+.q-opt{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;width:100%;text-align:left;padding:14px 16px;border:3px solid var(--navy);border-radius:14px;background:#fff;color:var(--navy);font:400 19px/1.35 'Baloo 2',sans-serif;cursor:pointer}
+.q-opt b{font-weight:800}
+.q-opt span{font-size:18px}
+.q-opt.on{background:var(--navy);color:var(--gold)}
+.q-opt:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}

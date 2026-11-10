@@ -16,6 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
+import { planLabel } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -583,6 +584,15 @@ const cruiseExtras = (formData: unknown): CruiseExtra[] => {
   return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r["total"] === "number" && Number.isFinite(r["total"]))
     .map((r) => ({ name: text(r["name"], 120) ?? "Cruise extra", total: r["total"] as number }));
 };
+/** Travel protection as Mark priced it for THIS booking (Mark 2026-11-10: "create an insurance section on the quote… add Allianz too"): each plan
+ *  with its price per person, typed on the booking card and kept on the lead's file (form_data.trip.protection). The guest picks one on the quote page. */
+interface ProtectionPlan { name: string; per_person: number; line: boolean }
+const protectionPlans = (formData: unknown): ProtectionPlan[] => {
+  const list = ((formData as Record<string, any> | null)?.["trip"] ?? {})["protection"];
+  if (!Array.isArray(list)) return [];
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r["per_person"] === "number" && Number.isFinite(r["per_person"]) && (r["per_person"] as number) > 0 && !!text(r["name"], 120))
+    .slice(0, 8).map((r) => ({ name: text(r["name"], 120)!, per_person: cents(r["per_person"] as number), line: r["line"] === true }));
+};
 const cents = (n: number) => Math.round(n * 100) / 100;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
@@ -661,7 +671,9 @@ type BookingFile = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
 // ── The price, approved by the guest before the paperwork goes out (Mark 2026-11-09) ──
 // Kept on the reply's quote under "price": when Mark emailed it, when it was approved and by whom (the guest's "Book It", or Mark for a yes he got
 // another way), and what the guest asked to change. Sending the price again clears the approval and closes the open change request.
-interface PriceState { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean }
+interface PriceState { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean;
+  /** the travel protection the guest picked on the quote page with their "Book It" (null: not asked, or not answered yet) */
+  protection: { key: string; label: string } | null }
 function storedPrice(quote: unknown): PriceState {
   const o = quote && typeof quote === "object" ? (quote as Row)["price"] : null;
   const p = o && typeof o === "object" ? (o as Row) : {};
@@ -670,17 +682,22 @@ function storedPrice(quote: unknown): PriceState {
   return {
     sent: text(p["sent"], 20), sent_at: text(p["sent_at"], 40), approved_at: text(p["approved_at"], 40),
     approved_how: p["approved_how"] === "guest" || p["approved_how"] === "mark" ? p["approved_how"] : null, changes, changes_open: p["changes_open"] === true && changes.length > 0,
+    protection: ((o: unknown) => (o && typeof o === "object" && text((o as Row)["key"], 20) && text((o as Row)["label"], 200) ? { key: text((o as Row)["key"], 20)!, label: text((o as Row)["label"], 200)! } : null))(p["protection"]),
   };
 }
 const QUOTE_WORDS = {
   en: { cruise: "Your cruise", travel: "Getting there", fare: "Cruise fare", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total per guest",
     cruiseTotal: "Cruise total", tripTotal: "Trip total (cruise and travel)", addonsAll: "Add-ons for each guest", addonsFor: (n: string) => `Add-ons for ${n}`, cabin: "Cabin",
     pkg: (post: boolean) => `Air and hotel package, ${post ? "after" : "before"} the cruise`, flights: "Flights", going: "Going", back: "Coming back", hotel: "Hotel", bed1: "1 bed", bed2: "2 beds",
-    breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight" },
+    breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight",
+    protect: "Travel protection", protectLede: "Priced for your trip. Pick one on your quote page before you tap Book It.", perPerson: "per person", linePlan: "The cruise line's protection plan",
+    inCruise: "already in your cruise total above", lineOwn: "the cruise line's own plan", own: "I have my own policy", none: "No insurance for us", tripWith: (n: string) => `Trip total with ${n}` },
   es: { cruise: "Su crucero", travel: "Cómo llegar", fare: "Tarifa del crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total por pasajero",
     cruiseTotal: "Total del crucero", tripTotal: "Total del viaje (crucero y traslados)", addonsAll: "Complementos de cada pasajero", addonsFor: (n: string) => `Complementos de ${n}`, cabin: "Cabina",
     pkg: (post: boolean) => `Paquete de vuelo y hotel, ${post ? "después" : "antes"} del crucero`, flights: "Vuelos", going: "Ida", back: "Regreso", hotel: "Hotel", bed1: "1 cama", bed2: "2 camas",
-    breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo" },
+    breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo",
+    protect: "Protección de viaje", protectLede: "Cotizada para su viaje. Elija una en la página de su cotización antes de tocar Reservar.", perPerson: "por persona", linePlan: "El plan de protección de la naviera",
+    inCruise: "ya está en el total de su crucero, arriba", lineOwn: "el plan propio de la naviera", own: "Tengo mi propia póliza", none: "Sin seguro para nosotros", tripWith: (n: string) => `Total del viaje con ${n}` },
 } as const;
 /** "MARK MILLHAM" as a quote prints it → "Mark Millham" for reading. */
 const properName = (n: string) => n.toLowerCase().replace(/(^|[\s'-])([a-záéíóúñ])/g, (_m, a: string, b: string) => a + b.toUpperCase());
@@ -737,10 +754,25 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
       travel.push({ title: r.label, value: usd(r.price), details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `)].filter(Boolean) });
     }
   }
+  // Travel protection (Mark 2026-11-10): the plans Mark priced for this booking, per person, for the guest to pick from on the quote page. A plan the
+  // cruise line's quote already prints inside each guest's price is listed as printed and marked as already in the cruise total. A plan's "trip total
+  // with" is the trip total plus that plan for everyone on the booking; it is left out when the cruise total already holds the line's plan.
+  const insured = guests.filter((g) => g.insurance > 0), count = guests.length || b.quote?.party || 0;
+  const plans: NonNullable<QuoteDoc["protection"]>["plans"] = [];
+  if (asPrinted && insured.length) {
+    const same = insured.length === guests.length && insured.every((g) => g.insurance === insured[0]!.insurance);
+    plans.push({ key: "included", name: W.linePlan, price: same ? `${usd(insured[0]!.insurance)} ${W.perPerson}` : insured.map((g) => `${properName(g.name)} ${usd(g.insurance)}`).join(" · "), note: W.inCruise, withTotal: null });
+  }
+  v.protection.forEach((p, i) => plans.push({
+    key: `p${i}`, name: p.name, price: `${usd(p.per_person)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
+    withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + p.per_person * count)) } : null,
+  }));
   return {
     heads: { cruise: W.cruise, travel: W.travel }, cabin: text(b.cabin?.["category"]), matrix, cruise,
     cruiseTotal: v.totals.cruise !== null ? { label: W.cruiseTotal, value: usd(v.totals.cruise) } : null,
-    travel, tripTotal: v.totals.travel !== null && v.totals.trip !== null ? { label: W.tripTotal, value: usd(v.totals.trip) } : null,
+    // the trip total shows whenever travel is priced, or protection is offered (the guest needs the figure the plans add to)
+    travel, tripTotal: (v.totals.travel !== null || plans.length > 0) && v.totals.trip !== null ? { label: W.tripTotal, value: usd(v.totals.trip) } : null,
+    protection: plans.length ? { head: W.protect, lede: W.protectLede, plans, own: W.own, none: W.none } : null,
   };
 }
 const priceKey = (iid: string) => `price:${iid}`;
@@ -782,6 +814,8 @@ function bookingView(b: BookingFile) {
     // the price the guest approves before the paperwork goes out
     price: storedPrice(b.reply.quote),
     guestPrices: storedGuestPrices(b.lead.form_data),
+    // travel protection Mark priced for this booking; the guest picks one on the quote page
+    protection: protectionPlans(b.lead.form_data),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
@@ -887,6 +921,21 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), extras } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
+    if (body["protection"] !== undefined) {
+      if (!Array.isArray(body["protection"]) || body["protection"].length > 8) return bad("The travel protection list is not valid.");
+      const plans: ProtectionPlan[] = [];
+      for (const r of body["protection"] as Array<Record<string, unknown>>) {
+        const name = text(r?.["name"], 120), per = money(r?.["per_person"] ?? null);
+        if (!name) return bad("Each travel protection plan needs a name.");
+        if (per === undefined || per === null || per <= 0) return bad(`The price per person of ${name} is not an amount.`);
+        plans.push({ name, per_person: cents(per), line: r["line"] === true });
+      }
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), protection: plans } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
     const again = await loadBooking(groupId, iid);
     return res.json(bookingView(again ?? b));
   } catch (err) {
@@ -982,7 +1031,7 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
       sent = ok ? "sent" : "failed";
     }
     const before = storedPrice(b.reply.quote);
-    const price: PriceState = { ...before, sent, sent_at: new Date().toISOString(), approved_at: null, approved_how: null, changes_open: false };
+    const price: PriceState = { ...before, sent, sent_at: new Date().toISOString(), approved_at: null, approved_how: null, changes_open: false, protection: null };
     const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price }, updated_at: new Date().toISOString() }).eq("id", iid);
     if (error) throw new Error(error.message);
     await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");
@@ -1040,7 +1089,7 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), businessPhone: BUSINESS.phone });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
   }
@@ -1067,12 +1116,38 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     };
     if (action === "book") {
       if (state === "approved" || state === "paperwork") return res.json({ success: true, state, already: true });
+      // Mark 2026-11-10: when the quote offers travel protection, the guest picks one (a plan, their own policy, or none) with their "Book It"
+      const offer = quoteDoc(b, "en").protection, stored = protectionPlans(b.lead.form_data);
+      let picked: PriceState["protection"] = null, protectNote = "";
+      if (offer) {
+        const key = typeof body["protection"] === "string" ? body["protection"] : "";
+        const plan = offer.plans.find((p) => p.key === key);
+        if (!plan && key !== "own" && key !== "none") return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija primero su protección de viaje, arriba." : "Pick your travel protection above first." });
+        picked = { key, label: plan ? `${plan.name}, ${plan.price}` : key === "own" ? "their own policy" : "no insurance" };
+        const typed = /^p\d+$/.test(key) ? stored[Number(key.slice(1))] : undefined;
+        const inPrice = offer.plans.some((p) => p.key === "included");
+        protectNote = ` Travel protection: ${picked.label}.`
+          + (inPrice && key !== "included" ? " The cruise line's quote has its protection plan in the price and they did not pick it: re-quote without it." : "")
+          + (typed?.line ? " Add the cruise line's protection plan when you book." : "");
+        // the pick goes on the file of everyone on the cabin, in the paperwork's own words, so the insurance step opens with it chosen
+        const choice = key === "own" ? "own" : key === "none" ? "decline" : key === "included" || typed?.line ? "line" : "quote";
+        const planText = choice === "quote" && typed ? planLabel({ name: typed.name, price_per_person: typed.per_person }) : choice === "line" ? text(group["line_protection"], 300) : null;
+        const { data: party, error: pe } = b.lead.cabin_id
+          ? await db().from("group_travelers").select("id, form_data").eq("cabin_id", b.lead.cabin_id)
+          : await db().from("group_travelers").select("id, form_data").eq("id", b.lead.id);
+        if (pe) throw new Error(pe.message);
+        for (const t of (party ?? []) as Row[]) {
+          const fd = (t["form_data"] && typeof t["form_data"] === "object" ? t["form_data"] : {}) as Record<string, any>;
+          const { error: ue } = await db().from("group_travelers").update({ form_data: { ...fd, insurance: { ...(fd["insurance"] ?? {}), choice, plan: planText, chosen_at: new Date().toISOString() } } }).eq("id", t["id"]);
+          if (ue) throw new Error(ue.message);
+        }
+      }
       const now = new Date().toISOString();
-      await save({ ...price, approved_at: now, approved_how: "guest", changes_open: false });
+      await save({ ...price, approved_at: now, approved_how: "guest", changes_open: false, protection: picked });
       res.json({ success: true, state: "approved" });
       void createAction({
         type: "lead", source_ref: `group-price-ok-${iid}`, title: `Price approved: book it · ${who}`, priority: "lead",
-        body: `${label} · ${who} tapped "Book It" on the price you sent. Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,
+        body: `${label} · ${who} tapped "Book It" on the price you sent.${protectNote} Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,
         buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}?book=${iid}#bookings` }],
       }).then(async (made) => { if (made.created) await resolveActionsForSource("lead", `group-price-change-${iid}`, "done"); })
         .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the price approval could not be put on the list"));

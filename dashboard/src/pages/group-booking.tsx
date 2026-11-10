@@ -19,6 +19,8 @@ type TripLine = { kind: string; direction: string | null; provider: string | nul
 type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
 const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, depart_time: null, arrive_time: null, return_depart_time: null, return_arrive_time: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
 type Extra = { name: string; total: string };
+// Mark 2026-11-10: travel protection priced for THIS booking (the cruise line's plan, Allianz plans): a price per person each. The guest picks one on the quote.
+type Plan = { name: string; per_person: string; line: boolean };
 // one guest's price lines exactly as the cruise line's quote prints them (Mark 2026-11-09: read the quote, assume nothing)
 type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
@@ -26,7 +28,8 @@ type Booking = {
   success: boolean; guest: { name: string; email: string | null };
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
-  price?: { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
+  protection?: Array<{ name: string; per_person: number; line: boolean }>;
+  price?: { protection?: { key: string; label: string } | null; sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
   carrier: null | {
@@ -63,6 +66,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const [trip, setTrip] = useState<TripLine[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
   const [guestPrices, setGuestPrices] = useState<GuestPrice[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   // Mark 2026-11-10: a button that cannot go ahead SAYS what has to be done first, in red beside it, when it is pressed. No silent grey buttons.
   const [stop, setStop] = useState<{ at: "price" | "paperwork"; text: string } | null>(null);
   const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" above, then press this again.';
@@ -75,12 +79,13 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setTrip(data.trip);
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setGuestPrices(data.guestPrices ?? []);
+    setPlans((data.protection ?? []).map((x) => ({ name: x.name, per_person: String(x.per_person), line: x.line })));
     setDirty(false);
     // Mark 2026-11-10: the quote's add-ons (the dining and drink packages) belong in the Cruise extras section. When the quote has been read with
     // add-ons and this booking has no extras saved yet, the section fills from the quote by itself (unsaved, for Mark to check), with no button to press.
     const read = data.carrier?.status === "ready" ? data.carrier.read : null;
     if (data.paperwork === "booking" && (data.extras ?? []).length === 0 && read && read.addons.length > 0) fillFromRead(true);
-  }, [data?.cabin, data?.trip, data?.extras, data?.carrier]);
+  }, [data?.cabin, data?.trip, data?.extras, data?.carrier, data?.protection]);
   // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
   const fillFromRead = (force = false) => {
     const r = data?.carrier?.status === "ready" ? data.carrier.read : null;
@@ -107,6 +112,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const setT = (i: number, k: keyof TripLine, v: string) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, [k]: v || null } : r))); setDirty(true); };
   const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null, ...(kind === "package" ? { pkg: { ...NO_PKG } } : {}) }]); setDirty(true); };
   const setP = (i: number, k: keyof Pkg, v: string | boolean | null) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, pkg: { ...NO_PKG, ...(r.pkg ?? {}), [k]: v === "" ? null : v } } : r))); setDirty(true); };
+  const setPl = (i: number, patch: Partial<Plan>) => { setPlans((x) => x.map((r, j) => (j === i ? { ...r, ...patch } : r))); setDirty(true); };
   const setX = (i: number, k: keyof Extra, v: string) => { setExtras((x) => x.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
   // the sums as typed, before saving: cabin fare + cruise extras = total cruise price; + travel = trip total
   const amount = (v: unknown) => { const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[$,\s]/g, "")); return Number.isFinite(n) ? n : 0; };
@@ -122,7 +128,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setBusy(true);
     try {
       const clean = (v: unknown) => (v === null || v === "" ? null : String(v).replace(/[$,\s]/g, ""));
-      const body: Record<string, unknown> = { guest_prices: guestPrices, trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })) };
+      const body: Record<string, unknown> = { guest_prices: guestPrices, trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })),
+        protection: plans.filter((x) => x.name.trim() || x.per_person.trim()).map((x) => ({ name: x.name.trim(), per_person: clean(x.per_person), line: x.line })) };
       // the cabin row keeps the whole cruise price: the cabin fare and the cruise line's extras together
       if (data.cabin) { const { fare, ...rest } = cabin; body["cabin"] = { ...rest, price_total: fare === "" && !extras.length ? "" : String(cruiseSum) }; }
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
@@ -293,6 +300,27 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
         </div>
       )}
 
+      {/* Mark 2026-11-10: insurance is priced on the QUOTE, not asked on the guest's choices page: each plan and its price per person go here, and the
+          guest picks one (or their own policy, or none) on the quote page before "Book It". */}
+      <div>
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+          <h4 className="text-sm font-semibold">Travel protection (the guest picks one on the quote)</h4>
+          {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", per_person: "", line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
+        </div>
+        {guestPrices.some((g) => g.insurance > 0) && <p className="text-sm text-muted-foreground">The cruise line's quote already has its protection plan in the price ({guestPrices.map((g) => `${g.name}: ${usd(g.insurance)}`).join("; ")}). It shows on the quote as printed; do not add it again here.</p>}
+        {plans.length === 0 && <p className="text-sm text-muted-foreground">No plan priced yet. Add the cruise line's plan and each Allianz plan with its price per person; with none here, the quote has no travel protection section.</p>}
+        <div className="space-y-2">
+          {plans.map((x, i) => (
+            <div key={i} className="grid grid-cols-[1fr_11rem_auto_auto] gap-2 items-end">
+              <Field label="Plan"><input className={input} placeholder="OneTrip Prime (Allianz)" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} /></Field>
+              <Field label="Quoted price per person ($)"><input className={input} inputMode="decimal" value={x.per_person} onChange={(e) => setPl(i, { per_person: e.target.value })} disabled={sent} /></Field>
+              <label className="text-sm flex items-center gap-1 pb-2"><input type="checkbox" checked={x.line} onChange={(e) => setPl(i, { line: e.target.checked })} disabled={sent} /> The cruise line's own plan</label>
+              {!sent && <button className={btn} aria-label="Remove this plan" onClick={() => { setPlans((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Flights, hotels, transfers and packages</h4>
@@ -428,7 +456,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
             <h4 className="text-sm font-semibold">Confirm the quote with {data.guest.name}</h4>
             <p className="text-sm text-muted-foreground">Email the quote above to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
             {approved ? (
-              <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Price approved {price?.approved_how === "mark" ? "(you recorded their yes)" : "by the guest (Book It)"} · {when(price?.approved_at)}. Book it, enter the confirmation numbers, then send the paperwork.</p>
+              <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Price approved {price?.approved_how === "mark" ? "(you recorded their yes)" : "by the guest (Book It)"} · {when(price?.approved_at)}. Book it, enter the confirmation numbers, then send the paperwork.{price?.protection ? ` Travel protection they picked: ${price.protection.label}.` : ""}</p>
             ) : price?.changes_open ? (
               <div className="text-sm text-amber-700">
                 <p className="font-semibold">The guest asked for changes · {when(price.changes[price.changes.length - 1]?.at)}:</p>

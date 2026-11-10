@@ -513,6 +513,8 @@ export interface QuoteDoc {
   cruiseTotal: { label: string; value: string } | null;
   travel: Array<{ title: string; value: string; details: string[] }>;
   tripTotal: { label: string; value: string } | null;
+  /** travel protection Mark priced for this booking (Mark 2026-11-10); the guest picks one on the quote page. null when none is offered. */
+  protection?: null | { head: string; lede: string; plans: Array<{ key: string; name: string; price: string; note: string | null; withTotal: { label: string; value: string } | null }>; own: string; none: string };
 }
 export interface PriceInput extends MailBase { doc: QuoteDoc; bookUrl: string; changesUrl: string }
 const PRICE = {
@@ -566,6 +568,12 @@ function quoteHtml(d: QuoteDoc): string {
       `<tr><td style="${cell}"><b>${esc(t.title)}</b>${t.details.map((x) => `<br><span style="font-size:18px">${esc(x)}</span>`).join("")}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(t.value)}</td></tr>`).join("") + "</table>");
   }
   if (d.tripTotal) parts.push(total(d.tripTotal, true));
+  if (d.protection) {
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.protection.head)}` + d.protection.plans.map((p) =>
+      `<tr><td style="${cell}"><b>${esc(p.name)}</b>${p.note ? `<br><span style="font-size:18px">${esc(p.note)}</span>` : ""}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(p.price)}</td></tr>`).join("")
+      + `<tr><td colspan="2" style="${cell}">${esc(d.protection.own)}</td></tr><tr><td colspan="2" style="${cell};border-bottom:0">${esc(d.protection.none)}</td></tr></table>`
+      + `<p style="margin:0 0 18px;${Q_FONT};font-size:18px;line-height:1.45">${esc(d.protection.lede)}</p>`);
+  }
   return parts.join("\n    ");
 }
 function quoteText(d: QuoteDoc): string {
@@ -577,6 +585,7 @@ function quoteText(d: QuoteDoc): string {
   if (d.travel.length) out.push("", d.heads.travel.toUpperCase());
   for (const t of d.travel) out.push(`${t.title}: ${t.value}`, ...t.details.map((x) => `  ${x}`));
   if (d.tripTotal) out.push("", `${d.tripTotal.label}: ${d.tripTotal.value}`);
+  if (d.protection) out.push("", d.protection.head.toUpperCase(), ...d.protection.plans.map((p) => `${p.name}: ${p.price}${p.note ? ` (${p.note})` : ""}`), d.protection.own, d.protection.none, d.protection.lede);
   return out.join("\n");
 }
 

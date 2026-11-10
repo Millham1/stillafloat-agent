@@ -1034,8 +1034,29 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   // Mark re-prices and sends it again: the request is closed, the price is open again, and the guest books it
   const secondPrice = await call("POST", priceMail, { token: true });
   assert.deepEqual([secondPrice.json["price"]["changes_open"], secondPrice.json["price"]["approved_at"], mails.length], [false, null, 2]);
-  const booked = await call("POST", pricePage, { body: { action: "book" } });
+  // Mark 2026-11-10 ("create an insurance section on the quote… add Allianz too"): the plans Mark priced for THIS booking, each per person, sit on the
+  // quote; the guest picks one (or their own policy, or none) with "Book It"; the pick goes to Mark's list and onto the cabin's paperwork files.
+  assert.equal((await call("GET", pricePage)).json["doc"]["protection"], null, "no plan priced: no travel protection on the quote, and Book It asks nothing more");
+  for (const bad of ["x", [{ name: "", per_person: "10" }], [{ name: "OneTrip Prime", per_person: "abc" }], [{ name: "OneTrip Prime", per_person: "0" }]]) assert.equal((await call("PUT", booking, { token: true, body: { protection: bad } })).status, 400, JSON.stringify(bad));
+  const planned = await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } });
+  assert.deepEqual(planned.json["protection"], [{ name: "MSC Cruise Protection", per_person: 99, line: true }, { name: "OneTrip Prime (Allianz)", per_person: 129.5, line: false }]);
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the plans keeps the travel");
+  const offer = (await call("GET", pricePage)).json["doc"]["protection"];
+  assert.deepEqual([offer["head"], offer["own"], offer["none"]], ["Travel protection", "I have my own policy", "No insurance for us"]);
+  assert.deepEqual(offer["plans"], [
+    { key: "p0", name: "MSC Cruise Protection", price: "$99.00 per person", note: "the cruise line's own plan", withTotal: { label: "Trip total with MSC Cruise Protection", value: "$1,623.98" } },
+    { key: "p1", name: "OneTrip Prime (Allianz)", price: "$129.50 per person", note: null, withTotal: { label: "Trip total with OneTrip Prime (Allianz)", value: "$1,684.98" } },
+  ], "each plan with its price per person and the trip total with it for the party of two");
+  const protMail = String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]);
+  for (const piece of ["Travel protection", "MSC Cruise Protection", "$99.00 per person", "OneTrip Prime (Allianz)", "$129.50 per person", "I have my own policy", "No insurance for us", "Pick one on your quote page before you tap Book It."]) assert.ok(protMail.includes(piece), `the quote email says ${piece}`);
+  const noPick = await call("POST", pricePage, { body: { action: "book" } });
+  assert.deepEqual([noPick.status, noPick.json["field"], noPick.json["error"]], [400, "protection", "Pick your travel protection above first."], "Book It says what to do first");
+  assert.equal((await call("POST", pricePage, { body: { action: "book", protection: "p9" } })).status, 400, "a plan that is not on the quote is not a pick");
+  const booked = await call("POST", pricePage, { body: { action: "book", protection: "p1" } });
   assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
+  assert.deepEqual((await call("GET", booking, { token: true })).json["price"]["protection"], { key: "p1", label: "OneTrip Prime (Allianz), $129.50 per person" });
+  assert.equal((await call("GET", pricePage)).json["protection"], "p1", "the page shows the pick afterwards");
+  for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["choice"], t["form_data"]["insurance"]["plan"]], ["quote", "OneTrip Prime (Allianz): $129.50 per person"], "the pick is on every traveler of the cabin, in the paperwork's own words");
   assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
   assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
   // Mark 2026-11-09 ("read the quote, not make assumptions"): when the quote prices each guest apart and those lines are on the file, the guest reads

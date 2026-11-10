@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261110a">
+<link rel="stylesheet" href="/css/price-page.css?v=20261110b">
 </head>
 <body>
 <div class="wrap">
@@ -86,7 +86,8 @@
     done_changes:'¡Recibido! Mark lo cotiza de nuevo y le envía el precio nuevo por correo.',
     done_paper:'Sus documentos ya van en camino a su correo.',
     after:'¿Preguntas? Llame o escriba a Mark al ' + PHONE + '.',
-    fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.'
+    fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
+    pr_q:'¿Qué protección de viaje desea?', pr_need:'Elija primero su protección de viaje, arriba.', pr_yours:'Su protección de viaje: {pick}.'
   } : {
     title:'Your price', plaque:'Your price', loading:'One moment…',
     bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
@@ -99,7 +100,8 @@
     done_changes:'Got it! Mark re-prices it and emails you the new price.',
     done_paper:'Your paperwork is already on its way to your email.',
     after:'Questions? Call or text Mark at ' + PHONE + '.',
-    fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.'
+    fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.',
+    pr_q:'Which travel protection would you like?', pr_need:'Pick your travel protection above first.', pr_yours:'Your travel protection: {pick}.'
   };
 
   function $(id){ return document.getElementById(id); }
@@ -116,12 +118,14 @@
   if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
   var API = '/api/price-confirm/' + reply + '/' + key;
   var busy = false;
+  var prot = null, pick = '', curState = '';   // the travel protection on offer (Mark 2026-11-10) and the one the guest picked
 
   function draw(d){
     state.textContent = '';
     $('p-label').textContent = d.label || '';
     $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
     $('p-lede').textContent = T.lede;
+    prot = (d.doc || {}).protection || null; pick = d.protection || '';
     $('p-lines').innerHTML = quoteHtml(d.doc || {});
     $('p-note').textContent = T.note;
     show('p-price');
@@ -146,10 +150,39 @@
       q.travel.forEach(function(t){ h += '<div class="q-trip"><div><b>' + esc(t.title) + '</b>' + t.details.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('') + '</div><b>' + esc(t.value) + '</b></div>'; });
     }
     if(q.tripTotal) h += '<div class="q-total big"><span>' + esc(q.tripTotal.label) + '</span><span>' + esc(q.tripTotal.value) + '</span></div>';
+    if(q.protection) h += '<div class="q-bar">' + esc(q.protection.head) + '</div><div id="p-prot"></div>';
     return h;
+  }
+  // Travel protection (Mark 2026-11-10): each plan Mark priced, its price per person, then "my own policy" and "no insurance". While the quote is
+  // open each is a pill and one must be picked before Book It goes through; the plan picked shows its own trip total. Afterwards the pick is one line.
+  function protLabel(k){
+    if(!prot) return '';
+    if(k === 'own') return prot.own; if(k === 'none') return prot.none;
+    for(var i = 0; i < prot.plans.length; i++) if(prot.plans[i].key === k) return prot.plans[i].name + ' · ' + prot.plans[i].price;
+    return '';
+  }
+  function drawProt(open){
+    var box = $('p-prot'); if(!box || !prot) return;
+    var h = '';
+    if(open){
+      h += '<p class="q-sub">' + esc(T.pr_q) + '</p><div class="q-opts">';
+      prot.plans.forEach(function(p){
+        h += '<button type="button" class="q-opt' + (pick === p.key ? ' on' : '') + '" data-prot="' + esc(p.key) + '" aria-pressed="' + (pick === p.key ? 'true' : 'false') + '"><b>' + esc(p.name) + '</b><span>' + esc(p.price) + (p.note ? ' · ' + esc(p.note) : '') + '</span></button>';
+      });
+      [['own', prot.own], ['none', prot.none]].forEach(function(o){
+        h += '<button type="button" class="q-opt' + (pick === o[0] ? ' on' : '') + '" data-prot="' + o[0] + '" aria-pressed="' + (pick === o[0] ? 'true' : 'false') + '"><b>' + esc(o[1]) + '</b></button>';
+      });
+      h += '</div>';
+      prot.plans.forEach(function(p){ if(pick === p.key && p.withTotal) h += '<div class="q-total big"><span>' + esc(p.withTotal.label) + '</span><span>' + esc(p.withTotal.value) + '</span></div>'; });
+    } else {
+      prot.plans.forEach(function(p){ h += '<div class="q-trip"><div><b>' + esc(p.name) + '</b>' + (p.note ? '<span>' + esc(p.note) + '</span>' : '') + '</div><b>' + esc(p.price) + '</b></div>'; });
+      if(pick && protLabel(pick)) h += '<p class="q-sub">' + esc(T.pr_yours.replace('{pick}', protLabel(pick))) + '</p>';
+    }
+    box.innerHTML = h;
   }
   function drawState(s){
     var open = s === 'open';
+    curState = s; drawProt(open);
     show('p-ask', open);
     $('p-book').textContent = busy ? T.booking : T.book;
     $('p-changes').textContent = T.changes;
@@ -172,12 +205,19 @@
   // "Book It": one tap on this page (the email's button opens the page; nothing is approved by a link being opened)
   $('p-book').addEventListener('click', function(){
     if(busy) return;
+    // a button that cannot go ahead says what to do first (Mark 2026-11-10)
+    if(prot && !pick){ var need = $('p-err'); need.textContent = T.pr_need; need.hidden = false; var pb = $('p-prot'); if(pb && pb.scrollIntoView) pb.scrollIntoView({ block: 'center' }); return; }
     busy = true; show('p-err', false); drawState('open');
-    post({ action: 'book', website: '' }).then(function(x){
+    post({ action: 'book', protection: pick, website: '' }).then(function(x){
       busy = false;
       if(x.body && x.body.success){ drawState(x.body.state || 'approved'); return; }
       var err = $('p-err'); err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false; drawState('open');
     }).catch(function(){ busy = false; var err = $('p-err'); err.textContent = T.fail; err.hidden = false; drawState('open'); });
+  });
+  $('p-lines').addEventListener('click', function(e){
+    var el = e && e.target; while(el && el !== this && !(el.getAttribute && el.getAttribute('data-prot'))) el = el.parentNode;
+    if(!el || el === this || curState !== 'open' || busy) return;
+    pick = el.getAttribute('data-prot'); show('p-err', false); drawProt(true);
   });
   $('p-changes').addEventListener('click', openModal);
   $('p-modal-close').addEventListener('click', closeModal);

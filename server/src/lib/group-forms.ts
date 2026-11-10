@@ -1116,7 +1116,15 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
   // Mark 2026-10-30: "they should be able to select the policy/price here" — the box's own quote for this traveler first; until it
   // has one, the plans Mark quoted for the sailing on the group file, so the client always has prices to pick from on the page.
   const file = plansFromText(loaded.group.insurance_plans);
-  const quote = q?.status === "ready"
+  // Mark 2026-11-10: the plans he priced for THIS booking on the booking card (the lead's file, trip.protection; the ones that are not the cruise
+  // line's own) come before everything else: they are what the guest saw, and picked from, on the quote.
+  const bookedRaw: unknown = rowOf(rowOf(loaded.traveler?.form_data)["trip"])["protection"];
+  const booked = (Array.isArray(bookedRaw) ? bookedRaw : [])
+    .filter((r): r is Row => !!r && typeof r === "object" && r["line"] !== true && typeof r["name"] === "string" && !!r["name"].trim() && typeof r["per_person"] === "number" && r["per_person"] > 0)
+    .map((r) => ({ name: String(r["name"]).trim(), price_per_person: r["per_person"] as number }));
+  const quote = booked.length
+    ? { status: "ready", source: "booking", plans: booked, quoted_at: null, note: QUOTE_NOTE, trip_cost: null }
+    : q?.status === "ready"
     ? { status: "ready", source: "portal", plans: q.plans, quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
     : file.length
       ? { status: "ready", source: "file", plans: file, quoted_at: null, note: QUOTE_NOTE, trip_cost: null }
