@@ -750,7 +750,7 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
 
   // An OPTIONED booking prints when the hold ends ("Option valid until 6pm EST on: November 12, 2026"): that is the deposit's deadline, never the final
   // payment (Mark 2026-11-10: "the confirmation shows a deposit date of 11/12"; the reader had filed it as the final payment and then warned about it).
-  const option = flat.match(/Option valid until\s*([^:]{0,30}?)\s*on:?\s*([A-Za-z]+\.? \d{1,2},? \d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  const option = flat.match(/Option valid until\s*([^:]{0,30}?)\s*on\s*:?\s*([A-Za-z]+\.? \d{1,2},? \d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   const optionDate = option ? normalizeDate(option[2]!) : null;
   if (optionDate) {
     out.option_until = optionDate;
