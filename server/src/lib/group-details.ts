@@ -547,7 +547,7 @@ function quoteHtml(d: QuoteDoc): string {
   const total = (t: { label: string; value: string }, big = false) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 ${big ? 18 : 22}px;background:${big ? "#f5c33b" : "#e9f0fa"};border-radius:10px"><tr>
       <td style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 20 : 18}px;font-weight:bold">${esc(t.label)}</td>
       <td align="right" style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 22 : 18}px;font-weight:bold;white-space:nowrap">${esc(t.value)}</td></tr></table>`;
-  const cell = `padding:9px 12px;border-bottom:1px solid #d5dfee;${Q_FONT};font-size:17px;line-height:1.35`;
+  const cell = `padding:9px 12px;border-bottom:1px solid #d5dfee;${Q_FONT};font-size:18px;line-height:1.35`;
   const parts: string[] = [];
   let cruise = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.cruise, d.cabin ?? "")}`;
   if (d.matrix) {
@@ -558,12 +558,12 @@ function quoteHtml(d: QuoteDoc): string {
   }
   parts.push(cruise + "</table>");
   for (const a of d.matrix?.addons ?? []) {
-    parts.push(`<p style="margin:0 0 4px;${Q_FONT};font-size:16px;font-weight:bold">${esc(a.title)}</p><ul style="margin:0 0 12px;padding-left:22px;${Q_FONT};font-size:16px;line-height:1.5">${a.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`);
+    parts.push(`<p style="margin:0 0 4px;${Q_FONT};font-size:18px;font-weight:bold">${esc(a.title)}</p><ul style="margin:0 0 12px;padding-left:22px;${Q_FONT};font-size:18px;line-height:1.5">${a.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`);
   }
   if (d.cruiseTotal) parts.push(total(d.cruiseTotal));
   if (d.travel.length) {
     parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.travel)}` + d.travel.map((t) =>
-      `<tr><td style="${cell}"><b>${esc(t.title)}</b>${t.details.map((x) => `<br><span style="font-size:16px">${esc(x)}</span>`).join("")}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(t.value)}</td></tr>`).join("") + "</table>");
+      `<tr><td style="${cell}"><b>${esc(t.title)}</b>${t.details.map((x) => `<br><span style="font-size:18px">${esc(x)}</span>`).join("")}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(t.value)}</td></tr>`).join("") + "</table>");
   }
   if (d.tripTotal) parts.push(total(d.tripTotal, true));
   return parts.join("\n    ");
@@ -588,7 +588,7 @@ export function priceEmail(i: PriceInput): { subject: string; html: string; text
   const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:12px 22px;text-decoration:none;font-size:18px;font-family:Arial,Helvetica,sans-serif;margin:0 8px 8px 0";
   const buttons = `<a href="${esc(i.bookUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.book)}</a>`
     + `<a href="${esc(i.changesUrl)}" style="${pill};background:#f7fbff;color:#07183f;border:2px solid #07183f">${esc(T.changes)}</a>`;
-  const body = [para(esc(T.hi(first))), para(esc(T.p1)), quoteHtml(i.doc), para(esc(T.p2)), para(buttons), para(`<span style="font-size:16px">${esc(T.note)}</span>`), para(esc(T.close))].join("\n    ");
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), quoteHtml(i.doc), para(esc(T.p2)), para(buttons), para(esc(T.note)), para(esc(T.close))].join("\n    ");
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label), { sign, cornerstone: true }), text };
 }
 
