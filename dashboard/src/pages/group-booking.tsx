@@ -16,8 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; requested_at: string; completed_at: string | null };
 type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null; pkg?: Pkg | null };
 // A package (air and hotel sold as one): the air and the hotel each have their own fields; the line's price is the package price.
-type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
-const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
+type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
+const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, depart_time: null, arrive_time: null, return_depart_time: null, return_arrive_time: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
 type Extra = { name: string; total: string };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
@@ -246,18 +246,22 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
                   <Field label="Class"><input className={input} value={r.pkg?.air_class ?? ""} onChange={(e) => setP(i, "air_class", e.target.value)} disabled={sent} /></Field>
                 </div>
                 <p className="text-xs text-muted-foreground">Going</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <Field label="Flight #"><input className={input} value={r.pkg?.flights ?? ""} onChange={(e) => setP(i, "flights", e.target.value)} disabled={sent} /></Field>
                   <Field label="From"><input className={input} value={r.from_place ?? ""} onChange={(e) => setT(i, "from_place", e.target.value)} disabled={sent} /></Field>
                   <Field label="To"><input className={input} value={r.to_place ?? ""} onChange={(e) => setT(i, "to_place", e.target.value)} disabled={sent} /></Field>
                   <Field label="Date"><input type="date" className={input} value={day(r.starts_at)} onChange={(e) => setT(i, "starts_at", e.target.value)} disabled={sent} /></Field>
+                  <Field label="Departs (time)"><input type="time" className={input} value={r.pkg?.depart_time ?? ""} onChange={(e) => setP(i, "depart_time", e.target.value)} disabled={sent} /></Field>
+                  <Field label="Arrives (time)"><input type="time" className={input} value={r.pkg?.arrive_time ?? ""} onChange={(e) => setP(i, "arrive_time", e.target.value)} disabled={sent} /></Field>
                 </div>
                 <p className="text-xs text-muted-foreground">Coming back</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <Field label="Flight #"><input className={input} value={r.pkg?.return_flights ?? ""} onChange={(e) => setP(i, "return_flights", e.target.value)} disabled={sent} /></Field>
                   <Field label="From"><input className={input} value={r.pkg?.return_from ?? ""} onChange={(e) => setP(i, "return_from", e.target.value)} disabled={sent} /></Field>
                   <Field label="To"><input className={input} value={r.pkg?.return_to ?? ""} onChange={(e) => setP(i, "return_to", e.target.value)} disabled={sent} /></Field>
                   <Field label="Date"><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
+                  <Field label="Departs (time)"><input type="time" className={input} value={r.pkg?.return_depart_time ?? ""} onChange={(e) => setP(i, "return_depart_time", e.target.value)} disabled={sent} /></Field>
+                  <Field label="Arrives (time)"><input type="time" className={input} value={r.pkg?.return_arrive_time ?? ""} onChange={(e) => setP(i, "return_arrive_time", e.target.value)} disabled={sent} /></Field>
                 </div>
               </div>
               <div className="space-y-3">

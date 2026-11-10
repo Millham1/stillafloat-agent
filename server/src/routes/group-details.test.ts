@@ -982,11 +982,11 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   // Mark 2026-11-09: a PACKAGE (air and hotel sold as one) has its own fields: the air (carrier, flight numbers, class), the hotel (beds, breakfast)
   // and ONE quoted price; the line is written from them, so the booking confirmation and the agreement print what he entered
   const pack = await call("PUT", booking, { token: true, body: { trip: [{ kind: "package", direction: "pre", provider: "Delta", from_place: "RDU", to_place: "MCO", starts_at: "2027-05-08", ends_at: "2027-05-16", confirmation: "PKG77", price: "910.00",
-    pkg: { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true, junk: "x" } }] } });
+    pkg: { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", depart_time: "08:15", arrive_time: "10:05", return_depart_time: "17:30", return_arrive_time: "25:99", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true, junk: "x" } }] } });
   assert.equal(pack.status, 200);
   const packLine = (pack.json["trip"] as Array<Record<string, any>>)[0]!;
-  assert.equal(packLine["label"], "Before the cruise: package, air (Delta, Main Cabin, out: flight DL 1234 RDU to MCO 2027-05-08, back: flight DL 5678 MCO to RDU 2027-05-16) and hotel (Hyatt Regency, Orlando, 2027-05-08 to 2027-05-09, 2 beds, breakfast included)");
-  assert.deepEqual(packLine["pkg"], { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true });
+  assert.equal(packLine["label"], "Before the cruise: package, air (Delta, Main Cabin, out: flight DL 1234 RDU to MCO 2027-05-08 departs 08:15 arrives 10:05, back: flight DL 5678 MCO to RDU 2027-05-16 departs 17:30) and hotel (Hyatt Regency, Orlando, 2027-05-08 to 2027-05-09, 2 beds, breakfast included)");
+  assert.deepEqual(packLine["pkg"], { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", depart_time: "08:15", arrive_time: "10:05", return_depart_time: "17:30", return_arrive_time: null, air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true });
   assert.equal(packLine["price"], 910);
   assert.equal((pack.json["totals"] as Record<string, number>)["travel"], 910);
   // put the flight back for the lines below
