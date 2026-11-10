@@ -650,6 +650,8 @@ function carrierView(intake: Row | null) {
       inclusions: list(x["guest_inclusions"]), warnings: list(x["warnings"]),
       // each guest's lines as the quote prints them, when it prices the guests apart
       guests: guestPriceRows(x["guest_prices"]),
+      // an optioned booking: the day (and hour) the hold ends unless the deposit is paid
+      option_until: text(x["option_until"], 10), option_until_time: text(x["option_until_time"], 30),
     } : null,
   };
 }

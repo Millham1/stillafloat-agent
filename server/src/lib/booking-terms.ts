@@ -748,6 +748,18 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     dateField("recall_date", "The date unsold cabins go back");
   }
 
+  // An OPTIONED booking prints when the hold ends ("Option valid until 6pm EST on: November 12, 2026"): that is the deposit's deadline, never the final
+  // payment (Mark 2026-11-10: "the confirmation shows a deposit date of 11/12"; the reader had filed it as the final payment and then warned about it).
+  const option = flat.match(/Option valid until\s*([^:]{0,30}?)\s*on:?\s*([A-Za-z]+\.? \d{1,2},? \d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  const optionDate = option ? normalizeDate(option[2]!) : null;
+  if (optionDate) {
+    out.option_until = optionDate;
+    out.option_until_time = option![1]!.trim() || null;
+    if (out.final_payment_due === optionDate) out.final_payment_due = null;
+    if (!out.deposit_due) out.deposit_due = optionDate;
+  }
+  // "0 days before sailing" is not a final payment rule: a read of 0 is no rule at all
+  if (out.final_payment_days_before === 0) out.final_payment_days_before = null;
   const days = found.finalPaymentDays ?? out.final_payment_days_before;
   if (found.finalPaymentDays !== null && out.final_payment_days_before !== null && found.finalPaymentDays !== out.final_payment_days_before) {
     warnings.push(`Final payment: the document says ${found.finalPaymentDays} days before sailing; the reader said ${out.final_payment_days_before}. ${found.finalPaymentDays} was used.`);

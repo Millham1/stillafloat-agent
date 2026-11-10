@@ -78,6 +78,9 @@ export interface BookingExtraction {
   addons?: AddOn[];
   /** A confirmation that prices each guest apart (MSC's confirmation page): every guest's own lines exactly as printed, never summed or split here. */
   guest_prices?: GuestPrice[];
+  /** An optioned booking (MSC "Option valid until 6pm EST on: November 12, 2026"): the day the hold ends unless the deposit is paid, and the hour as printed. */
+  option_until?: string | null;
+  option_until_time?: string | null;
   /** The discount printed against the cabin fare on a single booking's confirmation, per guest. */
   discount_per_person?: number | null;
   organizer_name: string | null;

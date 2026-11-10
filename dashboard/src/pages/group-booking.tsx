@@ -31,7 +31,7 @@ type Booking = {
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
   carrier: null | {
     id: string; filename: string; status: string; error: string | null;
-    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[]; guests?: GuestPrice[] };
+    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[]; guests?: GuestPrice[]; option_until?: string | null; option_until_time?: string | null };
   };
   signed: null | { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> };
   completedAt: string | null; confirmWith: string[]; flexpay: null | { call: null | { start: string; whenText: string; meetLink: string | null } };
@@ -226,6 +226,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
                 </div>
               ) : data.carrier.read.addons.length > 0 && <p><span className="text-muted-foreground">Paid add-ons on the quote:</span> {data.carrier.read.addons.map((a) => `${a.name} ${usd(a.total)}`).join(" · ")}</p>}
               {data.carrier.read.inclusions.length > 0 && <p><span className="text-muted-foreground">Included:</span> {data.carrier.read.inclusions.join(" · ")}</p>}
+              {data.carrier.read.option_until && <p><span className="text-muted-foreground">Option held until:</span> <b>{new Date(`${data.carrier.read.option_until}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}{data.carrier.read.option_until_time ? `, ${data.carrier.read.option_until_time}` : ""}</b>. The deposit is due by then, or the cruise line releases the cabin.</p>}
               {data.carrier.read.warnings.map((w) => <p key={w} className="text-amber-700 flex items-start gap-1"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {w}</p>)}
             </div>
           )}

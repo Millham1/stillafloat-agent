@@ -1086,7 +1086,7 @@ test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking c
   assert.deepEqual([view.json["carrier"]["filename"], view.json["carrier"]["status"]], ["msc quote.pdf", "ready"]);
   assert.deepEqual(view.json["carrier"]["read"], {
     booking_number: "MSC-778899", cabin_num: "12045", category: "Balcony Aurea", price_total: 1453.58, booking_total: 1453.58, deposit_amount: 100,
-    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [], guests: [],
+    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [], guests: [], option_until: null, option_until_time: null,
   });
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] ?? null, null, "nothing is saved until Mark has checked it and saved");
   const g = await call("GET", `/group-details/${LINK}`);
