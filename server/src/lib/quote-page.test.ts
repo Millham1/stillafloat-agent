@@ -211,7 +211,9 @@ test("the page opens on the choices once the names are in: the heading, the lock
   assert.ok(p.el("d-qq").innerHTML.includes("Pick what you want added. Mark prices flights, hotel and transfers with your final quote."), "the travel note says why there is no price");
   assert.deepEqual(pills.filter((x) => x.g.startsWith("need-")).map((x) => x.g + ":" + x.v), ["need-hotel:yes", "need-hotel:no", "need-transfer:yes", "need-transfer:no"], "no hotel or transfer on offer: a yes/no each; the flight has its offer");
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "true", "dim until every question is answered");
-  assert.equal(p.el("d-agree-note").textContent, "Answer every question above and the button lights up.");
+  // Mark 2026-11-09: the note names the questions still open, so the guest sees what stops it from going through
+  assert.equal(p.el("d-agree-note").textContent, "Still to answer before this can go to Mark: Would you like to apply for FlexPay? · Add a drink package? · Travel insurance? · Do you need a hotel the night before? · Do you need transfers?");
+  assert.equal(p.el("d-agree-note").className, "small center need");
   assert.equal(p.els.has("d-quote"), false, "no price block (Mark 2026-11-08)");
   assert.equal(p.sent.length, 0, "nothing is sent before every answer is in");
   // the party in words: one, three, four

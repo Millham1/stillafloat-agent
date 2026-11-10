@@ -31,6 +31,8 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .panel h2{font-size:30px;line-height:1.1;color:var(--ink);margin-bottom:6px}
 .panel p{margin:0 0 10px;font-size:19px;color:var(--ink)}
 .panel .small{font-size:16px;color:var(--muted)}
+.panel .small.need{font-weight:700;color:#8a1c1c}
+.panel .q.need{color:#8a1c1c}
 .center{text-align:center}
 .field{margin:12px 0 0}
 .field label{display:block;font-size:16px;font-weight:700;color:var(--muted);margin-bottom:4px}
