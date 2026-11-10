@@ -184,8 +184,11 @@ export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv
   const { default: puppeteer } = await import("puppeteer-core");
   const browser = await puppeteer.launch({ executablePath: env.chromePath, headless: true, args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--window-size=1280,1000"] });
   let at = "opening the sign-in page";
+  let shot: (() => Promise<void>) | null = null;
   try {
     const page = await browser.newPage();
+    // for running it down by hand: ALLIANZ_DEBUG_DIR=<folder> keeps a picture of the screen where it stopped (never set on a box)
+    shot = async () => { const dir = process.env["ALLIANZ_DEBUG_DIR"]; if (dir) await page.screenshot({ path: `${dir}/allianz-stopped.png`, fullPage: true }).catch(() => undefined); };
     await page.setViewport({ width: 1280, height: 1000 });
     page.setDefaultTimeout(45_000);
     await page.goto(AGENTMAX_URL, { waitUntil: "networkidle2" });
@@ -200,13 +203,22 @@ export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv
     await page.select(S.state, input.state);
     await page.click(S.tripCost, { clickCount: 3 });
     await page.type(S.tripCost, input.total_trip_cost.toFixed(2));
-    await page.click(S.ages);
+    // the ages box opens a pop-up with one box a traveler; a first click can land before the form is ready, so it is tried a few times
+    at = "opening the traveler ages pop-up";
+    let opened = false;
+    for (let attempt = 0; attempt < 4 && !opened; attempt++) {
+      if (attempt % 2 === 0) await page.click(S.ages); else await page.$eval(S.ages, (el) => { (el as unknown as { focus(): void; click(): void }).focus(); (el as unknown as { click(): void }).click(); });
+      opened = await page.waitForSelector(S.age(0), { visible: true, timeout: 4_000 }).then(() => true, () => false);
+    }
+    if (!opened) throw new Error("the traveler ages pop-up did not open");
+    at = "typing the traveler ages";
     for (const [i, age] of input.ages.entries()) {
       if (i > 0) await page.click(S.addTraveler);
-      await page.waitForSelector(S.age(i), { visible: true });
+      await page.waitForSelector(S.age(i), { visible: true, timeout: 8_000 });
       await page.type(S.age(i), String(age));
     }
     await page.click(S.agesDone);
+    at = "typing the dates";
     for (const [sel, ymd] of [[S.depart, input.depart_date], [S.back, input.return_date], [S.deposit, input.deposit_date]] as const) {
       await page.click(sel, { clickCount: 3 });
       await page.type(sel, usDate(ymd));
@@ -225,6 +237,7 @@ export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv
     const plans = rows.map((r) => tripPlanFrom(r.name, r.price)).filter((p): p is TripPlan => !!p);
     return plans.length ? { status: "ready", plans } : { status: "unavailable", reason: "Allianz's site showed no plan with a price" };
   } catch (err) {
+    if (shot) await shot();
     return { status: "unavailable", reason: `Allianz's site could not be quoted while ${at}: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}` };
   } finally {
     await browser.close().catch(() => undefined);
