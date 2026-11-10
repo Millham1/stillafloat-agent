@@ -196,9 +196,9 @@ test("both pages (English and Spanish) are the same page: header, hero, welcome,
   assert.match(script("en"), /cabin:'Your cabin'/); assert.match(script("es"), /cabin:'Su cabina'/);
   assert.match(script("en"), /welcome_h:'Welcome!'/); assert.match(script("es"), /welcome_h:'¡Bienvenidos!'/);
   // the ask panel's words, from the approved design
-  assert.match(script("en"), /ask_h:"You tapped… so let's make it official!"/);
-  assert.match(script("en"), /ask_p:"Tell us who's coming and how to reach you… that's all it takes\. Nothing to pay, nothing to sign, and Mark takes it from there!"/);
-  assert.match(script("es"), /ask_h:'Usted tocó… ¡así que hagámoslo oficial!'/);
+  assert.match(script("en"), /ask_h:"Let's get going!"/);
+  assert.match(script("en"), /ask_p:"Tell us who's coming and how to reach you… that's all it takes\. Nothing to pay, nothing to sign yet, and Mark takes it from there!"/);
+  assert.match(script("es"), /ask_h:'¡Vamos allá!'/);
 });
 
 test("the header is the logo and the language link only: no site menu, and nothing about the ship rating, the advisor or Cornerstone is on either page", () => {

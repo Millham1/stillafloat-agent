@@ -642,7 +642,22 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     }
     return checked;
   });
-  if ((out.addons.length || discounted) && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
+  // A confirmation that names its add-ons in a list and prices them as ONE "Add Ons" amount per guest (MSC's confirmation page; Mark 2026-11-09: the
+  // reader put that one amount on each of three add-ons). The names have no price of their own, so they are one extra: every name, the per-guest
+  // amount, once per guest. Only when every add-on's read price IS a printed "Add Ons" amount; an add-on with its own printed price is left alone.
+  const perGuestAddOns = [...text.matchAll(/add[\s-]?ons\s+\$\s*([\d,]+\.\d{2})/gi)].map((m) => Number(m[1]!.replace(/,/g, ""))).filter((n) => n > 0);
+  const bundled = perGuestAddOns.length > 0 && out.addons.length > 0 && out.addons.every((x) => perGuestAddOns.some((n) => eq(n, x.price)));
+  if (bundled) {
+    const total = round2(perGuestAddOns.reduce((n, x) => n + x, 0));
+    const includes = out.addons.flatMap((x) => x.includes ?? []);
+    out.addons = [{ name: out.addons.map((x) => x.name).join(", "), price: perGuestAddOns[0]!, qty: perGuestAddOns.length, total, ...(includes.length ? { includes } : {}) }];
+  }
+  if (bundled && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
+    // each guest's lines are printed apart here: the cruise price (and its taxes) once per guest, plus the add-ons, is the booking total
+    const c = out.cabin_categories[0]!, n = perGuestAddOns.length, addonSum = out.addons[0]!.total;
+    const bare = round2(n * c.price_per_person! + addonSum), taxed = round2(n * (c.price_per_person! + (c.taxes ?? 0)) + addonSum);
+    if (!eq(bare, out.total_price) && !eq(taxed, out.total_price)) warnings.push(`The cruise price ${c.price_per_person} and taxes ${c.taxes ?? 0} for ${n} guest(s) plus the add-ons ${addonSum} is ${taxed}, but the total booking amount was read as ${out.total_price}. Check it against the PDF.`);
+  } else if ((out.addons.length || discounted) && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
     const addonSum = round2(out.addons.reduce((n, a) => n + a.total, 0)), cab = out.cabin_categories[0]!.price_per_person!;
     if (!eq(cab + addonSum, out.total_price)) warnings.push(`The cabin ${cab} plus the add-ons ${addonSum} is ${round2(cab + addonSum)}, but the total booking amount was read as ${out.total_price}. Check it against the PDF.`);
   }

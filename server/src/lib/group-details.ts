@@ -465,6 +465,9 @@ interface MailBase {
   publicSite: string;
 }
 
+/** The Seller of Travel registrations: printed under the Cornerstone logo wherever it shows (Mark 2026-11-09). */
+export const SELLER_OF_TRAVEL = "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620";
+
 /** The yellow, card-on-navy frame of both emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line. `body` is already escaped html. */
 function mailFrame(i: MailBase, title: string, body: string, footer: string): string {
   const logo = `${site(i.publicSite)}${BUSINESS.logoPath}`;
@@ -484,6 +487,7 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string): st
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px"><tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#c9d3e8">${esc(BUSINESS.legalName)}<br>${esc(footer)}</td>
     <td align="right" valign="bottom" style="padding-left:12px"><img src="${esc(cornerstone)}" alt="" width="44" style="display:block;width:44px;height:auto"></td>
+  </tr><tr><td colspan="2" align="right" style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#c9d3e8">${esc(SELLER_OF_TRAVEL)}</td>
   </tr></table></td></tr></table></div>`;
 }
 

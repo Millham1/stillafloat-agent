@@ -85,7 +85,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
 
   const setC = (k: string, v: string) => { setCabin((c) => ({ ...c, [k]: v })); setDirty(true); };
   const setT = (i: number, k: keyof TripLine, v: string) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, [k]: v || null } : r))); setDirty(true); };
-  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : "Transfer", confirmation: null, price: null }]); setDirty(true); };
+  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null }]); setDirty(true); };
   const setX = (i: number, k: keyof Extra, v: string) => { setExtras((x) => x.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
   // the sums as typed, before saving: cabin fare + cruise extras = total cruise price; + travel = trip total
   const amount = (v: unknown) => { const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[$,\s]/g, "")); return Number.isFinite(n) ? n : 0; };
@@ -220,7 +220,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Flights, hotels and transfers</h4>
-          {!sent && <div className="flex gap-2">{["flight", "hotel", "transfer"].map((k) => <button key={k} className={btn} onClick={() => addLine(k)}><Plus className="w-3 h-3" /> {k}</button>)}</div>}
+          {!sent && <div className="flex gap-2">{["flight", "hotel", "transfer", "package"].map((k) => <button key={k} className={btn} onClick={() => addLine(k)}><Plus className="w-3 h-3" /> {k}</button>)}</div>}
         </div>
         {Object.entries(data.needs).filter(([, v]) => v).length > 0 && <p className="text-xs text-muted-foreground mb-1">The guest asked you to quote: {Object.entries(data.needs).filter(([, v]) => v).map(([k]) => k).join(", ")}.</p>}
         {trip.length === 0 && <p className="text-sm text-muted-foreground">None on this booking.</p>}

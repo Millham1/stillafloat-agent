@@ -612,3 +612,31 @@ test("the focused money answer overrides the whole read's: discount, add-ons, bo
   assert.deepEqual([x.cabin_categories[0]!.price_per_person, x.total_price, x.discount_per_person, x.addons!.length], [382.5, 1081.5, 249.5, 1]);
   assert.deepEqual(x.warnings, [], x.warnings.join(" | "));
 });
+
+// Mark 2026-11-09: MSC's confirmation lists three add-ons by name and prices them as ONE "Add Ons" amount per guest; the reader had put that amount on each.
+test("add-ons priced as one amount per guest are one extra, once per guest, and the totals agree", () => {
+  const text = [
+    "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
+    "GUEST ONE • Cruise With Discount $ 437.00", "• Add Ons $ 471.74", "• Insurance $ 0.00", "• Taxes (where applicable) $ 145.39",
+    "Total Booking Price GUEST ONE $ 1,054.13", "Total Booking Price GUEST TWO $ 1,054.13",
+    "GUEST TWO • Cruise $ 437.00", "• Add Ons $ 471.74", "• Insurance $ 0.00", "• Taxes (where applicable) $ 145.39",
+    "Total Booking Price", "$ 2,108.26",
+  ].join("\n");
+  const x = normalizeExtraction({
+    cruise_line: "MSC Cruises", total_price: 2108.26,
+    cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }],
+    addons: ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 471.74, qty: 1, total: 471.74 })),
+  });
+  const out = verifyExtraction(x, text), addons = out.addons ?? [];
+  assert.equal(addons.length, 1);
+  assert.equal(addons[0]!.name, "Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices");
+  assert.deepEqual([addons[0]!.price, addons[0]!.qty, addons[0]!.total], [471.74, 2, 943.48]);
+  assert.ok(!(out.warnings ?? []).some((w) => /add-ons/.test(w)), "2 × (437 + 145.39) + 943.48 is the 2,108.26 printed");
+});
+
+test("an add-on with its own printed price is left as read", () => {
+  const text = "Cruise Enhancements\nPREMIUM PLUS BEVERAGE PACKAGE $ 300.00 1 $ 300.00\nTotal Booking Amount $ 1,300.00";
+  const x = normalizeExtraction({ total_price: 1300, cabin_categories: [{ category: "Balcony", price_per_person: 1000, count: 1 }], addons: [{ name: "PREMIUM PLUS BEVERAGE PACKAGE", price: 300, qty: 1, total: 300 }] });
+  const out = verifyExtraction(x, text), addons = out.addons ?? [];
+  assert.deepEqual(addons.map((a) => [a.name, a.total]), [["PREMIUM PLUS BEVERAGE PACKAGE", 300]]);
+});

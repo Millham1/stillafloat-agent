@@ -115,6 +115,7 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .foot .credits{font-size:15px;color:rgba(255,255,255,.72);line-height:1.4;margin-top:12px}
 .foot .cs-row{display:flex;justify-content:flex-end;margin-top:14px}
 .foot .cs{height:46px;width:auto;opacity:.95}
+.foot .sot{margin:6px 0 0;text-align:right;font-size:13px;line-height:1.4}
 
 #d-state{padding:60px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.9)}
 @media(max-width:480px){

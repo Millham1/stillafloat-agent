@@ -509,7 +509,7 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
 // it, adds the suppliers' confirmations and any change, sees what the paperwork will now say, and sends it. Signed and back, he closes the booking. The cabin lives on group_cabins (booking number, cabin number, deck, prices);
 // the flights, hotels and transfers on the lead's file (form_data.trip.chosen), which the Cruise Booking Agreement already prints.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TRIP_KINDS = ["flight", "hotel", "transfer"] as const;
+const TRIP_KINDS = ["flight", "hotel", "transfer", "package"] as const;
 const text = (v: unknown, max = 200): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const money = (v: unknown): number | null | undefined => {
   if (v === null || v === "") return null;
@@ -703,7 +703,7 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       const chosen: TripEntry[] = [];
       for (const r of body["trip"] as Array<Record<string, unknown>>) {
         const kind = String(r?.["kind"] ?? "");
-        if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel or transfer.");
+        if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel, transfer or package.");
         const dir = r["direction"] === "post" ? "post" : "pre";
         chosen.push({
           kind, direction: dir, provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),

@@ -292,7 +292,7 @@ test("it opens filled in with what we have: the design's heading and lede, the p
   assert.equal(p.visible("d-trav-1"), true, "Traveler 2 is shown for a party of two");
   assert.equal(p.visible("d-trav-2"), false); assert.equal(p.visible("d-trav-3"), false);
   assert.equal(p.el("d-more-h").textContent, "More of you? The more the merrier…");
-  assert.equal(p.el("d-tick-3-t").textContent, "There's a third of us"); assert.equal(p.el("d-tick-4-t").textContent, "…and a fourth!");
+  assert.equal(p.el("d-tick-3-t").textContent, "We have a third!"); assert.equal(p.el("d-tick-4-t").textContent, "…and a fourth!");
   assert.equal(p.visible("d-more"), true); assert.equal(p.visible("d-tick-4"), false, "the fourth checkmark waits for the third");
   assert.equal(p.el("d-part3").hidden, true, "our pick is not shown before they have answered");
   assert.equal(p.loc.href, undefined, "the page stays: the names are not in yet");
