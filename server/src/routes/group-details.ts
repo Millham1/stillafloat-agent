@@ -555,6 +555,22 @@ const tripEntries = (formData: unknown): TripEntry[] => {
     ...(String(r["kind"] ?? "") === "package" ? { pkg: packageDetail(r["pkg"]) } : {}),
   })).map((e) => (e.kind === "package" ? { ...e, label: packageLabel(e) } : e));   // a package's line is always written from its fields
 };
+/** Each guest's price lines as the cruise line's quote prints them (Mark 2026-11-09: "read the quote, not make assumptions"): kept beside the travel. */
+interface GuestPriceRow { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] }
+const guestPriceRows = (v: unknown): GuestPriceRow[] => {
+  if (!Array.isArray(v)) return [];
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? cents(x) : null);
+  const rows: GuestPriceRow[] = [];
+  for (const r of v.slice(0, 8)) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>, name = text(o["name"], 120), cruise = n(o["cruise"]), taxes = n(o["taxes"]);
+    if (!name || cruise === null || taxes === null) continue;
+    rows.push({ name, cruise, packaging: n(o["packaging"]) ?? 0, addons: n(o["addons"]) ?? 0, insurance: n(o["insurance"]) ?? 0, taxes, total: n(o["total"]),
+      items: (Array.isArray(o["items"]) ? o["items"] : []).map((i) => text(i, 160)).filter((i): i is string => !!i).slice(0, 12) });
+  }
+  return rows;
+};
+const storedGuestPrices = (formData: unknown): GuestPriceRow[] => guestPriceRows(((formData as Record<string, any> | null)?.["trip"] ?? {})["guest_prices"]);
 /** The cruise line's own paid extras on this booking (a dining package, a drink package): read off the uploaded quote, checked by Mark (Mark 2026-11-09). */
 interface CruiseExtra { name: string; total: number }
 const cruiseExtras = (formData: unknown): CruiseExtra[] => {
@@ -629,6 +645,8 @@ function carrierView(intake: Row | null) {
       addons: (Array.isArray(x["addons"]) ? x["addons"] : []).filter((a: unknown): a is Record<string, unknown> => !!a && typeof a === "object")
         .map((a: Record<string, unknown>) => ({ name: text(a["name"]) ?? "Add-on", total: num(a["total"]) ?? 0, includes: list(a["includes"]) })),
       inclusions: list(x["guest_inclusions"]), warnings: list(x["warnings"]),
+      // each guest's lines as the quote prints them, when it prices the guests apart
+      guests: guestPriceRows(x["guest_prices"]),
     } : null,
   };
 }
@@ -650,15 +668,32 @@ function storedPrice(quote: unknown): PriceState {
   };
 }
 const PRICE_WORDS = {
-  en: { cabin: "Cabin", cruise: "Total cruise price", trip: "Trip total (cruise and travel)" },
-  es: { cabin: "Cabina", cruise: "Precio total del crucero", trip: "Total del viaje (crucero y traslados)" },
+  en: { cabin: "Cabin", cruise: "Total cruise price", trip: "Trip total (cruise and travel)", fare: "Cruise", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total", booking: "Total booking price" },
+  es: { cabin: "Cabina", cruise: "Precio total del crucero", trip: "Total del viaje (crucero y traslados)", fare: "Crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total", booking: "Precio total de la reservación" },
 } as const;
-/** The price as the guest reads it: the cabin, each cruise extra, the cruise total, each priced travel line, the trip total. */
+/** The price as the guest reads it. When the cruise line's quote prices each guest apart and those lines are on the file (and still add up to the
+ *  total cruise price Mark saved), the guest sees THOSE lines, guest by guest, exactly as the quote prints them: nothing summed across guests. Otherwise
+ *  the cabin, each cruise extra and the cruise total. Then each priced travel line and the trip total. */
 function priceLines(b: BookingFile, lang: Lang): PriceLine[] {
   const v = bookingView(b), W = PRICE_WORDS[lang], lines: PriceLine[] = [];
-  if (v.totals.cabin !== null) lines.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
-  for (const x of v.extras) lines.push({ label: x.name, value: usd(x.total) });
-  if (v.totals.cruise !== null) lines.push({ label: W.cruise, value: usd(v.totals.cruise), strong: true });
+  const guests = v.guestPrices;
+  const asPrinted = guests.length > 0 && v.totals.cruise !== null && guests.every((g) => g.total !== null) && Math.abs(guests.reduce((n, g) => n + (g.total as number), 0) - v.totals.cruise) < 0.005;
+  if (asPrinted) {
+    for (const g of guests) {
+      lines.push({ label: g.name, value: "", head: true });
+      lines.push({ label: W.fare, value: usd(g.cruise) });
+      if (g.packaging > 0) lines.push({ label: W.packaging, value: usd(g.packaging) });
+      if (g.addons > 0) lines.push({ label: g.items.length ? `${W.addons}: ${g.items.join(", ")}` : W.addons, value: usd(g.addons) });
+      if (g.insurance > 0) lines.push({ label: W.insurance, value: usd(g.insurance) });
+      lines.push({ label: W.taxes, value: usd(g.taxes) });
+      lines.push({ label: `${W.guest}, ${g.name}`, value: usd(g.total as number), strong: true });
+    }
+    lines.push({ label: W.booking, value: usd(v.totals.cruise as number), strong: true });
+  } else {
+    if (v.totals.cabin !== null) lines.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
+    for (const x of v.extras) lines.push({ label: x.name, value: usd(x.total) });
+    if (v.totals.cruise !== null) lines.push({ label: W.cruise, value: usd(v.totals.cruise), strong: true });
+  }
   for (const r of v.trip) if (r.price !== null) lines.push({ label: r.label, value: usd(r.price) });
   if (v.totals.travel !== null && v.totals.trip !== null) lines.push({ label: W.trip, value: usd(v.totals.trip), strong: true });
   return lines;
@@ -701,6 +736,7 @@ function bookingView(b: BookingFile) {
     paperwork: b.quote?.paperwork ?? "booking",
     // the price the guest approves before the paperwork goes out
     price: storedPrice(b.reply.quote),
+    guestPrices: storedGuestPrices(b.lead.form_data),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
@@ -782,6 +818,14 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), chosen } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
+    if (body["guest_prices"] !== undefined) {
+      if (body["guest_prices"] !== null && !Array.isArray(body["guest_prices"])) return bad("The per-guest price list is not valid.");
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), guest_prices: guestPriceRows(body["guest_prices"]) } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
     if (body["extras"] !== undefined) {
       if (!Array.isArray(body["extras"]) || body["extras"].length > 20) return bad("The cruise extras list is not valid.");
       const extras: CruiseExtra[] = [];
@@ -837,6 +881,27 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     return res.json({ success: true, paperwork });
   } catch (err) {
     return fail(req, res, err, "group booked failed");
+  }
+});
+
+/** The price email exactly as it would go out now, for Mark to read before he sends it: nothing is sent and nothing is recorded. */
+router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+    const lines = priceLines(b, lang);
+    if (bookingView(b).totals.cruise === null || !lines.length) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to show yet." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), lines, bookUrl: "#", changesUrl: "#" });
+    return res.json({ success: true, subject: mail.subject, html: mail.html, to: (b.lead.email ?? b.reply.email ?? "").trim() });
+  } catch (err) {
+    return fail(req, res, err, "group price preview failed");
   }
 });
 

@@ -1037,6 +1037,20 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
   assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
   assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
+  // Mark 2026-11-09 ("read the quote, not make assumptions"): when the quote prices each guest apart and those lines are on the file, the guest reads
+  // THOSE lines, guest by guest, as printed: nothing summed across guests. They show only while they still add up to the saved total cruise price.
+  const perGuest = [{ name: "PAT EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }, { name: "ANA EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }];
+  assert.equal((await call("PUT", booking, { token: true, body: { guest_prices: "two" } })).status, 400);
+  const withGuests = await call("PUT", booking, { token: true, body: { guest_prices: perGuest } });
+  assert.deepEqual(withGuests.json["guestPrices"], perGuest);
+  const preview = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true });
+  assert.equal(preview.status, 200);
+  for (const piece of [">PAT EXAMPLE<", ">ANA EXAMPLE<", "Add-ons: Dining package, Drink package", "$100.00", "$76.79", "Total, PAT EXAMPLE", "$576.79", "Total booking price", "$1,153.58"]) assert.ok(String(preview.json["html"]).includes(piece), `the per-guest price email says ${piece}`);
+  assert.ok(!String(preview.json["html"]).includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
+  assert.equal(mails.length, 2, "a preview sends nothing");
+  const off = await call("PUT", booking, { token: true, body: { guest_prices: [{ ...perGuest[0], total: 500 }, perGuest[1]] } });
+  assert.equal(off.status, 200);
+  assert.ok(String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]).includes("Total cruise price"), "guest lines that no longer add up to the saved total are not shown");
   mails.length = 0;
   const done = await call("POST", path, { token: true });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
@@ -1072,7 +1086,7 @@ test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking c
   assert.deepEqual([view.json["carrier"]["filename"], view.json["carrier"]["status"]], ["msc quote.pdf", "ready"]);
   assert.deepEqual(view.json["carrier"]["read"], {
     booking_number: "MSC-778899", cabin_num: "12045", category: "Balcony Aurea", price_total: 1453.58, booking_total: 1453.58, deposit_amount: 100,
-    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [],
+    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [], guests: [],
   });
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] ?? null, null, "nothing is saved until Mark has checked it and saved");
   const g = await call("GET", `/group-details/${LINK}`);

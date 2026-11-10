@@ -11,3 +11,4 @@
 .p-body p{margin:0 0 10px;font-size:19px;color:var(--navy)}
 .p-body textarea{width:100%;min-height:150px;box-sizing:border-box;border:2px solid #c9d6ea;border-radius:12px;padding:12px;font:400 19px/1.4 'Baloo 2',sans-serif;color:var(--navy);background:#fff}
 .p-body textarea:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+.p-head{margin:18px 0 2px;font-size:19px;font-weight:800;letter-spacing:.04em;color:#8a5f00}

@@ -89,7 +89,7 @@ test("the schema requires every field so the model cannot skip one silently", ()
 
 // ── Terms: code finds the deadlines and checks the model's answer ─────────────
 import { mergeSingleMoney } from "./booking-extract";
-import { singleBookingMoney, readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
+import { readGuestPrices, singleBookingMoney, readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
 
 const QUOTE = `GROUP ALLOCATION AND GROUP RATES
 Category   Allotment   Commissionable Fare   NCF   Tax   Total Guest Price
@@ -613,36 +613,44 @@ test("the focused money answer overrides the whole read's: discount, add-ons, bo
   assert.deepEqual(x.warnings, [], x.warnings.join(" | "));
 });
 
-// Mark 2026-11-09: MSC's confirmation lists three add-ons by name and prices them as ONE "Add Ons" amount per guest; the reader had put that amount on each.
-test("add-ons priced as one amount per guest are one extra, once per guest, and the totals agree", () => {
-  const text = [
-    "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
-    "GUEST ONE • Cruise With Discount $ 437.00", "• Add Ons $ 471.74", "• Insurance $ 0.00", "• Taxes (where applicable) $ 145.39",
-    "Total Booking Price GUEST ONE $ 1,054.13", "Total Booking Price GUEST TWO $ 1,054.13",
-    "GUEST TWO • Cruise $ 437.00", "• Add Ons $ 471.74", "• Insurance $ 0.00", "• Taxes (where applicable) $ 145.39",
-    "Total Booking Price", "$ 2,108.26",
-  ].join("\n");
-  const x = normalizeExtraction({
-    cruise_line: "MSC Cruises", total_price: 2108.26,
-    cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }],
-    addons: ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 471.74, qty: 1, total: 471.74 })),
-  });
-  const out = verifyExtraction(x, text), addons = out.addons ?? [];
-  assert.equal(addons.length, 1);
-  assert.equal(addons[0]!.name, "Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices");
-  assert.deepEqual([addons[0]!.price, addons[0]!.qty, addons[0]!.total], [471.74, 2, 943.48]);
-  assert.ok(!(out.warnings ?? []).some((w) => /add-ons/.test(w)), "2 × (437 + 145.39) + 943.48 is the 2,108.26 printed");
+// Mark 2026-11-09: MSC's confirmation prices each guest apart. The reader had put the per-guest add-on amount on each of three names, then (after my
+// first fix) showed the two guests' amounts as one doubled figure. "the agent was supposed to read the quote, not make assumptions": every figure is the
+// printed one, per guest.
+const MSC_CONFIRMATION = [
+  "Name and Last Name", "PAT   EXAMPLE", "Additional items:", "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
+  "Name and Last Name", "ANA   EXAMPLE LOPEZ", "Additional items:", "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
+  "PAYMENT DETAILS", "PAT EXAMPLE   • Cruise   With Discount   $ 437.00", "• Packaging item(s) added:   $ 0.00", "• Add Ons   $ 471.74", "• Insurance   $ 0.00", "• Taxes (where applicable)   $ 145.39",
+  "Total Booking Price   PAT EXAMPLE   $ 1,054.13", "Total Booking Price   ANA EXAMPLE LOPEZ   $ 1,054.13",
+  "ANA EXAMPLE LOPEZ   • Cruise   $ 437.00", "• Packaging item(s) added:   $ 0.00", "• Add Ons   $ 471.74", "• Insurance   $ 0.00", "• Taxes (where applicable)   $ 145.39",
+  "Total Booking Price", "$ 2,108.26",
+].join("\n");
+
+test("a confirmation that prices each guest apart is read line for line: each guest's Cruise, Add Ons, Taxes and total as printed, and the booking total", () => {
+  const read = readGuestPrices(MSC_CONFIRMATION);
+  const three = ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"];
+  assert.deepEqual(read, { bookingTotal: 2108.26, guests: [
+    { name: "PAT EXAMPLE", cruise: 437, packaging: 0, addons: 471.74, insurance: 0, taxes: 145.39, total: 1054.13, items: three },
+    { name: "ANA EXAMPLE LOPEZ", cruise: 437, packaging: 0, addons: 471.74, insurance: 0, taxes: 145.39, total: 1054.13, items: three },
+  ] });
+  assert.equal(readGuestPrices("Cabin Fare $ 1,000.00 Passenger Total $ 1,100.00"), null, "another layout is not this one");
 });
 
-test("the per-guest add-ons figure comes from the printed lines whatever the read answered (the amount split three ways, or no add-on at all)", () => {
-  const text = ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "GUEST ONE • Cruise $ 437.00", "• Add Ons $ 471.74", "• Taxes (where applicable) $ 145.39",
-    "GUEST TWO • Cruise $ 437.00", "• Add Ons $ 471.74", "• Taxes (where applicable) $ 145.39", "Total Booking Price", "$ 2,108.26"].join("\n");
-  const base = { total_price: 2108.26, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] };
-  const split = verifyExtraction(normalizeExtraction({ ...base, addons: [{ name: "Trilogy - Three Exclusive Dining Experiences", price: 235.87, qty: 1, total: 235.87 }, { name: "PREMIUM EXTRA DRINK PACKAGE", price: 235.87, qty: 1, total: 235.87 }] }), text);
-  assert.deepEqual((split.addons ?? []).map((a) => [a.name, a.qty, a.total]), [["Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE", 2, 943.48]]);
-  assert.ok(!(split.warnings ?? []).some((w) => /Left out|add-ons/.test(w)));
-  const none = verifyExtraction(normalizeExtraction({ ...base, addons: [] }), text);
-  assert.deepEqual((none.addons ?? []).map((a) => [a.name, a.qty, a.total]), [["Cruise add-ons", 2, 943.48]]);
+test("whatever the AI read answered for the add-ons, the per-guest figures are the printed ones: one add-on line per guest, nothing doubled or split", () => {
+  const base = { total_price: 9999, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] };
+  for (const addons of [
+    ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 471.74, qty: 1, total: 471.74 })),   // the amount on each name
+    ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 157.25, qty: 1, total: 157.25 })),   // split three ways
+    [],
+  ]) {
+    const out = verifyExtraction(normalizeExtraction({ ...base, addons }), MSC_CONFIRMATION);
+    assert.deepEqual((out.addons ?? []).map((a) => [a.name, a.qty, a.total]), [
+      ["PAT EXAMPLE: Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices", 1, 471.74],
+      ["ANA EXAMPLE LOPEZ: Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices", 1, 471.74],
+    ]);
+    assert.equal(out.total_price, 2108.26, "the booking total is the printed one");
+    assert.deepEqual((out.guest_prices ?? []).map((g) => [g.name, g.cruise, g.addons, g.taxes, g.total]), [["PAT EXAMPLE", 437, 471.74, 145.39, 1054.13], ["ANA EXAMPLE LOPEZ", 437, 471.74, 145.39, 1054.13]]);
+    assert.ok(!(out.warnings ?? []).some((w) => /add-on|Add-on|Total Booking Price/.test(w)), JSON.stringify(out.warnings));
+  }
 });
 
 test("an add-on with its own printed price is left as read", () => {

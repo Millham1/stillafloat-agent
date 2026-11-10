@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261109a">
+<link rel="stylesheet" href="/css/price-page.css?v=20261109b">
 </head>
 <body>
 <div class="wrap">
@@ -122,7 +122,7 @@
     $('p-label').textContent = d.label || '';
     $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
     $('p-lede').textContent = T.lede;
-    $('p-lines').innerHTML = (d.lines || []).map(function(l){ return '<div class="p-line' + (l.strong ? ' strong' : '') + '"><span>' + esc(l.label) + '</span><span>' + esc(l.value) + '</span></div>'; }).join('');
+    $('p-lines').innerHTML = (d.lines || []).map(function(l){ return l.head ? '<p class="p-head">' + esc(l.label) + '</p>' : '<div class="p-line' + (l.strong ? ' strong' : '') + '"><span>' + esc(l.label) + '</span><span>' + esc(l.value) + '</span></div>'; }).join('');
     $('p-note').textContent = T.note;
     show('p-price');
     drawState(d.state);

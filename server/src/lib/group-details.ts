@@ -530,7 +530,7 @@ export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; 
 // Mark sends it from the booking card once his re-quote is entered. Both buttons open the guest's own price page: "Book It" tells Mark to go ahead (the
 // paperwork follows from him), "I need changes" opens a box for what they want changed. The wording is a first draft for Mark to read.
 
-export interface PriceLine { label: string; value: string; strong?: boolean }
+export interface PriceLine { label: string; value: string; strong?: boolean; /** a guest's name heading its own lines: no amount */ head?: boolean }
 export interface PriceInput extends MailBase { lines: readonly PriceLine[]; bookUrl: string; changesUrl: string }
 const PRICE = {
   en: {
@@ -560,9 +560,11 @@ const PRICE = {
 export function priceEmail(i: PriceInput): { subject: string; html: string; text: string } {
   const T = PRICE[i.lang];
   const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
-  const text = [T.hi(first), T.p1, i.lines.map((l) => `${l.label}: ${l.value}`).join("\n"), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  const text = [T.hi(first), T.p1, i.lines.map((l) => (l.head ? `\n${l.label}` : `${l.label}: ${l.value}`)).join("\n").trim(), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
   const cell = "padding:8px 0;border-bottom:1px solid #d5dfee;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.4;color:#07183f";
-  const rows = i.lines.map((l) => `<tr><td style="${cell}${l.strong ? ";font-weight:bold" : ""}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap;padding-left:14px${l.strong ? ";font-weight:bold" : ""}">${esc(l.value)}</td></tr>`).join("");
+  const rows = i.lines.map((l) => l.head
+    ? `<tr><td colspan="2" style="padding:14px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;letter-spacing:.04em;color:#9a6b00">${esc(l.label)}</td></tr>`
+    : `<tr><td style="${cell}${l.strong ? ";font-weight:bold" : ""}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap;padding-left:14px${l.strong ? ";font-weight:bold" : ""}">${esc(l.value)}</td></tr>`).join("");
   const table = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">${rows}</table>`;
   const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:12px 22px;text-decoration:none;font-size:18px;font-family:Arial,Helvetica,sans-serif;margin:0 8px 8px 0";
   const buttons = `<a href="${esc(i.bookUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.book)}</a>`

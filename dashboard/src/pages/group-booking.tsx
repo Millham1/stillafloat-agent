@@ -19,16 +19,19 @@ type TripLine = { kind: string; direction: string | null; provider: string | nul
 type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
 const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, depart_time: null, arrive_time: null, return_depart_time: null, return_arrive_time: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
 type Extra = { name: string; total: string };
+// one guest's price lines exactly as the cruise line's quote prints them (Mark 2026-11-09: read the quote, assume nothing)
+type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
   success: boolean; guest: { name: string; email: string | null };
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
+  guestPrices?: GuestPrice[];
   price?: { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
   carrier: null | {
     id: string; filename: string; status: string; error: string | null;
-    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[] };
+    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[]; guests?: GuestPrice[] };
   };
   signed: null | { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> };
   completedAt: string | null; confirmWith: string[]; flexpay: null | { link: string | null; call: null | { start: string; whenText: string; meetLink: string | null } };
@@ -59,6 +62,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const [cabin, setCabin] = useState<Record<string, string>>({});
   const [trip, setTrip] = useState<TripLine[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
+  const [guestPrices, setGuestPrices] = useState<GuestPrice[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -67,6 +71,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setCabin({ booking_number: c?.booking_number ?? "", cabin_num: c?.cabin_num ?? "", deck: c?.deck ?? "", category: c?.category ?? "", fare: data.totals?.cabin != null ? String(data.totals.cabin) : "", deposit_amount: c?.deposit_amount != null ? String(c.deposit_amount) : "" });
     setTrip(data.trip);
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
+    setGuestPrices(data.guestPrices ?? []);
     setDirty(false);
   }, [data?.cabin, data?.trip, data?.extras]);
   // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
@@ -82,6 +87,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       ...(r.deposit_amount != null ? { deposit_amount: String(r.deposit_amount) } : {}),
     }));
     if (r.addons.length) setExtras(r.addons.map((a) => ({ name: a.name, total: String(a.total) })));
+    setGuestPrices(r.guests ?? []);   // the quote's own per-guest lines go on the file with the save
     setDirty(true);
   }, [data?.carrier, guest.id]);
 
@@ -108,7 +114,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setBusy(true);
     try {
       const clean = (v: unknown) => (v === null || v === "" ? null : String(v).replace(/[$,\s]/g, ""));
-      const body: Record<string, unknown> = { trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })) };
+      const body: Record<string, unknown> = { guest_prices: guestPrices, trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })) };
       // the cabin row keeps the whole cruise price: the cabin fare and the cruise line's extras together
       if (data.cabin) { const { fare, ...rest } = cabin; body["cabin"] = { ...rest, price_total: fare === "" && !extras.length ? "" : String(cruiseSum) }; }
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
@@ -168,6 +174,15 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
+  const previewPrice = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`);
+      const page = `<!doctype html><meta charset="utf-8"><title>Price email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
+      window.open(URL.createObjectURL(new Blob([page], { type: "text/html" })), "_blank");
+    } catch (e) { toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
   const recordYes = async () => {
     if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
     setBusy(true);
@@ -205,7 +220,20 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           {data.carrier?.status === "ready" && data.carrier.read && (
             <div className="text-sm space-y-1">
               <p className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Read {data.carrier.filename}. Check every figure below against the quote, then save.</p>
-              {data.carrier.read.addons.length > 0 && <p><span className="text-muted-foreground">Paid add-ons on the quote:</span> {data.carrier.read.addons.map((a) => `${a.name} ${usd(a.total)}`).join(" · ")}</p>}
+              {(data.carrier.read.guests ?? []).length > 0 ? (
+                <div className="mt-2">
+                  <p className="font-semibold">The quote, guest by guest, exactly as printed:</p>
+                  <table className="w-full text-sm mt-1">
+                    <thead><tr className="text-left text-muted-foreground"><th className="font-normal py-1">Guest</th><th className="font-normal">Cruise</th><th className="font-normal">Add-ons</th><th className="font-normal">Taxes</th><th className="font-normal">Guest total</th></tr></thead>
+                    <tbody>
+                      {(data.carrier.read.guests ?? []).map((g) => (
+                        <tr key={g.name} className="border-t align-top"><td className="py-1 pr-2">{g.name}</td><td>{usd(g.cruise)}</td><td className="pr-2">{usd(g.addons)}{g.items.length > 0 && <span className="block text-xs text-muted-foreground">{g.items.join(", ")}</span>}</td><td>{usd(g.taxes)}</td><td className="font-semibold">{g.total != null ? usd(g.total) : ""}</td></tr>
+                      ))}
+                      {data.carrier.read.booking_total != null && <tr className="border-t"><td className="py-1 font-semibold" colSpan={4}>Total booking price</td><td className="font-semibold">{usd(data.carrier.read.booking_total)}</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              ) : data.carrier.read.addons.length > 0 && <p><span className="text-muted-foreground">Paid add-ons on the quote:</span> {data.carrier.read.addons.map((a) => `${a.name} ${usd(a.total)}`).join(" · ")}</p>}
               {data.carrier.read.inclusions.length > 0 && <p><span className="text-muted-foreground">Included:</span> {data.carrier.read.inclusions.join(" · ")}</p>}
               {data.carrier.read.warnings.map((w) => <p key={w} className="text-amber-700 flex items-start gap-1"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {w}</p>)}
             </div>
@@ -397,6 +425,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <p className="text-sm text-muted-foreground">Not sent yet.</p>
             )}
             <div className="flex flex-wrap gap-2 items-center">
+              <button className={btn} disabled={busy || dirty || cruiseSum <= 0} onClick={previewPrice} title={dirty ? "Save first" : ""}>Preview the price email</button>
               <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy || dirty || cruiseSum <= 0} onClick={emailPrice} title={dirty ? "Save first" : cruiseSum > 0 ? "" : "Enter the cabin fare first"}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the price again" : `Email the price to ${data.guest.name}`}</button>
               {!approved && <button className={btn} disabled={busy || dirty} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
               {dirty && <span className="text-xs text-muted-foreground">Save first.</span>}

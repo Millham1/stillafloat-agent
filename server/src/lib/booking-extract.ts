@@ -47,6 +47,8 @@ export interface ItineraryStop {
   depart: string | null;
 }
 
+/** One guest's price lines as the cruise line's confirmation prints them (Mark 2026-11-09: "the agent was supposed to read the quote, not make assumptions"). */
+export interface GuestPrice { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] }
 export interface BookingExtraction {
   cruise_line: string | null;
   ship_name: string | null;
@@ -74,6 +76,8 @@ export interface BookingExtraction {
   /** Paid add-ons printed on a single booking's confirmation ("Cruise Enhancements": a drinks package, Wi-Fi …), read by the program from the printed
    *  lines, never by the model. Not inclusions: the guest pays for these on top of the cabin. */
   addons?: AddOn[];
+  /** A confirmation that prices each guest apart (MSC's confirmation page): every guest's own lines exactly as printed, never summed or split here. */
+  guest_prices?: GuestPrice[];
   /** The discount printed against the cabin fare on a single booking's confirmation, per guest. */
   discount_per_person?: number | null;
   organizer_name: string | null;
