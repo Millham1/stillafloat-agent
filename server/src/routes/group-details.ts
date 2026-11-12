@@ -8,6 +8,7 @@ import { BUSINESS, callKeyMatches, deriveCallKey, hashLinkToken, hubKey, looksLi
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../lib/group-forms";
 import { DOC_SPECS } from "../lib/group-documents";
+import { pipelineStage } from "../lib/group-pipeline";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
@@ -493,7 +494,7 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
     void createAction({
       type: "lead", source_ref: `group-quote-${reply.id}`, title, body, priority: "lead",
       buttons: [
-        { label: "Upload the cruise line's quote", href: `/groups/${group.id}?book=${reply.id}#booking` },
+        { label: "Upload the cruise line's quote", href: `/groups/${group.id}/booking/${reply.id}` },
         { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/booked` },
       ],
     }).then(async (made) => {
@@ -632,7 +633,8 @@ async function loadBooking(groupId: string, iid: string) {
 
 interface SignedView { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> }
 /** The documents the guest's party must sign and the ones that are back: the lead and everyone on the lead's cabin. */
-async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
+interface SignSets { group: Row; cabins: Row[]; travelers: Row[]; signatures: Row[] }
+async function loadSignSets(groupId: string): Promise<SignSets> {
   const [g, c, t, sg] = await Promise.all([
     db().from("groups").select("*").eq("id", groupId).maybeSingle(),
     db().from("group_cabins").select("*").eq("group_id", groupId),
@@ -640,10 +642,13 @@ async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
     db().from("group_signatures").select("id, traveler_id, doc_key, signer_role, signer_name, signed_at, pdf_path").eq("group_id", groupId),
   ]);
   for (const r of [g, c, t, sg]) if (r.error) throw new Error(r.error.message);
-  const party = ((t.data ?? []) as Row[]).filter((x) => x["id"] === lead["id"] || (lead["cabin_id"] && x["cabin_id"] === lead["cabin_id"]));
+  return { group: (g.data ?? {}) as Row, cabins: (c.data ?? []) as Row[], travelers: (t.data ?? []) as Row[], signatures: (sg.data ?? []) as Row[] };
+}
+function signedFrom(sets: SignSets, lead: Row): SignedView {
+  const party = sets.travelers.filter((x) => x["id"] === lead["id"] || (lead["cabin_id"] && x["cabin_id"] === lead["cabin_id"]));
   const ids = new Set(party.map((x) => String(x["id"])));
-  const signatures = ((sg.data ?? []) as Row[]).filter((x) => ids.has(String(x["traveler_id"] ?? "")));
-  const status = packetStatuses({ group: (g.data ?? {}) as Row, cabins: (c.data ?? []) as Row[], travelers: party, signatures }).travelers;
+  const signatures = sets.signatures.filter((x) => ids.has(String(x["traveler_id"] ?? "")));
+  const status = packetStatuses({ group: sets.group, cabins: sets.cabins, travelers: party, signatures }).travelers;
   const each = Object.values(status);
   return {
     required: each.reduce((n, x) => n + x.required.length, 0), signed: each.reduce((n, x) => n + x.signed.length, 0),
@@ -651,6 +656,7 @@ async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
     docs: signatures.map((x) => ({ id: String(x["id"]), title: DOC_SPECS[String(x["doc_key"])]?.title ?? String(x["doc_key"]), signer: text(x["signer_name"]), has_pdf: !!x["pdf_path"] })),
   };
 }
+const signedFor = async (groupId: string, lead: Row): Promise<SignedView> => signedFrom(await loadSignSets(groupId), lead);
 
 /** What the reader found on the cruise line's quote, in the booking confirmation's own fields. Mark checks every line before he saves it. */
 function carrierView(intake: Row | null) {
@@ -795,7 +801,7 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
 }
 /** The travel lines on the booking that have no quoted price yet: the quote does not go out while there is one. */
 const unpricedTravel = (b: BookingFile): string[] => bookingView(b).trip.filter((r) => r.price === null).map((r) => r.label);
-const unpricedError = (lines: string[]) => `These travel lines have no quoted price, so they would be missing from the quote: ${lines.join("; ")}. Enter each price on the booking confirmation and save, then press this again. (A line priced at 0 is left off the quote.)`;
+const unpricedError = (lines: string[]) => `These travel lines have no quoted price, so they would be missing from the quote: ${lines.join("; ")}. Enter each price on the booking's "Flights, hotels, transfers" tab and save, then press this again. (A line priced at 0 is left off the quote.)`;
 const priceKey = (iid: string) => `price:${iid}`;
 function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
   const linkKey = hubKey();
@@ -868,6 +874,54 @@ router.get("/groups/:id/bookings", requireToken, async (req: Request, res: Respo
     return res.json({ success: true, bookings: rows });
   } catch (err) {
     return fail(req, res, err, "group bookings list failed");
+  }
+});
+
+/**
+ * Where every person of the group stands and whose move it is (Mark 2026-11-11: "i need to see all the groups, the top level shows me the status. then
+ * be able to branch through it … leads, quotes, and booked … i cannot see currently what the status is and what the next step is after the client says
+ * Book it"). One row a reply: its level (lead, quote, booked, closed), its status and next step in words, and "on" (mark, guest, done).
+ * The rules are lib/group-pipeline.ts. Mark's alone; a name, never an address, a phone or a link.
+ */
+router.get("/groups/:id/pipeline", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_RE.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data: group, error: ge } = await db().from("groups").select("id").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data, error } = await db().from("group_interests")
+      .select("id, first_name, last_name, status, choice, call_when, cabin_type, guests, created_at, quote, quote_requested_at, booking_completed_at, traveler_id")
+      .eq("group_id", groupId).order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as Row[];
+    // the signatures are read once for the group, and only when somebody's paperwork is out
+    const out = rows.filter((r) => r["quote_requested_at"] && r["traveler_id"] && (storedQuote(r["quote"])?.paperwork ?? "booking") !== "booking");
+    const sets = out.length ? await loadSignSets(groupId) : null;
+    const people = rows.map((r) => {
+      const q = r["quote_requested_at"] ? storedQuote(r["quote"]) : null;
+      const price = storedPrice(r["quote"]);
+      const lead = sets && r["traveler_id"] ? sets.travelers.find((x) => x["id"] === r["traveler_id"]) : null;
+      const signedView = lead && q?.paperwork && q.paperwork !== "booking" ? signedFrom(sets!, lead) : null;
+      const stage = pipelineStage({
+        status: text(r["status"], 20), choice: text(r["choice"], 20), call_when: text(r["call_when"], 40),
+        quote_requested_at: text(r["quote_requested_at"], 40), booking_completed_at: text(r["booking_completed_at"], 40),
+        price: { sent: price.sent, sent_at: price.sent_at, approved_at: price.approved_at, approved_how: price.approved_how, changes_open: price.changes_open },
+        paperwork: r["quote_requested_at"] ? q?.paperwork ?? "booking" : null,
+        signed: signedView ? { required: signedView.required, signed: signedView.signed, complete: signedView.complete } : null,
+      });
+      return {
+        id: String(r["id"]), name: nameOf(r) || "Guest", ...stage,
+        // what they asked for: the cabin type and party on the quote once the choices are in, the reply's own answer before
+        category: q?.category ?? text(r["cabin_type"], 80), party: q?.party ?? (Number.isFinite(Number(r["guests"])) && Number(r["guests"]) > 0 ? Number(r["guests"]) : null),
+        replied_at: text(r["created_at"], 40), protection: price.protection?.label ?? null,
+        // a booking confirmation exists to open once the choices are in and the lead is on the file
+        has_booking: !!(r["quote_requested_at"] && r["traveler_id"]),
+      };
+    });
+    return res.json({ success: true, people });
+  } catch (err) {
+    return fail(req, res, err, "group pipeline read failed");
   }
 });
 
@@ -1249,7 +1303,7 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
       void createAction({
         type: "lead", source_ref: `group-price-ok-${iid}`, title: `Price approved: book it · ${who}`, priority: "lead",
         body: `${label} · ${who} tapped "Book It" on the price you sent.${protectNote} Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,
-        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}?book=${iid}#bookings` }],
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}/booking/${iid}` }],
       }).then(async (made) => { if (made.created) await resolveActionsForSource("lead", `group-price-change-${iid}`, "done"); })
         .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the price approval could not be put on the list"));
       return;
@@ -1265,7 +1319,7 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
       void createAction({
         type: "lead", source_ref: `group-price-change-${iid}`, title: `Changes asked on the price · ${who}`, priority: "lead",
         body: `${label} · ${who} tapped "I need changes" and wrote: "${said}". Do this: re-quote, update the booking confirmation, then email the price again.`,
-        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}?book=${iid}#bookings` }],
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}/booking/${iid}` }],
       }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the change request could not be put on the list"));
       return;
     }

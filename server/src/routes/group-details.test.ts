@@ -928,7 +928,7 @@ test("'Send my choices to Mark!' (Mark 2026-11-05): the first press wins; the tr
   assert.equal(item.title, "Re-quote and book · Mark Millham · Balcony Bella · party of 2");
   assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; (2) upload that quote in the group file: it fills the booking confirmation; (3) validate Flights and enter the suppliers' confirmations; (4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors.");
   assert.deepEqual(item.buttons, [
-    { label: "Upload the cruise line's quote", href: `/groups/${GROUP_ID}?book=${REPLY_ID}#booking` },
+    { label: "Upload the cruise line's quote", href: `/groups/${GROUP_ID}/booking/${REPLY_ID}` },
     { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
   ]);
   await wait(() => tables["actions"]![0]!["status"] === "done");
@@ -950,6 +950,13 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`, booking = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booking`;
   assert.equal((await call("POST", path)).status, 401, "Mark's token only");
   assert.equal((await call("GET", booking)).status, 401, "Mark's token only");
+  // Mark 2026-11-11 ("i cannot see currently what the status is and what the next step is"): every person of the group with a level, a status and a next step
+  const pipeline = `/groups/${GROUP_ID}/pipeline`;
+  assert.equal((await call("GET", pipeline)).status, 401, "Mark's token only");
+  assert.equal((await call("GET", `/groups/not-a-group/pipeline`, { token: true })).status, 404);
+  const waiting = ((await call("GET", pipeline, { token: true })).json["people"] as Row[]).find((x) => x["id"] === REPLY_ID)!;
+  assert.deepEqual([waiting["level"], waiting["key"], waiting["on"], waiting["has_booking"]], ["quote", "choices-in", "mark", true], "choices in: a quote, and the re-quote is Mark's move");
+  assert.ok(waiting["name"] && !("email" in waiting) && !("phone" in waiting) && !("quote" in waiting), "a name, a status and a next step: no address, no phone, no stored quote");
   const view = await call("GET", booking, { token: true });
   assert.deepEqual([view.status, view.json["ready"], view.json["guest"]["name"]], [200, false, "Mark Millham"]);
   assert.deepEqual(view.json["missing"], ["The flight the guest asked you to quote: add it below"]);
@@ -1117,6 +1124,10 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["choice"], t["form_data"]["insurance"]["plan"]], ["quote", "OneTrip Prime (Allianz): $129.50 per person"], "the pick is on every traveler of the cabin, in the paperwork's own words");
   assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
   assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
+  const saidYes = ((await call("GET", `/groups/${GROUP_ID}/pipeline`, { token: true })).json["people"] as Row[]).find((x) => x["id"] === REPLY_ID)!;
+  assert.deepEqual([saidYes["level"], saidYes["key"], saidYes["status"], saidYes["on"]], ["booked", "book-it", "Said Book It", "mark"], "after Book It the person is on the Booked level and the next step is Mark's");
+  assert.match(String(saidYes["next"]), /book it with the cruise line.*send the paperwork/i);
+  assert.equal(saidYes["protection"], "OneTrip Prime (Allianz), $129.50 per person", "the protection they picked rides along");
   // Mark 2026-11-09 ("read the quote, not make assumptions"): when the quote prices each guest apart and those lines are on the file, the guest reads
   // THOSE lines, guest by guest, as printed: nothing summed across guests. They show only while they still add up to the saved total cruise price.
   const perGuest = [{ name: "PAT EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }, { name: "ANA EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }];

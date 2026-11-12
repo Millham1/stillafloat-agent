@@ -1,17 +1,16 @@
 import React, { useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText, BarChart3 } from "lucide-react";
+import { Ship, Plus, Trash2, AlertTriangle, FileText } from "lucide-react";
 import { ANALYTICS_KEY, api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
 import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
-import { groupBookingsHref } from "@/lib/group-api";
 import { GroupJourney } from "./group-journey";
-import { GroupBooking } from "./group-booking";
+import { BookingPage, GroupFrame, GroupOverview, LeadPage, LevelPage } from "./group-pipeline";
 import { GroupBigPicture } from "./group-big-picture";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
@@ -41,13 +40,6 @@ type GroupFile = {
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
-
-function dueText(a: Attention): string {
-  if (a.daysOut === null) return "no date set";
-  if (a.daysOut < 0) return `${-a.daysOut} day${a.daysOut === -1 ? "" : "s"} overdue`;
-  if (a.daysOut === 0) return "due today";
-  return `due in ${a.daysOut} day${a.daysOut === 1 ? "" : "s"}`;
-}
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200",
@@ -325,7 +317,14 @@ const GROUP_FIELDS: Col[] = [
   { key: "notes", label: "Notes" },
 ];
 
-function GroupDetail({ id }: { id: string }) {
+// Mark 2026-11-11: the group's own information sits one level above the bookings, on its own tab, one part on screen at a time.
+const DETAIL_PARTS: Array<{ key: string; label: string }> = [
+  { key: "details", label: "Details and dates" }, { key: "cabins", label: "Cabins" }, { key: "travelers", label: "Travelers" }, { key: "payments", label: "Payments" },
+  { key: "paperwork", label: "Paperwork" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "checklist", label: "Checklist" }, { key: "journey", label: "Journey emails" },
+  { key: "marketing", label: "Marketing" }, { key: "emails", label: "Email log" },
+];
+
+function GroupDetail({ id, part }: { id: string; part: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
@@ -334,19 +333,11 @@ function GroupDetail({ id }: { id: string }) {
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); qc.invalidateQueries({ queryKey: ANALYTICS_KEY }); };
   // The server's refusal of a Group details change (a date later than the sailing), written under the field that was edited. Above the early returns so every render calls the same hooks.
   const [fieldError, setFieldError] = useState<{ key: string; message: string } | null>(null);
-  // A link from the Group Bookings Workspace ends in #section (cabins, payments…): once the file has loaded, scroll to it. Above the early returns, like every hook here.
-  const loadedId = data?.group?.id;
-  React.useEffect(() => {
-    const target = window.location.hash.slice(1);
-    if (!loadedId || !target) return;
-    const t = window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ block: "start" }), 50);
-    return () => window.clearTimeout(t);
-  }, [loadedId]);
+  if (isLoading) return <GroupFrame groupId={id} view="details"><p className="text-muted-foreground">Loading…</p></GroupFrame>;
+  if (error || !data) return <GroupFrame groupId={id} view="details"><p className="text-destructive">Could not load this group: {(error as Error)?.message}</p></GroupFrame>;
 
-  if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
-  if (error || !data) return <p className="text-destructive">Could not load this group: {(error as Error)?.message}</p>;
-
-  const { group: g, summary: s } = data;
+  const { group: g } = data;
+  const on = (key: string) => part === key;
   const cabinOptions = [{ value: "", label: "—" }, ...data.cabins.map((c, i) => ({ value: c.id, label: c.cabin_num ? `Cabin ${c.cabin_num}` : `Unassigned #${i + 1}` }))];
   const travelerOptions = [{ value: "", label: "—" }, ...data.travelers.map((t) => ({ value: t.id, label: [t.first_name, t.last_name].filter(Boolean).join(" ") || "Unnamed traveler" }))];
   const cabinCol: Col = { key: "cabin_id", label: "Cabin", type: "select", options: cabinOptions };
@@ -372,51 +363,15 @@ function GroupDetail({ id }: { id: string }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <Link href="/groups"><span className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer hover:text-foreground"><ArrowLeft className="w-3.5 h-3.5" /> All groups</span></Link>
-          <h2 className="text-xl font-bold tracking-tight mt-1">{g.name}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {[g.cruise_line, g.ship_name].filter(Boolean).join(" · ") || "Ship not set"} · sails {fmtDate(g.sail_date)}
-            {s.daysToSail !== null && s.daysToSail >= 0 ? ` · ${s.daysToSail} days to go` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Mark 2026-10-25: Group Bookings is its own app, opened in its own tab */}
-          <a href={groupBookingsHref(`g=${g.id}&status=all`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md border bg-card hover:border-foreground/30" title="Open this group in the Group Bookings app"><BarChart3 className="w-3.5 h-3.5" /> Group Bookings</a>
-          <Badge variant="outline" className={STATUS_STYLE[g.status] ?? ""}>{g.status}</Badge>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: "cabins booked", value: `${s.cabins.booked} of ${s.cabins.total - s.cabins.released}` },
-          { label: s.deposits.total > 0 ? "deposits paid" : `paid · ${money(s.payments.dueTotal)} still due`, value: s.deposits.total > 0 ? `${money(s.deposits.paid)} of ${money(s.deposits.total)}` : money(s.payments.paidTotal) },
-          { label: "traveler forms returned", value: `${s.travelers.formsIn} of ${s.travelers.total}` },
-          { label: "open paperwork items", value: String(s.documents.open) },
-        ].map((x) => (
-          <Card key={x.label} className="p-4"><CardContent className="p-0"><div className="text-xl font-bold">{x.value}</div><div className="text-xs text-muted-foreground">{x.label}</div></CardContent></Card>
+    <GroupFrame groupId={id} view="details">
+      <div role="tablist" aria-label="The parts of the group's file" className="flex flex-wrap gap-2">
+        {DETAIL_PARTS.map((d) => (
+          <Link key={d.key} href={`/groups/${id}/details/${d.key}`} role="tab" aria-selected={on(d.key)}
+            className={`text-sm px-3 py-1.5 rounded-full border whitespace-nowrap ${on(d.key) ? "bg-primary text-primary-foreground border-primary font-semibold" : "bg-card text-muted-foreground hover:text-foreground hover:border-foreground/40"}`}>{d.label}</Link>
         ))}
       </div>
 
-      <GroupBooking groupId={id} />
-
-      <Card id="attention" className="scroll-mt-4">
-        <div className="px-4 py-3 border-b flex items-center gap-2"><CalendarClock className="w-4 h-4" /><h3 className="font-semibold">Needs attention</h3></div>
-        <div className="divide-y divide-border">
-          {s.attention.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">Nothing open.</p>}
-          {s.attention.map((a, i) => (
-            <div key={i} className="px-4 py-2 flex items-center justify-between gap-3 text-sm">
-              <span>{a.label}</span>
-              <span className={a.overdue ? "text-red-700 font-semibold whitespace-nowrap" : "text-muted-foreground whitespace-nowrap"}>
-                {a.due ? `${fmtDate(a.due)} · ` : ""}{dueText(a)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
+      {on("details") && (<>
       <Card id="details" className="scroll-mt-4">
         <div className="px-4 py-3 border-b"><h3 className="font-semibold">Group details</h3></div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 p-4">
@@ -433,10 +388,11 @@ function GroupDetail({ id }: { id: string }) {
       </Card>
 
       <GroupTerms terms={g.terms} sailDate={g.sail_date} />
+      </>)}
 
-      <div id="marketing" className="scroll-mt-4"><GroupMarketing groupId={id} /></div>
+      {on("marketing") && <div id="marketing"><GroupMarketing groupId={id} /></div>}
 
-      <Section title="Cabins" groupId={id} child="cabins" rows={data.cabins} newRow={{}} onChanged={refresh}
+      {on("cabins") && <Section title="Cabins" groupId={id} child="cabins" rows={data.cabins} newRow={{}} onChanged={refresh}
         cols={[
           { key: "cabin_num", label: "Cabin #" },
           { key: "deck", label: "Deck", width: "4rem" },
@@ -449,9 +405,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "insurance", label: "Insurance", type: "select", options: opt(["not-offered", "offered", "accepted", "declined"]) },
           { key: "dining", label: "Dining" },
           { key: "notes", label: "Notes", width: "12rem" },
-        ]} />
+        ]} />}
 
-      <Section title="Travelers" hint="Passport numbers are entered only by the traveler on their private form; the last 4 show here. Each traveler gets their own private paperwork link." groupId={id} child="travelers" rows={data.travelers} newRow={{}} onChanged={refresh}
+      {on("travelers") && <Section title="Travelers" hint="Passport numbers are entered only by the traveler on their private form; the last 4 show here. Each traveler gets their own private paperwork link." groupId={id} child="travelers" rows={data.travelers} newRow={{}} onChanged={refresh}
         rowActionsLabel="Paperwork" rowActions={(r) => <TravelerPaperwork api={api} groupId={id} row={r} status={paperwork?.packets?.[r.id]} onChanged={refresh} />}
         cols={[
           cabinCol,
@@ -468,9 +424,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "passport_last4", label: "Passport (last 4)", type: "readonly" },
           { key: "form_submitted_at", label: "Form returned", type: "readonly" },
           { key: "special_needs", label: "Special needs", width: "12rem" },
-        ]} />
+        ]} />}
 
-      <Section title="Payments" hint="Record what was paid and the cruise line's receipt reference. Never a card number — the server refuses them." groupId={id} child="payments" rows={data.payments} newRow={{ kind: "deposit" }} onChanged={refresh}
+      {on("payments") && <Section title="Payments" hint="Record what was paid and the cruise line's receipt reference. Never a card number — the server refuses them." groupId={id} child="payments" rows={data.payments} newRow={{ kind: "deposit" }} onChanged={refresh}
         extra={<button onClick={buildSchedule} className="text-xs px-3 py-1.5 rounded-md border bg-card">Build schedule from group dates</button>}
         cols={[
           cabinCol,
@@ -480,13 +436,13 @@ function GroupDetail({ id }: { id: string }) {
           { key: "paid_at", label: "Paid", type: "stamp" },
           { key: "confirmation_ref", label: "Receipt reference" },
           { key: "method_note", label: "How it was paid", width: "12rem" },
-        ]} />
+        ]} />}
 
-      <div id="paperwork" className="scroll-mt-4"><ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} /></div>
+      {on("paperwork") && <div id="paperwork"><ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} /></div>}
 
-      <div id="journey" className="scroll-mt-4"><GroupJourney api={api} groupId={id} /></div>
+      {on("journey") && <div id="journey"><GroupJourney api={api} groupId={id} /></div>}
 
-      <Section title="Paperwork" groupId={id} child="documents" rows={data.documents} newRow={{ title: "New item" }} onChanged={refresh}
+      {on("paperwork") && <Section title="Paperwork items" groupId={id} child="documents" rows={data.documents} newRow={{ title: "New item" }} onChanged={refresh}
         cols={[
           { key: "title", label: "Item", width: "14rem" },
           { key: "kind", label: "Kind", type: "select", options: opt(["group-contract", "host-agency", "client-terms", "insurance-waiver", "card-auth-reference", "invoice", "confirmation", "other"]) },
@@ -496,9 +452,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "due_date", label: "Due", type: "date" },
           { key: "external_ref", label: "Where it lives", width: "12rem" },
           { key: "notes", label: "Notes", width: "12rem" },
-        ]} />
+        ]} />}
 
-      <Section title="Flights, hotels and transfers" groupId={id} child="travel" rows={data.travel} newRow={{ kind: "flight" }} onChanged={refresh}
+      {on("travel") && <Section title="Flights, hotels and transfers" groupId={id} child="travel" rows={data.travel} newRow={{ kind: "flight" }} onChanged={refresh}
         cols={[
           { key: "kind", label: "Kind", type: "select", options: opt(["flight", "hotel", "transfer"]) },
           { key: "direction", label: "When", type: "select", options: [{ value: "pre", label: "Before the cruise" }, { value: "post", label: "After the cruise" }] },
@@ -515,9 +471,9 @@ function GroupDetail({ id }: { id: string }) {
           // A hotel night is priced per room, a flight or a transfer per person; the group page says which (Mark 2026-10-20).
           { key: "price_unit", label: "Price is per", type: "select", options: [{ value: "person", label: "Person" }, { value: "room", label: "Room" }] },
           { key: "included", label: "Included", type: "select", options: [{ value: "false", label: "No" }, { value: "true", label: "Yes" }] },
-        ]} />
+        ]} />}
 
-      <Section title="Checklist" hint="Your own to-dos, plus the product links and excursion ideas clients will see in the checklist phase." groupId={id} child="checklist" rows={data.checklist} newRow={{ title: "New item" }} onChanged={refresh}
+      {on("checklist") && <Section title="Checklist" hint="Your own to-dos, plus the product links and excursion ideas clients will see in the checklist phase." groupId={id} child="checklist" rows={data.checklist} newRow={{ title: "New item" }} onChanged={refresh}
         cols={[
           { key: "title", label: "Item", width: "14rem" },
           { key: "audience", label: "For", type: "select", options: [{ value: "mark", label: "Mark" }, { value: "client", label: "Clients" }] },
@@ -526,9 +482,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "done_at", label: "Done", type: "stamp" },
           { key: "link_url", label: "Link", width: "12rem" },
           { key: "detail", label: "Detail", width: "14rem" },
-        ]} />
+        ]} />}
 
-      <Card id="emails" className="scroll-mt-4">
+      {on("emails") && <Card id="emails">
         <div className="px-4 py-3 border-b"><h3 className="font-semibold">Email log <span className="text-muted-foreground font-normal">({data.messages.length})</span></h3></div>
         <div className="divide-y divide-border">
           {data.messages.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">No emails yet. Reminders and invitations will be listed here once they are switched on.</p>}
@@ -539,12 +495,36 @@ function GroupDetail({ id }: { id: string }) {
             </div>
           ))}
         </div>
-      </Card>
-    </div>
+      </Card>}
+    </GroupFrame>
   );
 }
 
+// Where an older link's "#section" lands now that each part of a group has its own page (the Group Bookings app, Mark's items and old emails still carry them).
+const HASH_TO_PATH: Record<string, string> = {
+  booking: "booked", bookings: "booked", attention: "", details: "details/details", cabins: "details/cabins", travelers: "details/travelers", payments: "details/payments",
+  documents: "details/paperwork", paperwork: "details/paperwork", travel: "details/travel", checklist: "details/checklist", journey: "details/journey", marketing: "details/marketing", emails: "details/emails",
+};
+
 export default function Groups() {
-  const [match, params] = useRoute("/groups/:id");
-  return match && params?.id && params.id !== "new" ? <GroupDetail id={params.id} /> : <GroupList />;
+  const [, go] = useLocation();
+  const [m1, p1] = useRoute("/groups/:id");
+  const [m2, p2] = useRoute("/groups/:id/:view");
+  const [m3, p3] = useRoute("/groups/:id/:view/:sub");
+  const id = (m3 ? p3?.id : m2 ? p2?.id : m1 ? p1?.id : undefined) ?? null;
+  const view = (m3 ? p3?.view : m2 ? p2?.view : undefined) ?? "";
+  const sub = (m3 ? p3?.sub : undefined) ?? "";
+  // an older link (…/groups/<id>?book=<person>#booking, …/groups/<id>#cabins) is sent on to the page that part lives on now
+  const book = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("book") : null;
+  const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+  const old = id && !view ? (book ? `/groups/${id}/booking/${book}` : hash && HASH_TO_PATH[hash] ? `/groups/${id}/${HASH_TO_PATH[hash]}` : null) : null;
+  React.useEffect(() => { if (old) go(old, { replace: true }); }, [old]);
+
+  if (!id || id === "new") return <GroupList />;
+  if (old) return null;
+  if (view === "leads" || view === "quotes" || view === "booked") return <LevelPage groupId={id} view={view} />;
+  if (view === "lead" && sub) return <LeadPage groupId={id} iid={sub} />;
+  if (view === "booking" && sub) return <BookingPage groupId={id} iid={sub} />;
+  if (view === "details") return <GroupDetail id={id} part={DETAIL_PARTS.some((d) => d.key === sub) ? sub : "details"} />;
+  return <GroupOverview groupId={id} />;
 }

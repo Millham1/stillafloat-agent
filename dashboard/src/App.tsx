@@ -68,6 +68,9 @@ function Router() {
         {/* before /groups/:id, or "workspace" would be read as a group id */}
         <Route path="/groups/workspace" component={ToGroupBookings} />
         <Route path="/groups/:id" component={Groups} />
+        {/* one group, level by level: /groups/<id>/leads|quotes|booked|details[/part] and /groups/<id>/lead|booking/<person> (Mark 2026-11-11) */}
+        <Route path="/groups/:id/:view" component={Groups} />
+        <Route path="/groups/:id/:view/:sub" component={Groups} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/commentary"  component={CommentaryManager} />

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
 import { api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 // Mark 2026-11-09: every price has a place. The cabin fare and the cruise line's extras (dining, drinks; read off the uploaded quote) add up
 // to the total cruise price, shown against the quote's own total; each flight, hotel, transfer and package carries its quoted price.
 
-type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; requested_at: string; completed_at: string | null };
 type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null; pkg?: Pkg | null };
 // A package (air and hotel sold as one): the air and the hotel each have their own fields; the line's price is the package price.
 type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
@@ -25,7 +23,7 @@ type Plan = { name: string; price: string; party: boolean; line: boolean };
 // one guest's price lines exactly as the cruise line's quote prints them (Mark 2026-11-09: read the quote, assume nothing)
 type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
-type Booking = {
+export type Booking = {
   success: boolean; guest: { name: string; email: string | null };
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
@@ -55,7 +53,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="text-xs text-muted-foreground block">{label}<div className="mt-1">{children}</div></label>;
 }
 
-function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
+// Mark 2026-11-11: "the page is now so cluttered I could not find the save button … this is now becoming a booking platform and should act like one."
+// The booking is one page of its own with a tab per piece of work (one piece on screen at a time), and the save bar never leaves the bottom of the screen.
+export type BookingTab = "cruise" | "travel" | "protection" | "quote" | "paperwork";
+
+export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid: string; initialTab?: BookingTab }) {
+  const guest = { id: iid };
+  const [tab, setTab] = useState<BookingTab>(initialTab ?? "cruise");
   const qc = useQueryClient();
   const { toast } = useToast();
   const key = ["group-booking", groupId, guest.id];
@@ -74,7 +78,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const [allianzStop, setAllianzStop] = useState<string | null>(null);   // every hook sits above the early returns below
   // Mark 2026-11-10: a button that cannot go ahead SAYS what has to be done first, in red beside it, when it is pressed. No silent grey buttons.
   const [stop, setStop] = useState<{ at: "price" | "paperwork"; text: string } | null>(null);
-  const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" above, then press this again.';
+  const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" at the bottom of the screen, then press this again.';
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -129,6 +133,22 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const price = data.price, approved = !!price?.approved_at;
   const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
+  const TABS: Array<{ key: BookingTab; label: string }> = [
+    { key: "cruise", label: "Cruise" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "protection", label: "Travel protection" },
+    { key: "quote", label: "Quote to the guest" }, { key: "paperwork", label: "Paperwork" },
+  ];
+  // what each tab still needs, in a word beside its name (red when it stops the quote)
+  const tabNote = (k: BookingTab): { text: string; bad?: boolean } | null => {
+    if (k === "cruise") return cruiseSum > 0 ? { text: usd(cruiseSum) } : { text: "no price yet", bad: true };
+    if (k === "travel") {
+      const unpriced = trip.filter((r) => r.price === null || String(r.price).trim() === "").length;
+      return unpriced > 0 ? { text: `${unpriced} with no price`, bad: true } : trip.length ? { text: usd(travelSum) } : { text: "none" };
+    }
+    if (k === "protection") return { text: plans.length ? `${plans.length} on the quote` : "none on the quote" };
+    if (k === "quote") return { text: sent || approved ? "approved" : price?.changes_open ? "changes asked" : price?.sent_at ? (price.sent === "sent" ? "emailed" : "not sent") : "not sent", bad: !sent && !approved && (!!price?.changes_open || (!!price?.sent_at && price.sent !== "sent")) };
+    return { text: data.completedAt ? "confirmed" : data.signed ? `${data.signed.signed} of ${data.signed.required} signed` : "not sent" };
+  };
+
   const askAllianz = async (again: boolean) => {
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/protection-quote`, "POST", again ? { again: true } : {});
@@ -147,6 +167,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
       qc.setQueryData(key, next);
       qc.invalidateQueries({ queryKey: ["group", groupId] });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
       setDirty(false); setStop(null);
       toast({ title: "Booking confirmation saved" });
       // Mark 2026-11-10: once the costs are saved the agent goes to Allianz with the whole trip and brings the plans back (the same trip is not asked twice)
@@ -177,7 +198,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/complete`, "POST");
       toast({ title: "Booking confirmed" });
-      qc.invalidateQueries({ queryKey: ["group-bookings", groupId] });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
       qc.invalidateQueries({ queryKey: key });
     } catch (e) { toast({ variant: "destructive", title: "Not completed", description: (e as Error).message }); }
     finally { setBusy(false); }
@@ -200,6 +221,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       if (r.price.sent === "sent") { setStop(null); toast({ title: "Quote emailed to the guest" }); }
       else { setStop({ at: "price", text: WHY[r.price.sent] ?? `The quote was NOT sent (${r.price.sent}).` }); toast({ variant: "destructive", title: "Quote not sent" }); }
       qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
@@ -224,6 +246,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       await api(`/groups/${groupId}/interests/${guest.id}/price-approved`, "POST");
       toast({ title: "Price approval recorded" });
       qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
     } catch (e) { toast({ variant: "destructive", title: "Not recorded", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
@@ -235,7 +258,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/booked`, "POST");
       toast({ title: "Paperwork sent" });
-      qc.invalidateQueries({ queryKey: ["group-bookings", groupId] });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ["group", groupId] });
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
@@ -243,8 +266,20 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <p className="text-sm">{data.guest.name}{data.quote ? ` · ${data.quote.category} · party of ${data.quote.party} · ${data.quote.total}` : ""}{data.guest.email ? ` · ${data.guest.email}` : ""}</p>
+    <div>
+      <div role="tablist" aria-label="The parts of this booking" className="flex flex-wrap gap-x-1 border-b px-2">
+        {TABS.map((t) => {
+          const note = tabNote(t.key);
+          return (
+            <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+              className={`px-3 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {t.label}{note && <span className={`ml-2 text-xs font-normal ${note.bad ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>{note.text}</span>}
+            </button>
+          );
+        })}
+      </div>
+      <div className="p-4 space-y-4">
+      {tab === "cruise" && (<>
       {!sent && (
         <div className="rounded-md border p-3 space-y-2">
           <h4 className="text-sm font-semibold">1. The cruise line's quote</h4>
@@ -277,7 +312,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           )}
         </div>
       )}
-      {!data.cabin && <p className="text-sm text-amber-700 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> This guest is not on a cabin in the group file. Place them in the Cabins table below first.</p>}
+      {!data.cabin && <p className="text-sm text-amber-700 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> This guest is not on a cabin in the group file. Place them on one first: <Link href={`/groups/${groupId}/details/travelers`} className="underline">the group's travelers</Link>.</p>}
       {data.cabin && (
         <div className="grid sm:grid-cols-3 gap-3">
           <Field label="Cruise line booking #"><input className={input} value={cabin["booking_number"] ?? ""} onChange={(e) => setC("booking_number", e.target.value)} disabled={sent} /></Field>
@@ -316,6 +351,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
 
       {/* Mark 2026-11-10: insurance is priced on the QUOTE, not asked on the guest's choices page: each plan and its price per person go here, and the
           guest picks one (or their own policy, or none) on the quote page before "Book It". */}
+      </>)}
+      {tab === "protection" && (
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Travel protection (the guest picks one on the quote)</h4>
@@ -385,6 +422,8 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
         </div>
       </div>
 
+      )}
+      {tab === "travel" && (
       <div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Flights, hotels, transfers and packages</h4>
@@ -450,8 +489,15 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               </div>
             </div>
           ) : (
-            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2 items-end border rounded-md p-2">
-              <Field label={`${r.kind} · ${r.label}`}>
+            <div key={i} className="border rounded-md p-3 space-y-2">
+              {/* Mark 2026-11-11 ("the page is now so cluttered"): each line is its own small card with its name on top, and a line with no price says so */}
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{r.kind === "flight" ? "Flight" : r.kind === "hotel" ? "Hotel" : "Transfer"}{r.label && !["Flight", "Hotel", "Transfer"].includes(r.label) ? `: ${r.label}` : ""}
+                  {(r.price === null || String(r.price).trim() === "") && <span className="ml-2 text-xs font-semibold text-red-500">no quoted price yet</span>}</p>
+                {!sent && <button className={btn} aria-label="Remove this line" onClick={() => { setTrip((t) => t.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /> Remove</button>}
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Field label="Before or after the cruise">
                 <select className={input} value={r.direction ?? "pre"} onChange={(e) => setT(i, "direction", e.target.value)} disabled={sent}><option value="pre">Before the cruise</option><option value="post">After the cruise</option></select>
               </Field>
               <Field label={r.kind === "hotel" ? "Hotel" : r.kind === "flight" ? "Airline" : "Company"}><input className={input} value={r.provider ?? ""} onChange={(e) => setT(i, "provider", e.target.value)} disabled={sent} /></Field>
@@ -460,22 +506,25 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <Field label={r.kind === "hotel" ? "Check in" : "Date"}><input type="date" className={input} value={day(r.starts_at)} onChange={(e) => setT(i, "starts_at", e.target.value)} disabled={sent} /></Field>
               <Field label={r.kind === "hotel" ? "Check out" : "Arrives"}><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
               <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
-              <Field label="Quoted price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
-              {!sent && <button className={btn} aria-label="Remove this line" onClick={() => { setTrip((t) => t.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
+              <Field label="Quoted price ($)"><input className={`${input} ${r.price === null || String(r.price).trim() === "" ? "border-red-500" : ""}`} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
+              </div>
             </div>
           ))}
         </div>
         {trip.length > 0 && <p className="text-sm mt-2">Travel total: <b>{usd(travelSum)}</b> · Trip total (cruise and travel): <b>{usd(round(cruiseSum + travelSum))}</b></p>}
       </div>
 
-      {!sent && <div><button className={btn} disabled={busy || !dirty} onClick={save}>{dirty ? "Save the confirmation" : "Saved"}</button></div>}
+      )}
 
+      {tab === "paperwork" && (
       <div className="rounded-md border p-3 space-y-1">
         <h4 className="text-sm font-semibold">What the paperwork will say</h4>
         {data.fills.map((f, i) => <p key={i} className="text-sm"><span className="text-muted-foreground">{f.label}:</span> {f.value || <em className="text-amber-700">not entered yet</em>}</p>)}
       </div>
+      )}
 
-      {sent ? (
+      {sent && tab === "quote" && <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> The guest approved the quote and the paperwork is out. Nothing more to send from here.</p>}
+      {sent && tab === "paperwork" && (
         <div className="space-y-3">
           <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> {SENT[data.paperwork] ?? "Paperwork sent"}.</p>
           {data.signed && (
@@ -513,12 +562,12 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
             </div>
           )}
         </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Mark 2026-11-09: the guest confirms the price by email before the paperwork goes out */}
+      )}
+      {/* Mark 2026-11-09: the guest confirms the price by email before the paperwork goes out */}
+      {!sent && tab === "quote" && (
           <div className="rounded-md border p-3 space-y-2">
             <h4 className="text-sm font-semibold">Confirm the quote with {data.guest.name}</h4>
-            <p className="text-sm text-muted-foreground">Email the quote above to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
+            <p className="text-sm text-muted-foreground">Email the quote to the guest. The email has two buttons: "Book It" and "I need changes" (a box opens for what they want changed). The paperwork waits for their yes.</p>
             {approved ? (
               <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Price approved {price?.approved_how === "mark" ? "(you recorded their yes)" : "by the guest (Book It)"} · {when(price?.approved_at)}. Book it, enter the confirmation numbers, then send the paperwork.{price?.protection ? ` Travel protection they picked: ${price.protection.label}.` : ""}</p>
             ) : price?.changes_open ? (
@@ -539,37 +588,25 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
             </div>
             {stop?.at === "price" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
+      )}
+      {!sent && tab === "paperwork" && (
           <div className="space-y-2">
             {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
             <button className={`${btn} ${approved ? "bg-primary text-primary-foreground" : ""}`} disabled={busy} onClick={send}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
             {!approved && <span className="text-xs text-muted-foreground ml-2">Waits for the price approval.</span>}
             {stop?.at === "paperwork" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
+      )}
+      </div>
+      {/* The save bar stays at the bottom of the screen on every tab: one button, always in the same place. */}
+      {!sent && (
+        <div data-save-bar className="sticky -bottom-4 md:-bottom-6 z-10 flex items-center justify-between gap-3 flex-wrap border-t bg-card px-4 py-3 rounded-b-lg shadow-[0_-4px_12px_rgba(0,0,0,0.25)]">
+          <p className={`text-sm font-medium ${dirty ? "text-amber-500" : "text-muted-foreground"}`}>{dirty ? "You have changes on this booking that are not saved." : "Everything on this booking is saved."}</p>
+          <button className="text-sm font-semibold px-5 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy || !dirty} onClick={save}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {dirty ? "Save the confirmation" : "Saved"}
+          </button>
         </div>
       )}
     </div>
-  );
-}
-
-export function GroupBooking({ groupId }: { groupId: string }) {
-  const { data } = useQuery<{ success: boolean; bookings: Guest[] }>({ queryKey: ["group-bookings", groupId], queryFn: () => api(`/groups/${groupId}/bookings`) });
-  const wanted = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("book") : null;
-  const [open, setOpen] = useState<string | null>(wanted);
-  const list = data?.bookings ?? [];
-  useEffect(() => { if (!open && list[0]?.paperwork === "booking") setOpen(list[0].id); }, [list, open]);
-  if (!list.length) return null;
-  const waiting = list.filter((g) => g.paperwork === "booking").length;
-  const current = list.find((g) => g.id === open) ?? null;
-  return (
-    <Card id="booking" className="scroll-mt-4">
-      <div className="px-4 py-3 border-b flex items-center gap-2 flex-wrap">
-        <h3 className="font-semibold">Booking confirmations</h3>
-        {waiting > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-800">{waiting} waiting on you</Badge>}
-        <div className="flex gap-2 flex-wrap ml-auto">
-          {list.map((g) => <button key={g.id} className={`${btn} ${g.id === open ? "border-foreground" : ""}`} onClick={() => setOpen(g.id)}>{g.name}{g.completed_at ? " · confirmed" : g.paperwork === "booking" ? " · quote it" : " · sent"}</button>)}
-        </div>
-      </div>
-      {current && <BookingForm key={current.id} groupId={groupId} guest={current} />}
-    </Card>
   );
 }
