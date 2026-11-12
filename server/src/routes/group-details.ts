@@ -11,7 +11,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, decisionEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -750,9 +750,13 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     for (const x of v.extras) cruise.push({ label: x.name, value: usd(x.total) });
   }
   const travel: QuoteDoc["travel"] = [];
+  // Mark 2026-11-11: "the quote email didn't pick up the transfers to/from hotel/cruise" and "the quote should not show zero lines". A travel line
+  // with a price is on the quote; a line priced at 0 is left off; a line with NO price yet is named to Mark before the quote can go (unpricedTravel),
+  // never dropped silently.
   for (const r of v.trip) {
-    if (r.price === null) continue;
+    if (r.price === null || r.price === 0) continue;
     const post = r.direction === "post", k = r.pkg ?? null;
+    const amount = usd(r.price);
     if (r.kind === "package") {
       const leg = (word: string, no: string | null | undefined, from: string | null | undefined, to: string | null | undefined, day: string | null, dep: string | null | undefined, arr: string | null | undefined) => {
         const bits = [no ? `${W.flight} ${no}` : "", [from, to].filter(Boolean).join(` ${W.to} `), longDay(day, lang), dep ? `${W.departs} ${clockTime(dep, lang)}` : "", arr ? `${W.arrives} ${clockTime(arr, lang)}` : ""].filter(Boolean);
@@ -760,12 +764,12 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
       };
       const air = [r.provider, k?.air_class].filter(Boolean).join(", ");
       const hotel = [k?.hotel, k?.hotel_city, [longDay(k?.check_in, lang), longDay(k?.check_out, lang)].filter(Boolean).join(` ${W.to} `), k?.beds === "1" ? W.bed1 : k?.beds === "2" ? W.bed2 : "", k?.breakfast === true ? W.breakfast : k?.breakfast === false ? W.noBreakfast : ""].filter(Boolean).join(" · ");
-      travel.push({ title: W.pkg(post), value: usd(r.price), details: [
+      travel.push({ title: W.pkg(post), value: amount, details: [
         air ? `${W.flights}: ${air}` : "", leg(W.going, k?.flights, r.from_place, r.to_place, r.starts_at, k?.depart_time, k?.arrive_time),
         leg(W.back, k?.return_flights, k?.return_from, k?.return_to, r.ends_at, k?.return_depart_time, k?.return_arrive_time), hotel ? `${W.hotel}: ${hotel}` : "",
       ].filter(Boolean) });
     } else {
-      travel.push({ title: r.label, value: usd(r.price), details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `)].filter(Boolean) });
+      travel.push({ title: r.label, value: amount, details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `)].filter(Boolean) });
     }
   }
   // Travel protection (Mark 2026-11-10): the plans Mark priced for this booking, per person, for the guest to pick from on the quote page. A plan the
@@ -789,6 +793,9 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     protection: plans.length ? { head: W.protect, lede: W.protectLede, plans, own: W.own, none: W.none } : null,
   };
 }
+/** The travel lines on the booking that have no quoted price yet: the quote does not go out while there is one. */
+const unpricedTravel = (b: BookingFile): string[] => bookingView(b).trip.filter((r) => r.price === null).map((r) => r.label);
+const unpricedError = (lines: string[]) => `These travel lines have no quoted price, so they would be missing from the quote: ${lines.join("; ")}. Enter each price on the booking confirmation and save, then press this again. (A line priced at 0 is left off the quote.)`;
 const priceKey = (iid: string) => `price:${iid}`;
 function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
   const linkKey = hubKey();
@@ -1066,6 +1073,7 @@ router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req:
     const lang: Lang = b.lead.lang === "es" ? "es" : "en";
     const doc = quoteDoc(b, lang);
     if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to show yet." });
+    if (unpricedTravel(b).length) return res.status(409).json({ success: false, error: unpricedError(unpricedTravel(b)) });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
@@ -1089,6 +1097,7 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
     const lang: Lang = b.lead.lang === "es" ? "es" : "en";
     const doc = quoteDoc(b, lang);
     if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to send yet." });
+    if (unpricedTravel(b).length) return res.status(409).json({ success: false, error: unpricedError(unpricedTravel(b)) });
     const book = pricePath(iid, lang, "book"), changes = pricePath(iid, lang, "changes");
     if (!book || !changes) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
@@ -1223,6 +1232,20 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
       const now = new Date().toISOString();
       await save({ ...price, approved_at: now, approved_how: "guest", changes_open: false, protection: picked });
       res.json({ success: true, state: "approved" });
+      // Mark 2026-11-11: the guest hears back at once: "I have your decision", the paperwork arrives within 24 hours. A box that only emails its test
+      // addresses holds it and says so on the file; a send that fails is on the file too. Neither undoes the guest's Book It.
+      void (async () => {
+        const to = (b.lead.email ?? b.reply.email ?? "").trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) return;
+        const row = { group_id: String(group.id), traveler_id: b.lead.id, audience: "client", template: "booking-decision", to_email: to };
+        if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { await db().from("group_messages").insert({ ...row, subject: null, status: "skipped", error: "held: this box only emails its test addresses" }); return; }
+        const shown = picked ? quoteDoc(b, lang).protection : null;
+        const pickText = !picked || !shown ? null : picked.key === "own" ? shown.own : picked.key === "none" ? shown.none : ((p) => (p ? `${p.name}, ${p.price}` : null))(shown.plans.find((p) => p.key === picked!.key));
+        const facts = detailsFacts({ group, cabins: [] }, lang);
+        const mail = decisionEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), protection: pickText });
+        const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+        await db().from("group_messages").insert({ ...row, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? new Date().toISOString() : null, error: ok ? null : "mail sender refused or was unreachable" });
+      })().catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the Book It confirmation email could not be sent"));
       void createAction({
         type: "lead", source_ref: `group-price-ok-${iid}`, title: `Price approved: book it · ${who}`, priority: "lead",
         body: `${label} · ${who} tapped "Book It" on the price you sent.${protectNote} Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,

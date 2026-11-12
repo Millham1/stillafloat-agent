@@ -213,7 +213,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       const page = `<!doctype html><meta charset="utf-8"><title>Quote email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
       const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
       if (win) win.location.href = url; else window.open(url, "_blank");
-    } catch (e) { win?.close(); toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
+    } catch (e) { win?.close(); setStop({ at: "price", text: (e as Error).message }); }   // the reason stays in red beside the button (it names what to fix)
     finally { setBusy(false); }
   };
   const recordYes = async () => {

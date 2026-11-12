@@ -601,6 +601,43 @@ export function priceEmail(i: PriceInput): { subject: string; html: string; text
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label), { sign, cornerstone: true }), text };
 }
 
+// ── "Book It" received (Mark 2026-11-11) ──────────────────────────────────────
+// "a confirmation email needs to go to the client once they hit 'book it' telling them I have their decision and that the paperwork will arrive
+// within 24 hours." From Mark alone, with the Cornerstone logo and the Seller of Travel numbers (a business letter, like the quote). It names the
+// travel protection they picked when the quote offered one. The wording is a first draft for Mark to read.
+export interface DecisionInput extends MailBase { groupLabel: string; protection: string | null }
+const DECISION = {
+  en: {
+    subject: (label: string) => `I have your decision… ${label}`,
+    title: "I have your decision!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: "Thank you! I have your decision to book.",
+    protect: (pick: string) => `Travel protection you picked: ${pick}.`,
+    p2: "Your paperwork will arrive by email within 24 hours.",
+    p3: (phone: string) => `Questions before then? Call or text me at ${phone}.`,
+    close: "Cruise smarter, laugh more… see you at the muster drill!",
+    footer: (label: string) => `You are receiving this because you tapped Book It on your ${label} quote. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (label: string) => `Ya tengo su decisión… ${label}`,
+    title: "¡Ya tengo su decisión!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: "¡Gracias! Ya tengo su decisión de reservar.",
+    protect: (pick: string) => `Protección de viaje que eligió: ${pick}.`,
+    p2: "Sus documentos le llegarán por correo dentro de 24 horas.",
+    p3: (phone: string) => `¿Preguntas antes de eso? Llámeme o escríbame al ${phone}.`,
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
+    footer: (label: string) => `Recibió este correo porque tocó Reservar en su cotización de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+export function decisionEmail(i: DecisionInput): { subject: string; html: string; text: string } {
+  const T = DECISION[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = "Mark";
+  const parts = [T.hi(first), T.p1, ...(i.protection ? [T.protect(i.protection)] : []), T.p2, T.p3(BUSINESS.phone), T.close];
+  const text = [...parts, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
+  return { subject: T.subject(label), html: mailFrame(i, T.title, parts.map((x) => para(esc(x))).join("\n    "), T.footer(label), { sign, cornerstone: true }), text };
+}
+
 // ── FlexPay: the time is picked (Mark 2026-11-05) ─────────────────────────────
 // The guest picked a time on our own scheduler: this is the one email that confirms it, with the video link. The wording is a first draft for Mark to read.
 

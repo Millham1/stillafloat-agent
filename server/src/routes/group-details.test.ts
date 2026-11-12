@@ -1034,6 +1034,23 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   // Mark re-prices and sends it again: the request is closed, the price is open again, and the guest books it
   const secondPrice = await call("POST", priceMail, { token: true });
   assert.deepEqual([secondPrice.json["price"]["changes_open"], secondPrice.json["price"]["approved_at"], mails.length], [false, null, 2]);
+  // Mark 2026-11-11: "the quote email didn't pick up the transfers to/from hotel/cruise" + "the quote should not show zero lines". A travel line with
+  // no price yet stops the quote and is NAMED (never dropped silently); a line priced at 0 is left off the quote; a priced line is on it.
+  const transfer = { kind: "transfer", direction: "pre", provider: "Limopedia", from_place: "Hotel", to_place: "the cruise port", starts_at: "2027-05-09", confirmation: "6654321", label: "Hotel to the cruise port" };
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: null }] } })).status, 200);
+  for (const stopped of [await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true }), await call("POST", priceMail, { token: true })]) {
+    assert.equal(stopped.status, 409);
+    assert.match(String(stopped.json["error"]), /These travel lines have no quoted price.*Hotel to the cruise port/, "the line with no price is named");
+  }
+  assert.equal(mails.length, 2, "nothing went out");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "0" }] } })).status, 200);
+  const zeroDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual(zeroDoc["travel"].map((t: Row) => t["value"]), ["$272.40"], "a line priced at 0 is not on the quote");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "45" }] } })).status, 200);
+  const paidDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual(paidDoc["travel"].map((t: Row) => [t["title"], t["value"]]), [[paidDoc["travel"][0]["title"], "$272.40"], ["Hotel to the cruise port", "$45.00"]], "a priced transfer is on the quote");
+  assert.equal(paidDoc["tripTotal"]["value"], "$1,470.98");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }] } })).status, 200);
   // Mark 2026-11-10 ("create an insurance section on the quote… add Allianz too"): the plans Mark priced for THIS booking, each per person, sit on the
   // quote; the guest picks one (or their own policy, or none) with "Book It"; the pick goes to Mark's list and onto the cabin's paperwork files.
   assert.equal((await call("GET", pricePage)).json["doc"]["protection"], null, "no plan priced: no travel protection on the quote, and Book It asks nothing more");
@@ -1088,6 +1105,14 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const booked = await call("POST", pricePage, { body: { action: "book", protection: "p1" } });
   assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
   assert.deepEqual((await call("GET", booking, { token: true })).json["price"]["protection"], { key: "p1", label: "OneTrip Prime (Allianz), $129.50 per person" });
+  // Mark 2026-11-11: "a confirmation email needs to go to the client once they hit 'book it' telling them I have their decision and that the
+  // paperwork will arrive within 24 hours." From Mark alone, with the Cornerstone logo and the Seller of Travel numbers; it names their protection pick.
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(mails.length, 3, "one email to the guest for their Book It");
+  assert.deepEqual([mails[2]!["to"], mails[2]!["subject"]], ["mmillham1@gmail.com", "I have your decision… Friends and Family 2027"]);
+  const decided = String(mails[2]!["html"]);
+  for (const piece of ["I have your decision to book.", "Your paperwork will arrive by email within 24 hours.", "Travel protection you picked: OneTrip Prime (Allianz), $129.50 per person.", "Seller of Travel: CA #2158353-50", "cornerstone-white.png"]) assert.ok(decided.includes(piece), `the Book It email says ${piece}`);
+  assert.ok(!/Mark (and|&amp;|y) /.test(decided), "signed by Mark alone");
   assert.equal((await call("GET", pricePage)).json["protection"], "p1", "the page shows the pick afterwards");
   for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["choice"], t["form_data"]["insurance"]["plan"]], ["quote", "OneTrip Prime (Allianz): $129.50 per person"], "the pick is on every traveler of the cabin, in the paperwork's own words");
   assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
@@ -1102,7 +1127,7 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal(preview.status, 200);
   for (const piece of [">Pat Example<", ">Ana Example<", ">Cruise fare<", ">Add-ons<", "Add-ons for each guest", "<li>Dining package</li>", "<li>Drink package</li>", "$100.00", "$76.79", ">Total per guest<", "$576.79", "Cruise total", "$1,153.58"]) assert.ok(String(preview.json["html"]).includes(piece), `the per-guest price email says ${piece}`);
   assert.ok(!String(preview.json["html"]).includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
-  assert.equal(mails.length, 2, "a preview sends nothing");
+  assert.equal(mails.length, 3, "a preview sends nothing");
   const off = await call("PUT", booking, { token: true, body: { guest_prices: [{ ...perGuest[0], total: 500 }, perGuest[1]] } });
   assert.equal(off.status, 200);
   assert.ok(String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]).includes("Premium Extra drinks"), "guest lines that no longer add up to the saved total are not shown: the cabin and the extras are");
