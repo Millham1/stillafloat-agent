@@ -10,8 +10,6 @@ import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../
 import { DOC_SPECS } from "../lib/group-documents";
 import { pipelineStage } from "../lib/group-pipeline";
 import { renderQuotePdf } from "../lib/group-quote-pdf";
-import { loadVideos } from "../lib/group-journey-store";
-import { pickVideos } from "../lib/group-journey-facts";
 import { resolvePublicDir } from "../lib/public-dir";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -1341,12 +1339,18 @@ async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; fi
   });
   return { bytes, filename: `${lang === "es" ? "cotizacion" : "quote"}-${who.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "guest"}.pdf` };
 }
-/** The insurance video the guest is offered before they choose (Mark 2026-11-12: "Watch this insurance video (the video in the group library)"): the one
- *  set for the paperwork's insurance step (GROUP_INSURANCE_VIDEO_URL), else Mark's own channel video on insurance, the same pick the journey emails make. */
-async function insuranceVideo(lang: Lang): Promise<string | null> {
+/**
+ * The insurance video the guest may choose to watch before they pick (Mark 2026-11-12: "Watch this insurance video (the video in the group library)").
+ * It is Mark's own booking video, "Travel Insurance Pros and Cons", in English and Spanish, kept on OUR server for booking and never on YouTube
+ * (Mark 2026-11-01: "the insurance video is not posted to youtube, it only resides on the servers for use in booking activities"; 2026-11-13: "that
+ * is why the video resides in the db so you do not call youtube"). GROUP_INSURANCE_VIDEO_URL may point somewhere else of ours; nothing here ever
+ * answers with a YouTube address.
+ */
+const BOOKING_VIDEO = { en: "/media/booking/booking-01-travel-insurance-pros-and-cons.mp4", es: "/media/booking/booking-01-travel-insurance-pros-and-cons-es.mp4" } as const;
+function insuranceVideo(lang: Lang): string | null {
   const set = (process.env["GROUP_INSURANCE_VIDEO_URL"] ?? "").trim();
-  if (/^https:\/\//.test(set)) return set;
-  try { return pickVideos(await loadVideos(), "insurance", lang, ["own"], 1)[0]?.url ?? null; } catch { return null; }
+  if (/^https:\/\//.test(set) && !/youtu\.?be|youtube/i.test(set)) return set;
+  return `${BUSINESS.site.replace(/\/$/, "").replace("://", "://www.")}${BOOKING_VIDEO[lang]}`;
 }
 const pdfPath = (iid: string): string | null => {
   const linkKey = hubKey();
@@ -1490,7 +1494,7 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, sheet: sheetOf(b, lang), businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: await insuranceVideo(lang) });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, sheet: sheetOf(b, lang), businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: insuranceVideo(lang) });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
   }

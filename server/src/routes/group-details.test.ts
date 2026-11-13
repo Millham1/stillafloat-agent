@@ -1152,7 +1152,9 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual([chose.status, chose.json["state"], chose.json["protection"]], [200, "open", "p0"]);
   const withChoice = (await call("GET", pricePage)).json;
   assert.deepEqual([withChoice["protection"], withChoice["state"]], ["p0", "open"], "the page shows the choice and the quote is still open");
-  assert.ok("video" in withChoice, "the page is told where the insurance video is (null when none is set)");
+  // Mark 2026-11-13 ("that is why the video resides in the db so you do not call youtube"): the insurance video is our own booking video file
+  assert.equal(withChoice["video"], "https://www.stillafloatcruising.com/media/booking/booking-01-travel-insurance-pros-and-cons.mp4");
+  assert.ok(!/youtu/i.test(JSON.stringify(withChoice)), "nothing on the quote page points at YouTube");
   assert.equal(mails.length, 2, "choosing protection emails nobody");
   const changed = await call("POST", pricePage, { body: { action: "protect", protection: "p1" } });
   assert.equal(changed.json["protection"], "p1", "the choice can be changed until Book It");

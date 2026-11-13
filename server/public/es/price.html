@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261113a">
+<link rel="stylesheet" href="/css/price-page.css?v=20261113b">
 </head>
 <body>
 <div class="wrap">
@@ -267,18 +267,16 @@
   });
   // The travel protection pop-up: the video first, then one tick box per choice (only one stays ticked), then Select. The choice is kept on the
   // booking (it approves nothing), shows in the quote above with its trip total, and is on the PDF.
-  function embedUrl(u){ var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : ''; }
   function openProt(){
     if(!prot || curState !== 'open') return;
     $('pr-title').textContent = T.pr_title; $('pr-pick').textContent = T.pr_pick; $('pr-select').textContent = T.pr_select; show('pr-err', false);
-    var em = embedUrl(video), v = '';
-    // Mark 2026-11-13: "it is a choice to view the video, not automatically starting." The pop-up shows a button; the player is only put on the
-    // page, and only starts, when the guest presses it.
-    if(video) v = em ? '<button type="button" class="btn alt pr-play" id="pr-play">&#9654; ' + esc(T.pr_video) + '</button>' : '<p><a class="q-link" href="' + esc(video) + '" target="_blank" rel="noopener">' + esc(T.pr_video) + '</a></p>';
-    $('pr-video').innerHTML = v;
+    // Mark 2026-11-13: "it is a choice to view the video, not automatically starting", and it is OUR OWN video file on our own server ("so you do
+    // not call youtube"): a button; when the guest presses it, the page's own player is put in and starts. Nothing is asked of any other site.
+    $('pr-video').innerHTML = video ? '<button type="button" class="btn alt pr-play" id="pr-play">&#9654; ' + esc(T.pr_video) + '</button>' : '';
     var play = $('pr-play');
     if(play) play.addEventListener('click', function(){
-      $('pr-video').innerHTML = '<div class="pr-video"><iframe src="' + esc(em + '&autoplay=1') + '" title="' + esc(T.pr_video) + '" referrerpolicy="strict-origin" allow="autoplay; accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>';
+      $('pr-video').innerHTML = '<video class="pr-film" controls playsinline preload="metadata" src="' + esc(video) + '"></video>';
+      var film = $('pr-video').querySelector('video'); if(film && film.play){ var pr = film.play(); if(pr && pr.catch) pr.catch(function(){}); }
     });
     var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '']; });
     rows.push(['own', prot.own, '', ''], ['none', prot.none, '', '']);

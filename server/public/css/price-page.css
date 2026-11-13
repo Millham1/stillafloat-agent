@@ -77,3 +77,4 @@
 .c-pay.total{margin-top:12px;padding:12px 0;border-top:3px solid var(--navy);font-size:24px;font-weight:800}
 @media (max-width:560px){.c-top{grid-template-columns:1fr}.c-person,.c-payer{grid-template-columns:1fr}}
 .pr-play{margin:0 0 14px;font-size:20px;padding:14px 10px}
+.pr-film{display:block;width:100%;border-radius:12px;margin:0 0 14px;background:#07183f}
