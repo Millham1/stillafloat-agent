@@ -46,6 +46,8 @@
       <!-- Answered: one line saying what happens next. -->
       <p class="p-done" id="p-done" hidden></p>
       <p class="small" id="p-after" hidden></p>
+      <!-- Mark 2026-11-12: the same quote as a PDF to download and keep. -->
+      <p class="center"><a id="p-pdf" hidden style="color:#07183f;font-weight:700;font-size:18px"></a></p>
     </section>
   </main>
 
@@ -86,6 +88,7 @@
     done_changes:'¡Recibido! Mark lo cotiza de nuevo y le envía el precio nuevo por correo.',
     done_paper:'Sus documentos ya van en camino a su correo.',
     after:'¿Preguntas? Llame o escriba a Mark al ' + PHONE + '.',
+    pdf:'Descargar esta cotización en PDF',
     fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
     pr_q:'¿Qué protección de viaje desea?', pr_need:'Elija primero su protección de viaje, arriba.', pr_yours:'Su protección de viaje: {pick}.'
   } : {
@@ -100,6 +103,7 @@
     done_changes:'Got it! Mark re-prices it and emails you the new price.',
     done_paper:'Your paperwork is already on its way to your email.',
     after:'Questions? Call or text Mark at ' + PHONE + '.',
+    pdf:'Download this quote as a PDF',
     fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.',
     pr_q:'Which travel protection would you like?', pr_need:'Pick your travel protection above first.', pr_yours:'Your travel protection: {pick}.'
   };
@@ -128,6 +132,7 @@
     prot = (d.doc || {}).protection || null; pick = d.protection || '';
     $('p-lines').innerHTML = quoteHtml(d.doc || {});
     $('p-note').textContent = T.note;
+    if(d.pdf){ var pdf = $('p-pdf'); pdf.href = d.pdf; pdf.textContent = T.pdf; pdf.hidden = false; }
     show('p-price');
     drawState(d.state);
   }

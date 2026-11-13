@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
 import { api } from "@/lib/group-api";
+import { authHeaders } from "@/lib/auth-token";
+import { Tile } from "./group-big-picture";
 import { useToast } from "@/hooks/use-toast";
 
 // Booking confirmation (Mark 2026-11-04, reshaped 2026-11-05). The guest sent their choices; Mark re-quotes them in the cruise line's system and
@@ -12,7 +14,17 @@ import { useToast } from "@/hooks/use-toast";
 // Mark 2026-11-09: every price has a place. The cabin fare and the cruise line's extras (dining, drinks; read off the uploaded quote) add up
 // to the total cruise price, shown against the quote's own total; each flight, hotel, transfer and package carries its quoted price.
 
-type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null; pkg?: Pkg | null };
+type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null; pkg?: Pkg | null;
+  // Mark 2026-11-12: a vendor quotes most travel per person. "person": the box holds the price for one traveler and the booking pays it once each;
+  // "booking": one figure for everybody. The server keeps both the price as quoted and the booking's amount.
+  per?: "person" | "booking"; unit_price?: number | null };
+// Mark 2026-11-12 ("I need information at my fingertips"): everything about the customer in one block, for the booking's first screen
+type Review = {
+  travelers: Array<{ name: string; dob: string | null; age: number | null; lead: boolean }>; email: string | null; phone: string | null; lang: "en" | "es"; home: string | null; note: string | null;
+  chose: Array<{ label: string; detail: string | null }>; flexpay: boolean; toPrice: string[]; happened: Array<{ at: string; label: string }>;
+};
+/** Where this person stands, from the group's levels (GET /groups/:id/pipeline). */
+export type BookingStage = { key: string; status: string; next: string; on: "mark" | "guest" | "done"; since: string | null };
 // A package (air and hotel sold as one): the air and the hotel each have their own fields; the line's price is the package price.
 type Pkg = { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null };
 const NO_PKG: Pkg = { flights: null, return_flights: null, return_from: null, return_to: null, depart_time: null, arrive_time: null, return_depart_time: null, return_arrive_time: null, air_class: null, hotel: null, hotel_city: null, check_in: null, check_out: null, beds: null, breakfast: null };
@@ -24,7 +36,7 @@ type Plan = { name: string; price: string; party: boolean; line: boolean };
 type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 export type Booking = {
-  success: boolean; guest: { name: string; email: string | null };
+  success: boolean; guest: { name: string; email: string | null }; review?: Review;
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
@@ -55,11 +67,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // Mark 2026-11-11: "the page is now so cluttered I could not find the save button … this is now becoming a booking platform and should act like one."
 // The booking is one page of its own with a tab per piece of work (one piece on screen at a time), and the save bar never leaves the bottom of the screen.
-export type BookingTab = "cruise" | "travel" | "protection" | "quote" | "paperwork";
+export type BookingTab = "summary" | "cruise" | "travel" | "protection" | "quote" | "paperwork";
 
-export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid: string; initialTab?: BookingTab }) {
+export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: string; iid: string; initialTab?: BookingTab; stage?: BookingStage | null }) {
   const guest = { id: iid };
-  const [tab, setTab] = useState<BookingTab>(initialTab ?? "cruise");
+  const [, go] = useLocation();
+  const [tab, setTab] = useState<BookingTab>(initialTab ?? "summary");
   const qc = useQueryClient();
   const { toast } = useToast();
   const key = ["group-booking", groupId, guest.id];
@@ -85,7 +98,7 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
     if (!data || dirty) return;   // a refresh never overwrites what is typed and not yet saved
     const c = data.cabin;
     setCabin({ booking_number: c?.booking_number ?? "", cabin_num: c?.cabin_num ?? "", deck: c?.deck ?? "", category: c?.category ?? "", fare: data.totals?.cabin != null ? String(data.totals.cabin) : "", deposit_amount: c?.deposit_amount != null ? String(c.deposit_amount) : "" });
-    setTrip(data.trip);
+    setTrip(data.trip.map((r) => (r.per === "person" ? { ...r, price: r.unit_price ?? r.price } : r)));   // a per-person line shows the price for one traveler
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setGuestPrices(data.guestPrices ?? []);
     setPlans((data.protection ?? []).map((x) => ({ name: x.name, price: String(x.total ?? x.per_person ?? ""), party: x.total != null, line: x.line })));
@@ -119,7 +132,7 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
 
   const setC = (k: string, v: string) => { setCabin((c) => ({ ...c, [k]: v })); setDirty(true); };
   const setT = (i: number, k: keyof TripLine, v: string) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, [k]: v || null } : r))); setDirty(true); };
-  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null, ...(kind === "package" ? { pkg: { ...NO_PKG } } : {}) }]); setDirty(true); };
+  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : kind === "package" ? "Package" : "Transfer", confirmation: null, price: null, per: kind === "hotel" ? "booking" : "person", ...(kind === "package" ? { pkg: { ...NO_PKG } } : {}) }]); setDirty(true); };
   const setP = (i: number, k: keyof Pkg, v: string | boolean | null) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, pkg: { ...NO_PKG, ...(r.pkg ?? {}), [k]: v === "" ? null : v } } : r))); setDirty(true); };
   const setPl = (i: number, patch: Partial<Plan>) => { setPlans((x) => x.map((r, j) => (j === i ? { ...r, ...patch } : r))); setDirty(true); };
   const setX = (i: number, k: keyof Extra, v: string) => { setExtras((x) => x.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
@@ -128,17 +141,67 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
   const round = (n: number) => Math.round(n * 100) / 100;
   const extrasSum = round(extras.reduce((n, x) => n + amount(x.total), 0));
   const cruiseSum = round(amount(cabin["fare"]) + extrasSum);
-  const travelSum = round(trip.reduce((n, r) => n + amount(r.price), 0));
+  // everyone on the booking: a per-person price counts once for each of them
+  const party = data.quote?.party && data.quote.party > 0 ? data.quote.party : 1;
+  const lineAmount = (r: TripLine) => round(amount(r.price) * (r.per === "person" ? party : 1));
+  const travelSum = round(trip.reduce((n, r) => n + lineAmount(r), 0));
+  const perField = (r: TripLine, i: number) => (
+    <Field label="The price is">
+      <select className={input} value={r.per === "person" ? "person" : "booking"} onChange={(e) => { setTrip((t) => t.map((x, j) => (j === i ? { ...x, per: e.target.value === "person" ? "person" : "booking" } : x))); setDirty(true); }} disabled={sent}>
+        <option value="person">per person</option><option value="booking">for the whole booking</option>
+      </select>
+    </Field>
+  );
+  const perMath = (r: TripLine) => (String(r.price ?? "").trim() === "" ? null
+    : <p className="text-sm">{r.per === "person" ? <>{usd(amount(r.price))} per person × {party} traveler{party === 1 ? "" : "s"} = <b>{usd(lineAmount(r))} for the booking</b></> : <><b>{usd(lineAmount(r))} for the booking</b> ({party} traveler{party === 1 ? "" : "s"} together)</>}</p>);
   const quoteTotal = data.carrier?.status === "ready" ? data.carrier.read?.booking_total ?? null : null;
   const price = data.price, approved = !!price?.approved_at;
   const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
+  // Mark 2026-11-12: "we need to build it into a PDF for download"
+  const downloadPdf = async () => {
+    const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/groups/${groupId}/interests/${guest.id}/quote-pdf`, { headers: authHeaders() });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j?.error || `The PDF could not be made (${r.status})`); }
+      const name = /filename="([^"]+)"/.exec(r.headers.get("content-disposition") ?? "")?.[1] ?? "quote.pdf";
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { setStop({ at: "price", text: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  // Mark 2026-11-12: "i need to be able to delete a group, quotes, and individuals"
+  const removeBooking = async () => {
+    if (!window.confirm(`Delete ${data.guest.name}'s quote and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held. This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      const r = await api<{ cabin: string | null }>(`/groups/${groupId}/interests/${guest.id}/delete`, "POST", {});
+      toast({ title: `${data.guest.name} deleted`, ...(r.cabin ? { description: r.cabin } : {}) });
+      qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] }); qc.invalidateQueries({ queryKey: ["group", groupId] }); qc.invalidateQueries({ queryKey: ["groups"] });
+      go(`/groups/${groupId}/quotes`);
+    } catch (e) { setStop({ at: "price", text: (e as Error).message }); setBusy(false); }
+  };
+  // Mark 2026-11-12 ("there are too many steps here"): the Next step card IS the button. Where the step is a press, it does it; where it is work
+  // (re-quote, enter the confirmation numbers), it opens the tab that work is on.
+  const NEXT: Record<string, { label: string; run: () => void }> = {
+    "choices-in": { label: "Open the cruise price", run: () => setTab("cruise") },
+    changes: { label: "Open the cruise price", run: () => setTab("cruise") },
+    "quote-not-sent": { label: "Email the quote now", run: () => void emailPrice() },
+    "book-it": { label: "Send the paperwork now", run: () => void send() },
+    "paperwork-not-sent": { label: "Send the paperwork now", run: () => void send() },
+    signed: { label: "Mark it confirmed now", run: () => void complete() },
+  };
+  const next = stage ? NEXT[stage.key] ?? null : null;
+
   const TABS: Array<{ key: BookingTab; label: string }> = [
-    { key: "cruise", label: "Cruise" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "protection", label: "Travel protection" },
+    { key: "summary", label: "Summary" }, { key: "cruise", label: "Cruise" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "protection", label: "Travel protection" },
     { key: "quote", label: "Quote to the guest" }, { key: "paperwork", label: "Paperwork" },
   ];
   // what each tab still needs, in a word beside its name (red when it stops the quote)
   const tabNote = (k: BookingTab): { text: string; bad?: boolean } | null => {
+    if (k === "summary") return null;
     if (k === "cruise") return cruiseSum > 0 ? { text: usd(cruiseSum) } : { text: "no price yet", bad: true };
     if (k === "travel") {
       const unpriced = trip.filter((r) => r.price === null || String(r.price).trim() === "").length;
@@ -267,6 +330,18 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
 
   return (
     <div>
+      {stage && (
+        <div className="p-4 pb-0 space-y-2">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+            <Tile label="Status" value={stage.status} small caption={stage.since ? `since ${when(stage.since)}` : ""} />
+            <Tile label="Next step" value={stage.next} small bad={stage.on === "mark"} caption={next ? `press to: ${next.label.toLowerCase()}` : stage.on === "mark" ? "your move" : stage.on === "guest" ? "waiting on the guest" : "done"} {...(next ? { onClick: next.run } : {})} />
+            <Tile label="Trip total" value={data.totals?.trip != null ? usd(data.totals.trip) : "—"} caption={data.totals?.trip != null ? `dollars · whole booking, ${party} traveler${party === 1 ? "" : "s"}` : "dollars · no price entered yet"} />
+            <Tile label="Travel protection" value={price?.protection?.label ?? ((data.protection ?? []).length ? `${(data.protection ?? []).length} on the quote` : "None on the quote")} small caption={price?.protection ? "the guest's pick" : (data.protection ?? []).length ? "plans · the guest has not picked" : "add plans on the Travel protection tab"} />
+            <Tile label="Paperwork" value={data.completedAt ? "Confirmed" : data.signed ? `${data.signed.signed} of ${data.signed.required}` : "Not sent"} caption={data.completedAt ? "booking confirmed" : data.signed ? "documents signed" : "goes out after Book It"} />
+          </div>
+          {stop && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
+        </div>
+      )}
       <div role="tablist" aria-label="The parts of this booking" className="flex flex-wrap gap-x-1 border-b px-2">
         {TABS.map((t) => {
           const note = tabNote(t.key);
@@ -279,6 +354,78 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
         })}
       </div>
       <div className="p-4 space-y-4">
+      {!stage && stop && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
+      {tab === "summary" && (() => {
+        const rv = data.review;
+        const row = (label: React.ReactNode, value: React.ReactNode, o: { bold?: boolean; big?: boolean } = {}) => (
+          <div className={`flex items-baseline justify-between gap-4 py-1 ${o.bold ? "font-semibold border-t" : ""} ${o.big ? "text-base" : "text-sm"}`}><span className="min-w-0">{label}</span><span className="whitespace-nowrap text-right">{value}</span></div>
+        );
+        const fact = (label: string, value: React.ReactNode) => <div className="flex gap-3 py-0.5 text-sm"><span className="w-24 shrink-0 text-muted-foreground">{label}</span><span className="min-w-0">{value || <span className="text-muted-foreground">not on file</span>}</span></div>;
+        const none = <em className="text-red-500 not-italic font-semibold">no price yet</em>;
+        const box = "rounded-md border p-3";
+        const h = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5";
+        return (
+          <div className="space-y-4">
+            {/* everything Mark can do from here, one press each */}
+            <div className="flex flex-wrap gap-2 items-center">
+              {!sent && <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy} onClick={emailPrice}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the quote again" : "Email the quote"}</button>}
+              <button className={btn} disabled={busy} onClick={previewPrice}>Preview the quote email</button>
+              <button className={btn} disabled={busy} onClick={downloadPdf}><Download className="w-3 h-3" /> Download the quote PDF</button>
+              {!sent && !approved && <button className={btn} disabled={busy} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
+              {!sent && approved && <button className={`${btn} bg-primary text-primary-foreground`} disabled={busy} onClick={send}><Send className="w-3 h-3" /> Send the paperwork</button>}
+              {!sent && <button className={`${btn} ml-auto text-red-500 border-red-500/50`} disabled={busy} onClick={removeBooking}><Trash2 className="w-3 h-3" /> Delete this quote</button>}
+            </div>
+            {dirty && <p className="text-sm text-amber-500">You have changes that are not saved: this summary shows the saved booking.</p>}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-4">
+                <div className={box}>
+                  <div className={h}>The customer</div>
+                  {(rv?.travelers ?? []).map((t, i) => fact(t.lead ? "Lead" : `Traveler ${i + 1}`, <><b>{t.name}</b>{t.age != null ? ` · age ${t.age}` : ""}{t.dob ? ` · born ${new Date(`${t.dob}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : " · birth date not on file"}</>))}
+                  {fact("Email", rv?.email ? <a className="underline" href={`mailto:${rv.email}`}>{rv.email}</a> : null)}
+                  {fact("Phone", rv?.phone ? <a className="underline" href={`tel:${rv.phone}`}>{rv.phone}</a> : null)}
+                  {fact("Home", rv?.home)}
+                  {fact("Language", rv?.lang === "es" ? "Spanish" : "English")}
+                  {rv?.note && fact("Their note", rv.note)}
+                </div>
+                <div className={box}>
+                  <div className={h}>What they chose</div>
+                  {(rv?.chose ?? []).map((c, i) => <p key={i} className="text-sm py-0.5"><b>{c.label}</b>{c.detail ? <span className="text-muted-foreground"> · {c.detail}</span> : null}</p>)}
+                  <p className="text-sm py-0.5"><b>FlexPay</b><span className="text-muted-foreground"> · {rv?.flexpay ? "yes, they asked for it" : "no"}</span></p>
+                  {(rv?.toPrice ?? []).length > 0 && <p className="text-sm py-0.5"><b>Asked you to price</b><span className="text-muted-foreground"> · {rv!.toPrice.join(", ")}</span></p>}
+                </div>
+                <div className={box}>
+                  <div className={h}>What has happened</div>
+                  {(rv?.happened ?? []).map((x, i) => <div key={i} className="flex gap-3 py-0.5 text-sm"><span className="w-32 shrink-0 text-muted-foreground">{when(x.at)}</span><span>{x.label}</span></div>)}
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className={box}>
+                  <div className={h}>Price for the whole booking · {party} traveler{party === 1 ? "" : "s"}</div>
+                  {row(`Cabin${data.cabin?.category ? `: ${data.cabin.category}` : ""}`, data.totals.cabin != null ? usd(data.totals.cabin) : none)}
+                  {data.extras.map((x, i) => <React.Fragment key={i}>{row(x.name, usd(x.total))}</React.Fragment>)}
+                  {row("Cruise total", data.totals.cruise != null ? usd(data.totals.cruise) : none, { bold: true })}
+                  {data.trip.map((r, i) => <React.Fragment key={i}>{row(<>{r.label}{r.per === "person" && r.unit_price != null ? <span className="text-muted-foreground"> · {usd(Number(r.unit_price))} per person × {party}</span> : <span className="text-muted-foreground"> · one price for the booking</span>}</>, r.price != null ? usd(Number(r.price)) : none)}</React.Fragment>)}
+                  {data.trip.length > 0 && row("Travel total", data.totals.travel != null ? usd(data.totals.travel) : none, { bold: true })}
+                  {row("Trip total (cruise and travel)", data.totals.trip != null ? usd(data.totals.trip) : none, { bold: true, big: true })}
+                  {data.cabin?.deposit_amount != null && row("Deposit", usd(Number(data.cabin.deposit_amount)))}
+                </div>
+                <div className={box}>
+                  <div className={h}>Travel protection</div>
+                  {price?.protection ? <p className="text-sm">The guest picked: <b>{price.protection.label}</b></p>
+                    : (data.protection ?? []).length === 0 ? <p className="text-sm text-muted-foreground">None on the quote. <button className="underline" onClick={() => setTab("protection")}>Add plans</button></p>
+                    : (data.protection ?? []).map((x, i) => <React.Fragment key={i}>{row(x.name, x.total != null ? `${usd(x.total)} for the booking` : `${usd(x.per_person ?? 0)} per person`)}</React.Fragment>)}
+                </div>
+                <div className={box}>
+                  <div className={h}>Confirmation numbers</div>
+                  {fact("Cruise line", data.cabin?.booking_number ? <b>{data.cabin.booking_number}</b> : <span className="text-amber-500">not entered yet</span>)}
+                  {fact("Cabin", [data.cabin?.cabin_num ? `#${data.cabin.cabin_num}` : null, data.cabin?.deck ? `deck ${data.cabin.deck}` : null].filter(Boolean).join(" · ") || <span className="text-amber-500">not entered yet</span>)}
+                  {data.trip.map((r, i) => <React.Fragment key={i}>{fact(r.kind === "package" ? "Package" : r.kind === "flight" ? "Flight" : r.kind === "hotel" ? "Hotel" : "Transfer", <>{r.confirmation ? <b>{r.confirmation}</b> : <span className="text-amber-500">not entered yet</span>}<span className="text-muted-foreground"> · {[r.provider, r.kind === "package" ? null : r.label].filter(Boolean).join(" · ")}</span></>)}</React.Fragment>)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {tab === "cruise" && (<>
       {!sent && (
         <div className="rounded-md border p-3 space-y-2">
@@ -485,7 +632,9 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
                   <Field label="Quoted package price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
+                  {perField(r, i)}
                 </div>
+                {perMath(r)}
               </div>
             </div>
           ) : (
@@ -507,11 +656,13 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
               <Field label={r.kind === "hotel" ? "Check out" : "Arrives"}><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
               <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
               <Field label="Quoted price ($)"><input className={`${input} ${r.price === null || String(r.price).trim() === "" ? "border-red-500" : ""}`} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
+              {perField(r, i)}
               </div>
+              {perMath(r)}
             </div>
           ))}
         </div>
-        {trip.length > 0 && <p className="text-sm mt-2">Travel total: <b>{usd(travelSum)}</b> · Trip total (cruise and travel): <b>{usd(round(cruiseSum + travelSum))}</b></p>}
+        {trip.length > 0 && <p className="text-sm mt-2">Travel total for the booking: <b>{usd(travelSum)}</b> · Trip total for the booking (cruise and travel, {party} traveler{party === 1 ? "" : "s"}): <b>{usd(round(cruiseSum + travelSum))}</b></p>}
       </div>
 
       )}
@@ -586,7 +737,6 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
               <button className={`${btn} ${approved ? "" : "bg-primary text-primary-foreground"}`} disabled={busy} onClick={emailPrice}><Send className="w-3 h-3" /> {price?.sent_at ? "Email the quote again" : `Email the quote to ${data.guest.name}`}</button>
               {!approved && <button className={btn} disabled={busy} onClick={recordYes}><CheckCircle2 className="w-3 h-3" /> They said yes another way</button>}
             </div>
-            {stop?.at === "price" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
       )}
       {!sent && tab === "paperwork" && (
@@ -594,12 +744,11 @@ export function BookingForm({ groupId, iid, initialTab }: { groupId: string; iid
             {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
             <button className={`${btn} ${approved ? "bg-primary text-primary-foreground" : ""}`} disabled={busy} onClick={send}><Send className="w-3 h-3" /> Send the paperwork to {data.guest.name}</button>
             {!approved && <span className="text-xs text-muted-foreground ml-2">Waits for the price approval.</span>}
-            {stop?.at === "paperwork" && <p className="text-sm font-semibold text-red-500 flex items-start gap-1" role="alert"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {stop.text}</p>}
           </div>
       )}
       </div>
       {/* The save bar stays at the bottom of the screen on every tab: one button, always in the same place. */}
-      {!sent && (
+      {!sent && (dirty || ["cruise", "travel", "protection"].includes(tab)) && (
         <div data-save-bar className="sticky -bottom-4 md:-bottom-6 z-10 flex items-center justify-between gap-3 flex-wrap border-t bg-card px-4 py-3 rounded-b-lg shadow-[0_-4px_12px_rgba(0,0,0,0.25)]">
           <p className={`text-sm font-medium ${dirty ? "text-amber-500" : "text-muted-foreground"}`}>{dirty ? "You have changes on this booking that are not saved." : "Everything on this booking is saved."}</p>
           <button className="text-sm font-semibold px-5 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy || !dirty} onClick={save}>

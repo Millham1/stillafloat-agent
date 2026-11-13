@@ -516,7 +516,8 @@ export interface QuoteDoc {
   /** travel protection Mark priced for this booking (Mark 2026-11-10); the guest picks one on the quote page. null when none is offered. */
   protection?: null | { head: string; lede: string; plans: Array<{ key: string; name: string; price: string; note: string | null; withTotal: { label: string; value: string } | null }>; own: string; none: string };
 }
-export interface PriceInput extends MailBase { doc: QuoteDoc; bookUrl: string; changesUrl: string }
+/** pdfUrl (Mark 2026-11-12): the same quote as a PDF the guest can download and keep; the email keeps its Book It and I need changes buttons. */
+export interface PriceInput extends MailBase { doc: QuoteDoc; bookUrl: string; changesUrl: string; pdfUrl?: string | null }
 const PRICE = {
   en: {
     subject: (label: string) => `Your quote from Mark… ${label}`,
@@ -525,7 +526,7 @@ const PRICE = {
     p1: "I priced your choices with the cruise line. Here is your quote:",
     p2: "Happy with it? Tap Book It and your paperwork follows by email. Want something different? Tap I need changes and tell me what you would like.",
     note: "These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.",
-    book: "Book It", changes: "I need changes",
+    book: "Book It", changes: "I need changes", pdf: "Download this quote as a PDF",
     close: "Cruise smarter, laugh more… see you at the muster drill!",
     footer: (label: string) => `You are receiving this because you sent your choices for your ${label} booking. Not you? Reply and we will take you off the list.`,
   },
@@ -536,7 +537,7 @@ const PRICE = {
     p1: "Coticé sus decisiones con la naviera. Esta es su cotización:",
     p2: "¿Le parece bien? Toque Reservar y sus documentos le llegan por correo. ¿Quiere algo distinto? Toque Necesito cambios y dígame qué desea.",
     note: "Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.",
-    book: "Reservar", changes: "Necesito cambios",
+    book: "Reservar", changes: "Necesito cambios", pdf: "Descargar esta cotización en PDF",
     close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
     footer: (label: string) => `Recibió este correo porque envió sus decisiones para su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
   },
@@ -593,11 +594,12 @@ export function priceEmail(i: PriceInput): { subject: string; html: string; text
   const T = PRICE[i.lang];
   const first = i.firstName.trim(), label = i.groupLabel.trim();
   const sign = "Mark";   // Mark 2026-11-10: "this is a quote from me, not Mark and Ceci"
-  const text = [T.hi(first), T.p1, quoteText(i.doc), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
+  const text = [T.hi(first), T.p1, quoteText(i.doc), T.p2, `${T.book}: ${i.bookUrl}`, `${T.changes}: ${i.changesUrl}`, ...(i.pdfUrl ? [`${T.pdf}: ${i.pdfUrl}`] : []), T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
   const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:12px 22px;text-decoration:none;font-size:18px;font-family:Arial,Helvetica,sans-serif;margin:0 8px 8px 0";
   const buttons = `<a href="${esc(i.bookUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.book)}</a>`
     + `<a href="${esc(i.changesUrl)}" style="${pill};background:#f7fbff;color:#07183f;border:2px solid #07183f">${esc(T.changes)}</a>`;
-  const body = [para(esc(T.hi(first))), para(esc(T.p1)), quoteHtml(i.doc), para(esc(T.p2)), para(buttons), para(esc(T.note)), para(esc(T.close))].join("\n    ");
+  const pdf = i.pdfUrl ? [para(`<a href="${esc(i.pdfUrl)}" style="color:#07183f;font-weight:bold;font-size:18px;font-family:Arial,Helvetica,sans-serif">${esc(T.pdf)}</a>`)] : [];
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), quoteHtml(i.doc), para(esc(T.p2)), para(buttons), ...pdf, para(esc(T.note)), para(esc(T.close))].join("\n    ");
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label), { sign, cornerstone: true }), text };
 }
 

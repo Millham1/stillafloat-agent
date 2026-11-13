@@ -102,6 +102,7 @@ before(async () => {
         opsBooked.push(json);
         return send(200, { ok: true, event_id: "ev-1", meet_link: "https://meet.google.com/abc-defg-hij", html_link: "https://calendar.google.com/x" });
       }
+      if (url.pathname.startsWith("/storage/v1/")) { storageCalls.push(`${req.method} ${url.pathname}`); return send(200, []); }
       const table = url.pathname.replace(/^\/rest\/v1\//, "");
       log.push({ method: req.method ?? "", table, query: url.search, body: json });
       const rows = (tables[table] ??= []);
@@ -124,6 +125,11 @@ before(async () => {
         const hit = rows.filter((r) => matches(r, url.searchParams));
         for (const r of hit) Object.assign(r, json);
         return wantsRows ? out(hit) : send(204);
+      }
+      if (req.method === "DELETE") {
+        const keep = rows.filter((r) => !matches(r, url.searchParams));
+        tables[table] = keep;
+        return send(204);
       }
       return send(405, {});
     });
@@ -152,7 +158,9 @@ after(async () => {
   await new Promise<void>((resolve) => stub.close(() => resolve()));
 });
 
+let storageCalls: string[] = [];
 beforeEach(() => {
+  storageCalls = [];
   tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [], group_assets: [] };
   log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false; assetsFail = false;
   opsMeetings = []; opsUp = true; opsTaken = false; opsBooked = [];
@@ -1057,6 +1065,35 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const paidDoc = (await call("GET", pricePage)).json["doc"];
   assert.deepEqual(paidDoc["travel"].map((t: Row) => [t["title"], t["value"]]), [[paidDoc["travel"][0]["title"], "$272.40"], ["Hotel to the cruise port", "$45.00"]], "a priced transfer is on the quote");
   assert.equal(paidDoc["tripTotal"]["value"], "$1,470.98");
+  // Mark 2026-11-12 ("the quoted price in this pane is for one person, not the booking"): a line priced per person is kept as quoted and counted
+  // once for everyone on the booking, in the totals, on the quote and in what the paperwork prints.
+  const perPerson = await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "45", per: "person" }] } });
+  assert.equal(perPerson.status, 200);
+  const line = (perPerson.json["trip"] as Row[])[1]!;
+  assert.deepEqual([line["per"], line["unit_price"], line["price"]], ["person", 45, 90], "$45 a person, two travelers: $90 for the booking");
+  assert.equal(perPerson.json["totals"]["travel"], 362.4);
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][1]["price"], 90, "the stored line price is the booking's, so the paperwork prints the booking's figure");
+  const perDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual([perDoc["travel"][1]["value"], perDoc["travel"][1]["details"].at(-1)], ["$90.00", "$45.00 per person × 2 travelers"], "the quote shows the booking's amount and how it adds up");
+  assert.equal(perDoc["tripTotal"]["value"], "$1,515.98");
+  // Mark 2026-11-12 ("I need information at my fingertips"): the booking carries the review of the customer in one block
+  const review = perPerson.json["review"] as Row;
+  assert.deepEqual((review["travelers"] as Row[]).map((t) => [t["name"], t["lead"]]).slice(0, 1), [[(review["travelers"] as Row[])[0]!["name"], true]], "the lead is first");
+  assert.equal((review["travelers"] as Row[]).length, 2, "everyone on the booking");
+  assert.ok(Array.isArray(review["chose"]) && (review["chose"] as Row[]).length > 0 && Array.isArray(review["happened"]) && (review["happened"] as Row[]).some((h) => h["label"] === "Sent their choices"));
+  assert.ok(!JSON.stringify(review).includes("passport"), "no passport data in the review");
+  // Mark 2026-11-12 ("we need to build it into a PDF for download"): the same quote as a PDF, for Mark and behind the guest's own link
+  const pdfMark = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`, { token: true });
+  assert.equal(pdfMark.status, 200);
+  assert.match(String(pdfMark.headers.get("content-type")), /application\/pdf/);
+  assert.ok(pdfMark.text.startsWith("%PDF-") && pdfMark.text.length > 1500, "a real PDF");
+  assert.match(String(pdfMark.headers.get("content-disposition")), /attachment; filename="quote-[a-z-]+\.pdf"/);
+  assert.equal((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`)).status, 401, "Mark's token only");
+  const pdfLink = String((await call("GET", pricePage)).json["pdf"]);
+  assert.match(pdfLink, /^\/api\/price-confirm\/.+\/quote\.pdf$/);
+  const pdfGuest = await call("GET", pdfLink.replace(/^\/api/, ""));
+  assert.ok(pdfGuest.status === 200 && pdfGuest.text.startsWith("%PDF-"), "the guest's own link downloads it");
+  assert.equal((await call("GET", `/price-confirm/${REPLY_ID}/${"A".repeat(43)}/quote.pdf`)).status, 404, "a wrong link gets nothing");
   assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }] } })).status, 200);
   // Mark 2026-11-10 ("create an insurance section on the quote… add Allianz too"): the plans Mark priced for THIS booking, each per person, sit on the
   // quote; the guest picks one (or their own policy, or none) with "Book It"; the pick goes to Mark's list and onto the cabin's paperwork files.
@@ -1371,4 +1408,45 @@ test("the FlexPay video call on a box that may not email the guest: the time is 
     delete process.env["GROUP_PII_KEY"];
     delete process.env["GROUP_FORMS_MAIL_ALLOW"];
   }
+});
+
+test("Mark 2026-11-12: a person can be deleted (the reply, its travelers, its items; the cabin goes back to held), a whole group too; a signed document or a recorded payment is a record and stops both", async () => {
+  namesIn();
+  actionsAccept = true;
+  await quoteStep(ANSWERS);
+  assert.equal((await agree()).json["paperwork"], "booking");
+  const del = `/groups/${GROUP_ID}/interests/${REPLY_ID}/delete`;
+  assert.equal((await call("POST", del)).status, 401, "Mark's token only");
+  assert.equal((await call("POST", `/groups/${GROUP_ID}/interests/00000000-0000-4000-8000-000000000000/delete`, { token: true })).status, 404);
+  const leadId = String(tables["group_interests"]![0]!["traveler_id"]);
+  assert.ok(tables["group_travelers"]!.length === 2 && leadId);
+  // a signed document is a record: the delete is refused in words that say what to do instead
+  tables["group_signatures"] = [{ id: "s-1", group_id: GROUP_ID, traveler_id: leadId, doc_key: "cba" }];
+  const kept = await call("POST", del, { token: true });
+  assert.equal(kept.status, 409);
+  assert.match(String(kept.json["error"]), /1 signed document on file.*cannot be deleted.*Close it as declined instead/);
+  assert.equal((await call("DELETE", `/groups/${GROUP_ID}`, { token: true, body: { confirm: tables["groups"]![0]!["name"] } })).status, 409, "the group too");
+  assert.equal(tables["group_interests"]!.length, 1, "nothing was removed");
+  tables["group_signatures"] = [];
+  tables["group_payments"] = [{ id: "p-1", group_id: GROUP_ID, cabin_id: CABIN_ID, paid_at: "2026-11-01T00:00:00Z" }];
+  assert.match(String((await call("POST", del, { token: true })).json["error"]), /payment is recorded/);
+  tables["group_payments"] = [];
+  // nothing signed, nothing paid: the person goes
+  tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] = "MSC-1";
+  const gone = await call("POST", del, { token: true });
+  assert.equal(gone.status, 200);
+  assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
+  assert.equal(tables["group_interests"]!.length, 0);
+  assert.equal(tables["group_travelers"]!.length, 0);
+  const cabin = tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!;
+  assert.deepEqual([cabin["status"], cabin["booking_number"], cabin["cabin_num"]], ["held", null, null], "the cabin is back in the block");
+  assert.ok(tables["actions"]!.every((a) => a["status"] !== "open" && a["status"] !== "pending" || !String(a["source_ref"]).endsWith(REPLY_ID)), "Mark's items for that person are closed");
+  // a whole group: the name must be typed, then everything of it goes
+  const groupPath = `/groups/${GROUP_ID}`;
+  assert.equal((await call("DELETE", groupPath)).status, 401, "Mark's token only");
+  assert.equal((await call("DELETE", groupPath, { token: true, body: { confirm: "not the name" } })).status, 400, "the group's name must be typed");
+  assert.equal((await call("DELETE", `/groups/00000000-0000-4000-8000-000000000000`, { token: true, body: { confirm: "x" } })).status, 404);
+  const all = await call("DELETE", groupPath, { token: true, body: { confirm: tables["groups"]![0]!["name"] } });
+  assert.equal(all.status, 200);
+  assert.equal(tables["groups"]!.length, 0);
 });

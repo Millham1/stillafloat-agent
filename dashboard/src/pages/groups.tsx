@@ -333,6 +333,8 @@ function GroupDetail({ id, part }: { id: string; part: string }) {
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); qc.invalidateQueries({ queryKey: ANALYTICS_KEY }); };
   // The server's refusal of a Group details change (a date later than the sailing), written under the field that was edited. Above the early returns so every render calls the same hooks.
   const [fieldError, setFieldError] = useState<{ key: string; message: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [, go] = useLocation();
   if (isLoading) return <GroupFrame groupId={id} view="details"><p className="text-muted-foreground">Loading…</p></GroupFrame>;
   if (error || !data) return <GroupFrame groupId={id} view="details"><p className="text-destructive">Could not load this group: {(error as Error)?.message}</p></GroupFrame>;
 
@@ -353,6 +355,17 @@ function GroupDetail({ id, part }: { id: string; part: string }) {
       refresh();
       return false;
     }
+  };
+  const deleteGroup = async () => {
+    const typed = window.prompt(`Delete "${g.name}" and everything in it? This cannot be undone.\n\nType the group's name to confirm:`);
+    if (typed === null) return;
+    setDeleteError(null);
+    try {
+      await api(`/groups/${id}`, "DELETE", { confirm: typed });
+      toast({ title: `${g.name} deleted` });
+      qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ANALYTICS_KEY });
+      go("/groups");
+    } catch (e) { setDeleteError((e as Error).message); }
   };
   const buildSchedule = async () => {
     try {
@@ -388,6 +401,17 @@ function GroupDetail({ id, part }: { id: string; part: string }) {
       </Card>
 
       <GroupTerms terms={g.terms} sailDate={g.sail_date} />
+      {/* Mark 2026-11-12: "i need to be able to delete a group". The group's name is typed to confirm; signed documents or recorded payments stop it. */}
+      <Card className="border-red-500/40">
+        <div className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="font-semibold">Delete this group</h3>
+            <p className="text-sm text-muted-foreground">Removes the group and everything in it: cabins, travelers, leads, quotes, checklist and email log. It cannot be undone. A group with a signed document or a recorded payment is kept: set its stage to closed or cancelled instead.</p>
+            {deleteError && <p role="alert" className="text-sm font-semibold text-red-500 mt-1">{deleteError}</p>}
+          </div>
+          <button className="inline-flex items-center gap-1 text-sm px-4 py-2 rounded-md border border-red-500/60 text-red-500 hover:bg-red-500/10" onClick={deleteGroup}><Trash2 className="w-4 h-4" /> Delete this group</button>
+        </div>
+      </Card>
       </>)}
 
       {on("marketing") && <div id="marketing"><GroupMarketing groupId={id} /></div>}

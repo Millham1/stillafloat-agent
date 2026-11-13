@@ -3,11 +3,11 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BarChart3, CheckCircle2, ChevronRight } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Trash2 } from "lucide-react";
 import { api, groupBookingsHref } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 import { Tile } from "./group-big-picture";
-import { BookingForm, type Booking, type BookingTab } from "./group-booking";
+import { BookingForm } from "./group-booking";
 
 // The group, level by level (Mark 2026-11-11): "i need to see all the groups, the top level shows me the status. then be able to branch through it. open
 // the group with sub levels for details, leads, quotes, and booked. each sublevel opens up to allow me to choose the name … then open a booking by name
@@ -53,6 +53,46 @@ function Move({ on }: { on: Person["on"] }) {
   if (on === "mark") return <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-red-600 text-white whitespace-nowrap">Your move</span>;
   if (on === "guest") return <span className="inline-block rounded px-2 py-0.5 text-xs font-medium border text-muted-foreground whitespace-nowrap">Waiting on the guest</span>;
   return <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-green-600 whitespace-nowrap"><CheckCircle2 className="w-3.5 h-3.5" /> Done</span>;
+}
+
+// Mark 2026-11-12: "there are too many steps here … way too much effort" and "i need to be able to delete a group, quotes, and individuals".
+// Where a person's next step is a single press (email the quote again, send the paperwork again, mark the call done, confirm the booking), the list
+// does it right there; a refusal comes back in the server's own words. Each row can also be deleted from the list.
+const ONE_PRESS: Record<string, { label: string; path: (g: string, id: string) => string; ask: (name: string) => string; done: string }> = {
+  "call-booked": { label: "We talked", path: (g, id) => `/groups/${g}/interests/${id}/mark/talked`, ask: (n) => `Mark the planning call with ${n} as done?`, done: "Marked: you talked" },
+  "quote-not-sent": { label: "Email the quote now", path: (g, id) => `/groups/${g}/interests/${id}/price-email`, ask: (n) => `Email the quote to ${n} now? It is a real email.`, done: "Quote emailed" },
+  "paperwork-not-sent": { label: "Send the paperwork now", path: (g, id) => `/groups/${g}/interests/${id}/booked`, ask: (n) => `Send the paperwork link to ${n} now?`, done: "Paperwork sent" },
+  signed: { label: "Mark it confirmed", path: (g, id) => `/groups/${g}/interests/${id}/complete`, ask: (n) => `${n}'s booking is confirmed with the cruise line and every vendor?`, done: "Booking confirmed" },
+};
+function usePersonActions(groupId: string) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ id: string; text: string } | null>(null);
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] }); qc.invalidateQueries({ queryKey: ["group", groupId] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-interests", groupId] }); };
+  const press = async (p: Person) => {
+    const a = ONE_PRESS[p.key];
+    if (!a || !window.confirm(a.ask(p.name))) return;
+    setBusy(p.id); setProblem(null);
+    try {
+      const r = await api<{ price?: { sent?: string } }>(a.path(groupId, p.id), "POST", {});
+      if (r.price && r.price.sent && r.price.sent !== "sent") setProblem({ id: p.id, text: `The quote was NOT sent (${r.price.sent === "held" ? "this is the test site and it only emails its test addresses" : r.price.sent === "no-email" ? "no email address on file" : "the mail service refused it"}).` });
+      else toast({ title: a.done });
+    } catch (e) { setProblem({ id: p.id, text: (e as Error).message }); }
+    finally { setBusy(null); refresh(); }
+  };
+  const remove = async (p: Person): Promise<boolean> => {
+    const what = p.level === "lead" || p.level === "closed" ? "lead" : p.level === "quote" ? "quote" : "booking";
+    if (!window.confirm(`Delete ${p.name}'s ${what}${p.has_booking ? " and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held" : ""}? This cannot be undone.`)) return false;
+    setBusy(p.id); setProblem(null);
+    try {
+      const r = await api<{ cabin: string | null }>(`/groups/${groupId}/interests/${p.id}/delete`, "POST", {});
+      toast({ title: `${p.name} deleted`, ...(r.cabin ? { description: r.cabin } : {}) });
+      return true;
+    } catch (e) { setProblem({ id: p.id, text: (e as Error).message }); return false; }
+    finally { setBusy(null); refresh(); }
+  };
+  return { busy, problem, press, remove };
 }
 
 // ── The frame every page of one group shares: where you are, the group's name, and the levels as tabs ──
@@ -190,6 +230,7 @@ export function LevelPage({ groupId, view }: { groupId: string; view: "leads" | 
   const shown = (only === "closed" ? closed : here).filter((p) => !only || only === "closed" || (only === "mine" ? p.on === "mark" : p.key === only));
   const yours = here.filter((p) => p.on === "mark").length;
   const pick = (k: string) => setOnly((o) => (o === k ? null : k));
+  const act = usePersonActions(groupId);
   return (
     <GroupFrame groupId={groupId} view={view}>
       <Card>
@@ -213,19 +254,24 @@ export function LevelPage({ groupId, view }: { groupId: string; view: "leads" | 
               <thead>
                 <tr className="border-b bg-muted/30 text-left text-muted-foreground">
                   <th className="px-3 py-2 font-semibold">Name</th><th className="px-3 py-2 font-semibold">Asked for</th><th className="px-3 py-2 font-semibold">Status</th>
-                  <th className="px-3 py-2 font-semibold">Next step</th><th className="px-3 py-2 font-semibold">Whose move</th><th className="w-8" />
+                  <th className="px-3 py-2 font-semibold">Next step</th><th className="px-3 py-2 font-semibold">Whose move</th><th className="px-3 py-2 font-semibold">Do it</th><th className="w-8" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pipe && shown.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">{here.length === 0 && only === null ? `Nobody is on this level right now.` : "Nobody matches that card."}</td></tr>}
+                {pipe && shown.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">{here.length === 0 && only === null ? `Nobody is on this level right now.` : "Nobody matches that card."}</td></tr>}
                 {shown.map((p) => (
                   <tr key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={() => go(personHref(groupId, p))}>
                     <td className="px-3 py-2.5 font-semibold whitespace-nowrap"><Link href={personHref(groupId, p)} className="underline-offset-2 hover:underline" onClick={(e) => e.stopPropagation()}>{p.name}</Link></td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[p.category, p.party ? `party of ${p.party}` : null].filter(Boolean).join(" · ") || "not said yet"}</td>
                     <td className="px-3 py-2.5">{p.status}{p.since ? <span className="block text-xs text-muted-foreground">{p.key === "call-booked" || p.key === "talked" ? `call: ${moment(p.since)}` : `since ${moment(p.since)}`}</span> : null}</td>
-                    <td className={`px-3 py-2.5 ${p.on === "mark" ? "text-red-500 font-medium" : "text-muted-foreground"}`}>{p.next}</td>
+                    <td className={`px-3 py-2.5 ${p.on === "mark" ? "text-red-500 font-medium" : "text-muted-foreground"}`}>{p.next}{act.problem?.id === p.id && <span role="alert" className="block mt-1 font-semibold text-red-500">{act.problem.text}</span>}</td>
                     <td className="px-3 py-2.5"><Move on={p.on} /></td>
-                    <td className="pr-2"><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
+                    <td className="px-3 py-2.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {ONE_PRESS[p.key]
+                        ? <button className="text-xs font-semibold px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" disabled={act.busy === p.id} onClick={() => void act.press(p)}>{ONE_PRESS[p.key]!.label}</button>
+                        : <Link href={personHref(groupId, p)} className="text-xs px-3 py-1.5 rounded-md border bg-card hover:border-foreground/40">Open</Link>}
+                    </td>
+                    <td className="pr-2" onClick={(e) => e.stopPropagation()}><button title={`Delete ${p.name}`} aria-label={`Delete ${p.name}`} disabled={act.busy === p.id} onClick={() => void act.remove(p)} className="text-muted-foreground hover:text-red-500 disabled:opacity-50"><Trash2 className="w-4 h-4" /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -240,6 +286,8 @@ export function LevelPage({ groupId, view }: { groupId: string; view: "leads" | 
 // ── One lead: who they are, where they stand, and the two things Mark can do ──
 
 export function LeadPage({ groupId, iid }: { groupId: string; iid: string }) {
+  const [, go] = useLocation();
+  const people = usePersonActions(groupId);
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data: pipe } = usePipeline(groupId);
@@ -276,7 +324,9 @@ export function LeadPage({ groupId, iid }: { groupId: string; iid: string }) {
                 {p.key === "call-booked" && <button className={`${btn} bg-primary text-primary-foreground border-primary`} disabled={busy} onClick={() => act(() => api(`/groups/${groupId}/interests/${iid}/mark/talked`, "POST", {}), "Marked: you talked")}>We talked</button>}
                 {p.level !== "closed" && <button className={btn} disabled={busy} onClick={() => { if (window.confirm(`Close ${p.name} as declined? They leave the Leads list. You can reopen them here.`)) void act(() => api(`/groups/${groupId}/interests/${iid}`, "PATCH", { status: "declined" }), "Lead closed"); }}>Close this lead (declined)</button>}
                 {p.level === "closed" && <button className={btn} disabled={busy} onClick={() => act(() => api(`/groups/${groupId}/interests/${iid}`, "PATCH", { status: "new" }), "Lead reopened")}>Reopen this lead</button>}
+                <button className={`${btn} ml-auto text-red-500 border-red-500/50 inline-flex items-center gap-1`} disabled={busy || people.busy === iid} onClick={async () => { if (await people.remove(p)) go(`/groups/${groupId}/leads`); }}><Trash2 className="w-4 h-4" /> Delete this lead</button>
               </div>
+              {people.problem?.id === iid && <p role="alert" className="text-sm font-semibold text-red-500">{people.problem.text}</p>}
               <p className="text-xs text-muted-foreground">This person moves to Quotes by themselves the moment their choices come in. The names they typed and the cabin to place them on are under <Link href={`/groups/${groupId}/details/marketing`} className="underline">Group details, Marketing, Replies from the page</Link>.</p>
             </div>
           )}
@@ -286,31 +336,16 @@ export function LeadPage({ groupId, iid }: { groupId: string; iid: string }) {
   );
 }
 
-// ── One booking: status and next step on top, then only this person's booking ──
-
-const FIRST_TAB: Record<string, BookingTab> = { "choices-in": "cruise", changes: "cruise", "quote-not-sent": "quote", "quote-sent": "quote", "book-it": "paperwork", "paperwork-not-sent": "paperwork", signing: "paperwork", signed: "paperwork", confirmed: "paperwork" };
+// ── One booking: only this person's booking. Its cards (status, next step as a button, totals) and its summary are the form's own first screen. ──
 
 export function BookingPage({ groupId, iid }: { groupId: string; iid: string }) {
   const { data: pipe } = usePipeline(groupId);
-  // the same request the form below makes: one answer, shared
-  const { data: b } = useQuery<Booking>({ queryKey: ["group-booking", groupId, iid], queryFn: () => api(`/groups/${groupId}/interests/${iid}/booking`) });
   const p = pipe?.people.find((x) => x.id === iid) ?? null;
   const view = p?.level === "booked" ? "booked" : "quotes";
-  const picked = b?.price?.protection?.label ?? null, offered = b?.protection?.length ?? 0;
   return (
-    <GroupFrame groupId={groupId} view={view} person={{ name: p?.name ?? b?.guest.name ?? "Booking" }}>
+    <GroupFrame groupId={groupId} view={view} person={{ name: p?.name ?? "Booking" }}>
       {pipe && !p && <p className="text-muted-foreground">That person is not in this group.</p>}
-      {p && (
-        <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
-          <Tile label="Status" value={p.status} small caption={p.since ? `since ${moment(p.since)}` : [p.category, p.party ? `party of ${p.party}` : null].filter(Boolean).join(" · ")} />
-          <Tile label="Next step" value={p.next} small caption={p.on === "mark" ? "your move" : p.on === "guest" ? "waiting on the guest" : "done"} bad={p.on === "mark"} />
-          <Tile label="Trip total" value={b?.totals?.trip != null ? usd(b.totals.trip) : "—"} caption={b?.totals?.trip != null ? `dollars · cruise ${usd(b.totals.cruise ?? 0)} + travel ${usd(b.totals.travel ?? 0)}` : "dollars · no price entered yet"} />
-          <Tile label="Travel protection" value={picked ?? (offered ? `${offered} on the quote` : "None on the quote")} small caption={picked ? "the guest's pick" : offered ? "plans · the guest has not picked" : "add plans on the Travel protection tab"} />
-          <Tile label="Paperwork" value={b?.completedAt ? "Confirmed" : b?.signed ? `${b.signed.signed} of ${b.signed.required}` : "Not sent"} caption={b?.completedAt ? `booking confirmed ${day(b.completedAt)}` : b?.signed ? "documents signed" : "goes out after Book It"} />
-        </div>
-      )}
-      {/* the form opens on the tab the next step is on; it waits for the status so that tab is right the first time */}
-      {p && <Card><BookingForm key={iid} groupId={groupId} iid={iid} initialTab={FIRST_TAB[p.key] ?? "cruise"} /></Card>}
+      {p && <Card><BookingForm key={iid} groupId={groupId} iid={iid} stage={p} /></Card>}
     </GroupFrame>
   );
 }

@@ -9,10 +9,14 @@ import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing"
 import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../lib/group-forms";
 import { DOC_SPECS } from "../lib/group-documents";
 import { pipelineStage } from "../lib/group-pipeline";
+import { renderQuotePdf } from "../lib/group-quote-pdf";
+import { resolvePublicDir } from "../lib/public-dir";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, decisionEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  SELLER_OF_TRAVEL, WHEN_WORD, callBookedEmail, callEmail, decisionEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -548,7 +552,10 @@ export function packageLabel(r: { direction: string | null; provider: string | n
   const parts = [air ? `air (${air})` : "", hotel ? `hotel (${hotel})` : ""].filter(Boolean).join(" and ");
   return `${r.direction === "post" ? "After" : "Before"} the cruise: package${parts ? `, ${parts}` : ""}`;
 }
-interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** the quoted price of the whole line (Mark 2026-11-09) */ price: number | null; /** A package (air and hotel sold as one, Mark 2026-11-09): the air and the hotel in their own fields; the line's price is the package price. */ pkg?: PackageDetail | null }
+interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** the quoted price of the whole line FOR THE BOOKING (Mark 2026-11-09): what the totals, the quote and the paperwork add up */ price: number | null;
+  /** Mark 2026-11-12 ("the quoted price in this pane is for one person, not the booking"): a vendor quotes most travel per person. A line says which it
+   *  is: "person" keeps the price as quoted (unit_price) and `price` is that times everyone on the booking; "booking" is one figure for everybody. */
+  per?: "person" | "booking"; unit_price?: number | null; /** A package (air and hotel sold as one, Mark 2026-11-09): the air and the hotel in their own fields; the line's price is the package price. */ pkg?: PackageDetail | null }
 const tripEntries = (formData: unknown): TripEntry[] => {
   const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
   const list = t && typeof t === "object" ? (t as Record<string, unknown>)["chosen"] : null;
@@ -557,6 +564,7 @@ const tripEntries = (formData: unknown): TripEntry[] => {
     kind: String(r["kind"] ?? ""), direction: text(r["direction"], 10), provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
     starts_at: text(r["starts_at"], 40), ends_at: text(r["ends_at"], 40), label: text(r["label"]) ?? String(r["kind"] ?? ""), confirmation: text(r["confirmation"]),
     price: typeof r["price"] === "number" && Number.isFinite(r["price"]) ? r["price"] : null,
+    per: r["per"] === "person" ? "person" : "booking", unit_price: r["per"] === "person" && typeof r["unit_price"] === "number" && Number.isFinite(r["unit_price"]) ? r["unit_price"] : null,
     ...(String(r["kind"] ?? "") === "package" ? { pkg: packageDetail(r["pkg"]) } : {}),
   })).map((e) => (e.kind === "package" ? { ...e, label: packageLabel(e) } : e));   // a package's line is always written from its fields
 };
@@ -609,10 +617,10 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 async function loadBooking(groupId: string, iid: string) {
-  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email").eq("id", iid).eq("group_id", groupId).maybeSingle();
+  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!reply || !reply.quote_requested_at || !reply.traveler_id) return null;
-  const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
+  const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, phone, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
   if (le) throw new Error(le.message);
   if (!lead) return null;
   const { data: cabin, error: ce } = lead.cabin_id ? await db().from("group_cabins").select("id, cabin_num, deck, category, status, booking_number, price_total, deposit_amount").eq("id", lead.cabin_id).maybeSingle() : { data: null, error: null };
@@ -628,7 +636,12 @@ async function loadBooking(groupId: string, iid: string) {
   // the sailing's protection quotes on the group file (the cruise line's plan and the Allianz plans, as Mark typed them there)
   const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans, sail_date, return_date").eq("id", groupId).maybeSingle();
   if (fe) throw new Error(fe.message);
-  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null };
+  // everyone on this booking (the lead and whoever shares the lead's cabin), for Mark's review of the customer
+  const { data: party, error: pe } = lead.cabin_id
+    ? await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("cabin_id", lead.cabin_id)
+    : await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("id", lead.id);
+  if (pe) throw new Error(pe.message);
+  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null, party: (party ?? []) as Row[] };
 }
 
 interface SignedView { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> }
@@ -708,12 +721,14 @@ function storedPrice(quote: unknown): PriceState {
 const QUOTE_WORDS = {
   en: { cruise: "Your cruise", travel: "Getting there", fare: "Cruise fare", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total per guest",
     cruiseTotal: "Cruise total", tripTotal: "Trip total (cruise and travel)", addonsAll: "Add-ons for each guest", addonsFor: (n: string) => `Add-ons for ${n}`, cabin: "Cabin",
+    each: (price: string, n: number) => `${price} per person × ${n} travelers`,
     pkg: (post: boolean) => `Air and hotel package, ${post ? "after" : "before"} the cruise`, flights: "Flights", going: "Going", back: "Coming back", hotel: "Hotel", bed1: "1 bed", bed2: "2 beds",
     breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight",
     protect: "Travel protection", protectLede: "Priced for your trip. Pick one on your quote page before you tap Book It.", perPerson: "per person", linePlan: "The cruise line's protection plan",
     forParty: (n: number) => (n === 1 ? "total for 1 traveler" : `total for ${n} travelers`), inCruise: "already in your cruise total above", lineOwn: "the cruise line's own plan", own: "I have my own policy", none: "No insurance for us", tripWith: (n: string) => `Trip total with ${n}` },
   es: { cruise: "Su crucero", travel: "Cómo llegar", fare: "Tarifa del crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total por pasajero",
     cruiseTotal: "Total del crucero", tripTotal: "Total del viaje (crucero y traslados)", addonsAll: "Complementos de cada pasajero", addonsFor: (n: string) => `Complementos de ${n}`, cabin: "Cabina",
+    each: (price: string, n: number) => `${price} por persona × ${n} pasajeros`,
     pkg: (post: boolean) => `Paquete de vuelo y hotel, ${post ? "después" : "antes"} del crucero`, flights: "Vuelos", going: "Ida", back: "Regreso", hotel: "Hotel", bed1: "1 cama", bed2: "2 camas",
     breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo",
     protect: "Protección de viaje", protectLede: "Cotizada para su viaje. Elija una en la página de su cotización antes de tocar Reservar.", perPerson: "por persona", linePlan: "El plan de protección de la naviera",
@@ -755,6 +770,7 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     if (v.totals.cabin !== null) cruise.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
     for (const x of v.extras) cruise.push({ label: x.name, value: usd(x.total) });
   }
+  const count = guests.length || b.quote?.party || 0;
   const travel: QuoteDoc["travel"] = [];
   // Mark 2026-11-11: "the quote email didn't pick up the transfers to/from hotel/cruise" and "the quote should not show zero lines". A travel line
   // with a price is on the quote; a line priced at 0 is left off; a line with NO price yet is named to Mark before the quote can go (unpricedTravel),
@@ -763,6 +779,7 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     if (r.price === null || r.price === 0) continue;
     const post = r.direction === "post", k = r.pkg ?? null;
     const amount = usd(r.price);
+    const each = r.per === "person" && typeof r.unit_price === "number" && count > 1 ? W.each(usd(r.unit_price), count) : "";
     if (r.kind === "package") {
       const leg = (word: string, no: string | null | undefined, from: string | null | undefined, to: string | null | undefined, day: string | null, dep: string | null | undefined, arr: string | null | undefined) => {
         const bits = [no ? `${W.flight} ${no}` : "", [from, to].filter(Boolean).join(` ${W.to} `), longDay(day, lang), dep ? `${W.departs} ${clockTime(dep, lang)}` : "", arr ? `${W.arrives} ${clockTime(arr, lang)}` : ""].filter(Boolean);
@@ -772,16 +789,16 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
       const hotel = [k?.hotel, k?.hotel_city, [longDay(k?.check_in, lang), longDay(k?.check_out, lang)].filter(Boolean).join(` ${W.to} `), k?.beds === "1" ? W.bed1 : k?.beds === "2" ? W.bed2 : "", k?.breakfast === true ? W.breakfast : k?.breakfast === false ? W.noBreakfast : ""].filter(Boolean).join(" · ");
       travel.push({ title: W.pkg(post), value: amount, details: [
         air ? `${W.flights}: ${air}` : "", leg(W.going, k?.flights, r.from_place, r.to_place, r.starts_at, k?.depart_time, k?.arrive_time),
-        leg(W.back, k?.return_flights, k?.return_from, k?.return_to, r.ends_at, k?.return_depart_time, k?.return_arrive_time), hotel ? `${W.hotel}: ${hotel}` : "",
+        leg(W.back, k?.return_flights, k?.return_from, k?.return_to, r.ends_at, k?.return_depart_time, k?.return_arrive_time), hotel ? `${W.hotel}: ${hotel}` : "", each,
       ].filter(Boolean) });
     } else {
-      travel.push({ title: r.label, value: amount, details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `)].filter(Boolean) });
+      travel.push({ title: r.label, value: amount, details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `), each].filter(Boolean) });
     }
   }
   // Travel protection (Mark 2026-11-10): the plans Mark priced for this booking, per person, for the guest to pick from on the quote page. A plan the
   // cruise line's quote already prints inside each guest's price is listed as printed and marked as already in the cruise total. A plan's "trip total
   // with" is the trip total plus that plan for everyone on the booking; it is left out when the cruise total already holds the line's plan.
-  const insured = guests.filter((g) => g.insurance > 0), count = guests.length || b.quote?.party || 0;
+  const insured = guests.filter((g) => g.insurance > 0);
   const plans: NonNullable<QuoteDoc["protection"]>["plans"] = [];
   if (asPrinted && insured.length) {
     const same = insured.length === guests.length && insured.every((g) => g.insurance === insured[0]!.insurance);
@@ -806,6 +823,36 @@ const priceKey = (iid: string) => `price:${iid}`;
 function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
   const linkKey = hubKey();
   return linkKey ? `${lang === "es" ? "/es" : ""}/price.html?r=${iid}&k=${deriveCallKey(priceKey(iid), linkKey)}${open ? `&do=${open}` : ""}` : null;
+}
+/**
+ * Mark 2026-11-12: "this does not give me the information I need for the review of this customer … I need information at my fingertips." Everything
+ * about the customer the file already holds, in one block for the booking's first screen: who is travelling (with ages), how to reach them, where they
+ * live, what they chose, what they asked Mark to price, and what has happened so far with its dates. Nothing here is worked out or guessed.
+ */
+function reviewOf(b: BookingFile) {
+  const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
+  const today = new Date().toISOString().slice(0, 10);
+  const price = storedPrice(b.reply.quote);
+  const happened: Array<{ at: string | null; label: string }> = [
+    { at: text(b.reply.created_at, 40), label: "Answered the group page" },
+    { at: text(b.reply.quote_requested_at, 40), label: "Sent their choices" },
+    ...(price.sent_at ? [{ at: price.sent_at, label: price.sent === "sent" ? "Quote emailed" : "Quote email did NOT go out" }] : []),
+    ...price.changes.map((c) => ({ at: c.at || null, label: `Asked for changes: "${c.text}"` })),
+    ...(price.approved_at ? [{ at: price.approved_at, label: price.approved_how === "mark" ? "Said yes (you recorded it)" : "Said Book It" }] : []),
+    ...(b.reply.booking_completed_at ? [{ at: text(b.reply.booking_completed_at, 40), label: "Booking confirmed with the cruise line and vendors" }] : []),
+  ];
+  return {
+    travelers: b.party.map((t) => {
+      const dob = text(t["dob"], 10);
+      return { name: nameOf(t) || "Unnamed traveler", dob, age: dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? ageOnDay(dob, today) : null, lead: t["id"] === b.lead.id };
+    }).sort((x, y) => Number(y.lead) - Number(x.lead)),
+    email: text(b.lead.email ?? b.reply.email, 200), phone: text(b.lead.phone ?? b.reply.phone, 40), lang: b.lead.lang === "es" ? "es" : "en",
+    home: [text(fd["address"], 200), text(fd["city_state_zip"], 120)].filter(Boolean).join(", ") || null,
+    note: text(b.reply.note, 2000),
+    chose: (b.quote?.lines ?? []).map((l) => ({ label: l.label, detail: l.detail })),
+    flexpay: b.quote?.flexpay === true, toPrice: b.quote?.toQuote ?? [],
+    happened: happened.filter((h) => h.at).sort((x, y) => String(x.at).localeCompare(String(y.at))),
+  };
 }
 function bookingView(b: BookingFile) {
   const chosen = tripEntries(b.lead.form_data);
@@ -837,6 +884,7 @@ function bookingView(b: BookingFile) {
     success: true,
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
+    review: reviewOf(b),
     paperwork: b.quote?.paperwork ?? "booking",
     // the price the guest approves before the paperwork goes out
     price: storedPrice(b.reply.quote),
@@ -874,6 +922,101 @@ router.get("/groups/:id/bookings", requireToken, async (req: Request, res: Respo
     return res.json({ success: true, bookings: rows });
   } catch (err) {
     return fail(req, res, err, "group bookings list failed");
+  }
+});
+
+// ── Deleting (Mark 2026-11-12: "i need to be able to delete a group, quotes, and individuals") ──
+// A delete is for test data, a duplicate or a mistake. What is a RECORD is never deleted: a person or a group with a signed document or a recorded
+// payment is refused, in words that say what to do instead (close it). Everything else of the person or the group goes: the reply, the travelers it
+// put on the file, the uploaded cruise line quote, Mark's open items; the cabin goes back to held.
+const RECORD_ACTIONS = ["group-interest", "group-call", "group-hold", "group-quote", "group-price-ok", "group-price-change"];
+const DOCS_BUCKET = "group-docs";
+async function closeItemsOf(replyId: string): Promise<void> {
+  for (const k of RECORD_ACTIONS) await resolveActionsForSource("lead", `${k}-${replyId}`, "dismissed").catch(() => undefined);
+}
+async function dropIntake(intakeId: string | null): Promise<void> {
+  if (!intakeId) return;
+  const { data } = await db().from("group_intakes").select("id, storage_path").eq("id", intakeId).maybeSingle();
+  if (!data) return;
+  if (data.storage_path) await db().storage.from(DOCS_BUCKET).remove([String(data.storage_path)]).catch(() => undefined);
+  await db().from("group_intakes").delete().eq("id", intakeId);
+}
+
+/** One person off the group: a lead, a quote or a booking. Refused once there is a signed document or a recorded payment. */
+router.post("/groups/:id/interests/:iid/delete", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, traveler_id, quote, first_name, last_name").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
+    let cabinNote: string | null = null, travelersGone = 0;
+    if (reply.traveler_id) {
+      const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id").eq("id", reply.traveler_id).maybeSingle();
+      if (le) throw new Error(le.message);
+      const { data: party, error: pe } = lead?.cabin_id
+        ? await db().from("group_travelers").select("id").eq("cabin_id", lead.cabin_id)
+        : await db().from("group_travelers").select("id").eq("id", reply.traveler_id);
+      if (pe) throw new Error(pe.message);
+      const ids = ((party ?? []) as Row[]).map((t) => String(t["id"]));
+      if (ids.length) {
+        const { data: sigs, error: se } = await db().from("group_signatures").select("id").in("traveler_id", ids);
+        if (se) throw new Error(se.message);
+        if ((sigs ?? []).length) return res.status(409).json({ success: false, error: `${nameOf(reply) || "This person"} has ${(sigs ?? []).length} signed document${(sigs ?? []).length === 1 ? "" : "s"} on file. Signed documents are records and are kept, so this booking cannot be deleted. Close it as declined instead.` });
+      }
+      if (lead?.cabin_id) {
+        const { data: paid, error: ye } = await db().from("group_payments").select("id, paid_at").eq("cabin_id", lead.cabin_id);
+        if (ye) throw new Error(ye.message);
+        if (((paid ?? []) as Row[]).some((x) => x["paid_at"])) return res.status(409).json({ success: false, error: `A payment is recorded on this booking's cabin. Payments are records and are kept, so this booking cannot be deleted. Close it as declined instead.` });
+      }
+      for (const id of ids) { const { error: de } = await db().from("group_travelers").delete().eq("id", id); if (de) throw new Error(de.message); travelersGone++; }
+      // the cabin goes back to the block: held, with no booking on it; its type and price come back from another held cabin of the same code
+      if (lead?.cabin_id) {
+        const { data: cabin } = await db().from("group_cabins").select("id, category_code").eq("id", lead.cabin_id).maybeSingle();
+        const { data: sibs } = cabin?.category_code ? await db().from("group_cabins").select("id, category, price_total, deposit_amount, status").eq("group_id", groupId).eq("category_code", cabin.category_code) : { data: [] };
+        const like = ((sibs ?? []) as Row[]).find((c) => c["id"] !== lead.cabin_id && c["status"] === "held");
+        const { error: ce } = await db().from("group_cabins").update({ status: "held", booking_number: null, cabin_num: null, deck: null, ...(like ? { category: like["category"], price_total: like["price_total"], deposit_amount: like["deposit_amount"] } : {}) }).eq("id", lead.cabin_id);
+        if (ce) throw new Error(ce.message);
+        cabinNote = like ? "The cabin is back in the block as held, with its type and price as the other held cabins of its code." : "The cabin is back in the block as held. No other held cabin of its code was found to copy the price from: check its type and price in Group details, Cabins.";
+      }
+    }
+    await dropIntake(text((reply.quote as Row | null)?.["carrier_intake_id"], 60));
+    await closeItemsOf(iid);
+    const { error: de } = await db().from("group_interests").delete().eq("id", iid).eq("group_id", groupId);
+    if (de) throw new Error(de.message);
+    return res.json({ success: true, deleted: { name: nameOf(reply) || "Guest", travelers: travelersGone }, cabin: cabinNote });
+  } catch (err) {
+    return fail(req, res, err, "group person delete failed");
+  }
+});
+
+/** A whole group, with everything in it. The request must carry the group's name ({ confirm }), and a group with a signed document or a recorded payment is refused. */
+router.delete("/groups/:id", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_RE.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data: group, error } = await db().from("groups").select("id, name").eq("id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    if (String((req.body as Row | undefined)?.["confirm"] ?? "").trim() !== String(group.name ?? "").trim()) return res.status(400).json({ success: false, error: "Type the group's name exactly to delete it." });
+    const { data: sigs, error: se } = await db().from("group_signatures").select("id").eq("group_id", groupId);
+    if (se) throw new Error(se.message);
+    if ((sigs ?? []).length) return res.status(409).json({ success: false, error: `This group has ${(sigs ?? []).length} signed document${(sigs ?? []).length === 1 ? "" : "s"} on file. Signed documents are records and are kept, so the group cannot be deleted. Set its stage to closed or cancelled instead.` });
+    const { data: paid, error: ye } = await db().from("group_payments").select("id, paid_at").eq("group_id", groupId);
+    if (ye) throw new Error(ye.message);
+    if (((paid ?? []) as Row[]).some((x) => x["paid_at"])) return res.status(409).json({ success: false, error: "This group has a recorded payment. Payments are records and are kept, so the group cannot be deleted. Set its stage to closed or cancelled instead." });
+    const { data: replies, error: re } = await db().from("group_interests").select("id").eq("group_id", groupId);
+    if (re) throw new Error(re.message);
+    for (const r of (replies ?? []) as Row[]) await closeItemsOf(String(r["id"]));
+    // the uploaded documents of the group would otherwise stay behind with no group (their rows are not removed with it)
+    const { data: intakes, error: ie } = await db().from("group_intakes").select("id").eq("group_id", groupId);
+    if (ie) throw new Error(ie.message);
+    for (const x of (intakes ?? []) as Row[]) await dropIntake(String(x["id"]));
+    const { error: de } = await db().from("groups").delete().eq("id", groupId);
+    if (de) throw new Error(de.message);
+    return res.json({ success: true, deleted: { name: group.name, people: (replies ?? []).length } });
+  } catch (err) {
+    return fail(req, res, err, "group delete failed");
   }
 });
 
@@ -961,6 +1104,7 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
     if (body["trip"] !== undefined) {
       if (!Array.isArray(body["trip"]) || body["trip"].length > 20) return bad("The travel list is not valid.");
       const chosen: TripEntry[] = [];
+      const everyone = b.quote?.party && b.quote.party > 0 ? b.quote.party : 1;
       for (const r of body["trip"] as Array<Record<string, unknown>>) {
         const kind = String(r?.["kind"] ?? "");
         if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel, transfer or package.");
@@ -973,6 +1117,9 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
         };
         // a package says its air and its hotel in the line itself: the label is written from the fields, so the paperwork prints what was entered
         if (kind === "package") { entry.pkg = packageDetail(r["pkg"]); entry.label = packageLabel(entry); }
+        // a per-person price is kept as quoted and counted once for everyone on the booking
+        if (r["per"] === "person") { entry.per = "person"; entry.unit_price = entry.price; if (typeof entry.price === "number" && Number.isFinite(entry.price)) entry.price = cents(entry.price * everyone); }
+        else entry.per = "booking";
         chosen.push(entry);
       }
       if (chosen.some((r) => Number.isNaN(r.price))) return bad("A travel price is not an amount.");
@@ -1117,6 +1264,59 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
   }
 });
 
+let cornerstoneLogo: Buffer | null | undefined;
+function quoteLogo(): Buffer | null {
+  if (cornerstoneLogo === undefined) {
+    try { cornerstoneLogo = readFileSync(path.join(resolvePublicDir(), BUSINESS.logoPath)); } catch { cornerstoneLogo = null; }
+  }
+  return cornerstoneLogo;
+}
+/** The guest's quote as a PDF (Mark 2026-11-12): the same document the email and the quote page print. null when there is no price to print yet. */
+async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; filename: string } | { error: string }> {
+  const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+  const doc = quoteDoc(b, lang);
+  if (!doc.cruiseTotal) return { error: "Enter the cabin fare and save the confirmation first: there is no price to print yet." };
+  if (unpricedTravel(b).length) return { error: unpricedError(unpricedTravel(b)) };
+  const facts = detailsFacts({ group, cabins: [] }, lang);
+  const answer = pricePath(String(b.reply.id), lang);
+  const who = [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest";
+  const bytes = await renderQuotePdf({
+    lang, doc, guestName: who, groupLabel: facts.label,
+    dateText: new Date().toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" }),
+    agentName: BUSINESS.agentName, businessName: BUSINESS.legalName, phone: BUSINESS.phone, email: BUSINESS.email, sellerOfTravel: SELLER_OF_TRAVEL,
+    answerUrl: answer ? `${publicSite()}${answer}` : null, logo: quoteLogo(),
+  });
+  return { bytes, filename: `${lang === "es" ? "cotizacion" : "quote"}-${who.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "guest"}.pdf` };
+}
+const pdfPath = (iid: string): string | null => {
+  const linkKey = hubKey();
+  return linkKey ? `/api/price-confirm/${iid}/${deriveCallKey(priceKey(iid), linkKey)}/quote.pdf` : null;
+};
+const sendPdf = (res: Response, f: { bytes: Buffer; filename: string }) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${f.filename}"`);
+  res.setHeader("Cache-Control", "no-store");
+  return res.send(f.bytes);
+};
+
+/** The quote PDF for Mark, to read or to hand over himself (Mark 2026-11-12). Nothing is sent and nothing is recorded. */
+router.get("/groups/:id/interests/:iid/quote-pdf", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const f = await quotePdf(b, group);
+    if ("error" in f) return res.status(409).json({ success: false, error: f.error });
+    return sendPdf(res, f);
+  } catch (err) {
+    return fail(req, res, err, "group quote pdf failed");
+  }
+});
+
 /** The price email exactly as it would go out now, for Mark to read before he sends it: nothing is sent and nothing is recorded. */
 router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req: Request, res: Response) => {
   try {
@@ -1132,7 +1332,7 @@ router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req:
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: "#", changesUrl: "#" });
+    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: "#", changesUrl: "#", pdfUrl: "#" });
     return res.json({ success: true, subject: mail.subject, html: mail.html, to: (b.lead.email ?? b.reply.email ?? "").trim() });
   } catch (err) {
     return fail(req, res, err, "group price preview failed");
@@ -1165,7 +1365,7 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
       sent = "held";
     } else {
-      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}` });
+      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}`, pdfUrl: pdfPath(iid) ? `${publicSite()}${pdfPath(iid)}` : null });
       const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
       const at = new Date().toISOString();
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
@@ -1230,9 +1430,26 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])) });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
+  }
+});
+
+/** The guest's own quote as a PDF, behind the same private link as the quote page (Mark 2026-11-12: "we need to build it into a PDF for download"). */
+router.get("/price-confirm/:iid/:key/quote.pdf", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const f = await quotePdf(loaded.b, loaded.group);
+    if ("error" in f) return notFound(res);
+    return sendPdf(res, f);
+  } catch (err) {
+    return fail(req, res, err, "price confirm pdf failed");
   }
 });
 

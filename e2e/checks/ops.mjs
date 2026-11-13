@@ -1675,7 +1675,7 @@ export default [
     id: "ops.price-confirm-writes-refuse",
     basis: "ruling: Mark 2026-11-09 — the guest approves the price ('Book It') or asks for changes before the paperwork goes out; only the guest Mark emailed can answer, and only Mark can send the price or record a yes he got another way",
     title: "Book It and I need changes refuse a link that does not exist, the bot trap records nothing, and sending the price or recording an approval is Mark's alone",
-    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote"],
+    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote", "GET /api/price-confirm/:iid/:key/quote.pdf", "GET /api/groups/:id/interests/:iid/quote-pdf", "POST /api/groups/:id/interests/:iid/delete", "DELETE /api/groups/:id"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap, no token, a guest that does not exist; nothing is approved and nobody is emailed); prod sweeps are read-only",
     run: async (t) => {
@@ -1690,6 +1690,15 @@ export default [
       // the preview of the price email is Mark's alone too, and shows nothing for a guest that does not exist
       unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: false }), "GET /api/groups/:id/interests/:iid/price-preview");
       refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: true }), 404, "the price preview of a guest who has not sent their choices", /has not sent|not found/i);
+      // Mark 2026-11-12: the quote as a PDF. The guest's copy sits behind the same private link (a wrong link gets nothing); Mark's copy is his alone.
+      refused(t, await t.send("GET", `/api/price-confirm/${ZERO}/${"A".repeat(43)}/quote.pdf`, { auth: false }), 404, "the quote PDF behind a link that does not exist", /^not found$/i);
+      unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/quote-pdf`, { auth: false }), "GET /api/groups/:id/interests/:iid/quote-pdf");
+      refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/quote-pdf`, { auth: true }), 404, "the quote PDF of a guest who has not sent their choices", /has not sent|not found/i);
+      // Mark 2026-11-12: deleting a person or a whole group is Mark's alone, and one that does not exist deletes nothing.
+      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/delete`, {}), "POST /api/groups/:id/interests/:iid/delete");
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/delete`, {}, true), 404, "deleting a person who does not exist", /not found/i);
+      unauthorized(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: false, body: {} }), "DELETE /api/groups/:id");
+      refused(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: true, body: { confirm: "x" } }), 404, "deleting a group that does not exist", /group not found/i);
       for (const step of ["price-email", "price-approved", "protection-quote"]) {
         unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}), `POST /api/groups/:id/interests/:iid/${step}`);
         refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}, true), 404, `${step} for a guest who has not sent their choices`, /has not sent|not found/i);
