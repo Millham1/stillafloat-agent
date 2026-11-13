@@ -10,6 +10,7 @@ import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../
 import { DOC_SPECS } from "../lib/group-documents";
 import { pipelineStage } from "../lib/group-pipeline";
 import { renderQuotePdf } from "../lib/group-quote-pdf";
+import { linePlanCoverage, stateOf } from "../lib/line-protection";
 import { resolvePublicDir } from "../lib/public-dir";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -811,8 +812,12 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
   // what each Allianz plan covers, from the quote the agent fetched for this trip: matched by the plan's name ("Classic Plan (Allianz)")
   const fetched = allianzRecord(b.lead.form_data)?.plans ?? [];
   const coverOf = (name: string) => fetched.find((f) => `${f.name} (Allianz)`.toLowerCase() === name.trim().toLowerCase() || f.name.toLowerCase() === name.trim().toLowerCase());
+  // the cruise line's OWN plan: its coverages are its plan document's Schedule of Benefits, when that document has been read for the lead's state
+  const ownPlan = linePlanCoverage(b.file?.["cruise_line"], stateOf((b.lead.form_data as Record<string, any> | null)?.["city_state_zip"]));
+  const ALLIANZ_SOURCE = { en: "As listed by Allianz for this trip. The policy itself governs.", es: "Según Allianz para este viaje. La póliza es la que manda." };
   v.protection.forEach((p, i) => plans.push({
-    ...(coverOf(p.name)?.benefits?.length ? { covers: coverOf(p.name)!.benefits!, ...(coverOf(p.name)!.about ? { about: coverOf(p.name)!.about! } : {}) } : {}),
+    ...(p.line && ownPlan ? { covers: ownPlan.benefits, about: ownPlan.about, source: ownPlan.source[lang] }
+      : coverOf(p.name)?.benefits?.length ? { covers: coverOf(p.name)!.benefits!, ...(coverOf(p.name)!.about ? { about: coverOf(p.name)!.about! } : {}), source: ALLIANZ_SOURCE[lang] } : {}),
     key: `p${i}`, name: p.name, price: p.total !== null ? `${usd(p.total)} ${W.forParty(count)}` : `${usd(p.per_person ?? 0)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
     withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + (p.total ?? (p.per_person ?? 0) * count))) } : null,
   }));

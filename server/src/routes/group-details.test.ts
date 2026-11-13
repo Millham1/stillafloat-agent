@@ -1138,10 +1138,20 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal((await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } })).status, 200);
   const offer = (await call("GET", pricePage)).json["doc"]["protection"];
   assert.deepEqual([offer["head"], offer["own"], offer["none"]], ["Travel protection", "I have my own policy", "No insurance for us"]);
-  assert.deepEqual(offer["plans"], [
+  const bare = (offer["plans"] as Row[]).map(({ covers: _c, about: _a, source: _s, ...rest }) => rest);
+  assert.deepEqual(bare, [
     { key: "p0", name: "MSC Cruise Protection", price: "$99.00 per person", note: "the cruise line's own plan", withTotal: { label: "Trip total with MSC Cruise Protection", value: "$1,623.98" } },
     { key: "p1", name: "OneTrip Prime (Allianz)", price: "$129.50 per person", note: null, withTotal: { label: "Trip total with OneTrip Prime (Allianz)", value: "$1,684.98" } },
   ], "each plan with its price per person and the trip total with it for the party of two");
+  // Mark 2026-11-13 ("that doesnt solve the coverages problem only the price"): the cruise line's own plan carries the Schedule of Benefits of its
+  // plan document when that document has been read for the lead's state; a plan with no coverages read carries none (never a guess)
+  const leadState = /,\s*([A-Z]{2})\s+\d{5}/.exec(String(tables["group_travelers"]![0]!["form_data"]["city_state_zip"] ?? ""))?.[1] ?? null;
+  const own = (offer["plans"] as Row[])[0]!;
+  if (leadState === "NC") {
+    assert.equal((own["covers"] as Row[]).length, 9, "MSC's nine benefit lines");
+    assert.match(String(own["source"]), /GR452/);
+  } else assert.ok(!("covers" in own), `no MSC document read for ${leadState}`);
+  assert.ok(!("covers" in (offer["plans"] as Row[])[1]!), "no Allianz quote with coverages was fetched in this test: none are shown");
   const protMail = String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]);
   assert.ok(!protMail.includes("MSC Cruise Protection") && protMail.includes(">See my quote</a>"), "the plans are on the private page, not in the email");
   const noPick = await call("POST", pricePage, { body: { action: "book" } });

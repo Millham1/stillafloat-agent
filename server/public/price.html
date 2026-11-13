@@ -283,7 +283,7 @@
         cov = '<button type="button" class="q-link pr-cov-btn" data-cov="' + esc(r[0]) + '">' + esc(T.pr_cov) + '</button><div class="pr-cov" id="pr-cov-' + esc(r[0]) + '" hidden>' +
           (p.about ? '<p>' + esc(p.about) + '</p>' : '') + '<table><thead><tr><th>' + esc(T.pr_cov_th1) + '</th><th>' + esc(T.pr_cov_th2) + '</th></tr></thead><tbody>' +
           p.covers.map(function(c){ return '<tr><td><b>' + esc(c.name) + '</b>' + (c.limits || []).map(function(l){ return '<span>' + esc(l.name) + ': ' + esc(l.value) + '</span>'; }).join('') + '</td><td>' + esc(c.coverage) + '</td></tr>'; }).join('') +
-          '</tbody></table><p class="pr-cov-src">' + esc(T.pr_cov_src) + '</p></div>';
+          '</tbody></table><p class="pr-cov-src">' + esc(p.source || T.pr_cov_src) + '</p></div>';
       }
       return '<div class="pr-row"><label class="pr-opt"><input type="checkbox" data-prot="' + esc(r[0]) + '"' + (pick === r[0] ? ' checked' : '') + '><span><b>' + esc(r[1]) + '</b>' + (r[2] ? '<em>' + esc(r[2]) + '</em>' : '') + (r[3] ? '<em>' + esc(r[3]) + '</em>' : '') + '</span></label>' + cov + '</div>';
     }).join('');

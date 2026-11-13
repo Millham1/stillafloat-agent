@@ -516,7 +516,9 @@ export interface QuoteDoc {
   /** travel protection Mark priced for this booking (Mark 2026-11-10); the guest picks one on the quote page. null when none is offered. */
   protection?: null | { head: string; lede: string; plans: Array<{ key: string; name: string; price: string; note: string | null; withTotal: { label: string; value: string } | null;
     /** what the plan covers, as Allianz's site lists it for this trip (Mark 2026-11-13); absent when it was not read */
-    covers?: Array<{ name: string; coverage: string; limits: Array<{ name: string; value: string }> }>; about?: string }>; own: string; none: string };
+    covers?: Array<{ name: string; coverage: string; limits: Array<{ name: string; value: string }> }>; about?: string;
+    /** whose list the coverages are, said under the table */
+    source?: string }>; own: string; none: string };
 }
 /** Mark 2026-11-12: "the email tells them the quote is ready and provide a link to the secured page." The email carries no figure and no Book It
  *  button: the quote, the travel protection choice, the PDF and the two answers are all on the guest's own private page (pageUrl). */
