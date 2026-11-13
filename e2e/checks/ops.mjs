@@ -1648,7 +1648,7 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/price.html", "en"], ["/es/price.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/price-confirm/", 'id="p-book"', 'id="p-changes"', 'id="p-modal"', 'id="p-text"', "website: ''", "book:'Book It'", "changes:'I need changes'", "book:'Reservar'", "changes:'Necesito cambios'", 'data-prot="', 'id="pr-modal"', "action: 'protect'", "Choose your travel protection first.", "Elija primero su protección de viaje.", "pr_video:'Watch this insurance video'", "pr_video:'Vea este video sobre el seguro'", 'id="p-pdf"', "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/price-confirm/", 'id="p-book"', 'id="p-changes"', 'id="p-modal"', 'id="p-text"', "website: ''", "book:'Book It'", "changes:'I need changes'", "book:'Reservar'", "changes:'Necesito cambios'", 'data-prot="', 'id="pr-modal"', "action: 'protect'", "Choose your travel protection first.", "Elija primero su protección de viaje.", "pr_video:'Watch this insurance video'", 'id="pr-play"', "pr_video:'Vea este video sobre el seguro'", 'id="p-pdf"', "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620"] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
         t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
