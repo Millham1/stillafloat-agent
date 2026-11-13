@@ -432,13 +432,24 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
   function insuranceBody(s) {
     var ins = packet.insurance || {};
-    var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
-    if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+    // Mark 2026-11-13: "it is a choice to view the video, not automatically starting", and it is our own video file ("so you do not call youtube"):
+    // a button; the page's own player is put in, and starts, only when the traveler presses it.
+    var h = '<p class="lead">Before you choose, look at the price for your trip. A short video explains how travel insurance works, if you would like to watch it.</p>';
+    if (ins.video_url) h += '<div class="w-video-own" id="w-video-own" style="margin:0 0 18px"><button type="button" class="btn w-play" id="w-play" data-video="' + esc(ins.video_url) + '">&#9654; Watch the insurance video</button></div>';
     var chosen = (ins.choice && ins.choice.plan) || (fields.insurance_plan && fields.insurance_plan.f.value) || '';
     h += '<div class="w-quote" id="w-quote" aria-live="polite">' + quoteHtml(ins.quote, ins.line_protection, chosen) + '</div>';
     return h + fieldsHtml(s.fields || []);
   }
-  function embedUrl(u) { var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : u; }
+  // the Watch button of the insurance step: one listener for the page, since the step is drawn again and again
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('#w-play') : null;
+    if (!b) return;
+    var box = document.getElementById('w-video-own'), src = b.getAttribute('data-video');
+    if (!box || !src) return;
+    box.innerHTML = '<video controls playsinline preload="metadata" style="display:block;width:100%;border-radius:12px;background:#07183f"></video>';
+    var film = box.querySelector('video'); film.src = src;
+    var p = film.play && film.play(); if (p && p.catch) p.catch(function () {});
+  });
   function planText(p) { return p.name + ': $' + money(p.price_per_person) + ' per person'; }
   function money(n) { var v = Number(n); return isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }) : String(n); }
   function quoteHtml(q, line, picked) {

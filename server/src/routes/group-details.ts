@@ -4,7 +4,7 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
 import { createAction, resolveActionsForSource, retitleActionsForSource } from "../lib/actions";
-import { BUSINESS, callKeyMatches, deriveCallKey, hashLinkToken, hubKey, looksLikeLinkToken } from "../lib/group-secure";
+import { BUSINESS, bookingInsuranceVideo, callKeyMatches, deriveCallKey, hashLinkToken, hubKey, looksLikeLinkToken } from "../lib/group-secure";
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../lib/group-forms";
 import { DOC_SPECS } from "../lib/group-documents";
@@ -1339,19 +1339,8 @@ async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; fi
   });
   return { bytes, filename: `${lang === "es" ? "cotizacion" : "quote"}-${who.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "guest"}.pdf` };
 }
-/**
- * The insurance video the guest may choose to watch before they pick (Mark 2026-11-12: "Watch this insurance video (the video in the group library)").
- * It is Mark's own booking video, "Travel Insurance Pros and Cons", in English and Spanish, kept on OUR server for booking and never on YouTube
- * (Mark 2026-11-01: "the insurance video is not posted to youtube, it only resides on the servers for use in booking activities"; 2026-11-13: "that
- * is why the video resides in the db so you do not call youtube"). GROUP_INSURANCE_VIDEO_URL may point somewhere else of ours; nothing here ever
- * answers with a YouTube address.
- */
-const BOOKING_VIDEO = { en: "/media/booking/booking-01-travel-insurance-pros-and-cons.mp4", es: "/media/booking/booking-01-travel-insurance-pros-and-cons-es.mp4" } as const;
-function insuranceVideo(lang: Lang): string | null {
-  const set = (process.env["GROUP_INSURANCE_VIDEO_URL"] ?? "").trim();
-  if (/^https:\/\//.test(set) && !/youtu\.?be|youtube/i.test(set)) return set;
-  return `${BUSINESS.site.replace(/\/$/, "").replace("://", "://www.")}${BOOKING_VIDEO[lang]}`;
-}
+/** The insurance video the guest may choose to watch before they pick: Mark's own booking video on our server (lib/group-secure.ts). */
+const insuranceVideo = (lang: Lang): string => bookingInsuranceVideo(lang);
 const pdfPath = (iid: string): string | null => {
   const linkKey = hubKey();
   return linkKey ? `/api/price-confirm/${iid}/${deriveCallKey(priceKey(iid), linkKey)}/quote.pdf` : null;

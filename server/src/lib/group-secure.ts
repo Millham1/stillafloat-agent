@@ -148,3 +148,15 @@ export function safeEqualHex(a: string, b: string): boolean {
   const bb = Buffer.from(b);
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
+
+// ── The booking insurance video ───────────────────────────────────────────────
+// Mark's own film, "Travel Insurance Pros and Cons", in English and Spanish, kept on OUR server for booking and never on YouTube (Mark 2026-11-01:
+// "the insurance video is not posted to youtube, it only resides on the servers for use in booking activities"; 2026-11-13: "that is why the video
+// resides in the db so you do not call youtube"). Every booking page that offers an insurance video plays this file with its own player, behind a
+// button the guest chooses to press. GROUP_INSURANCE_VIDEO_URL may point at another file of ours; a YouTube address there is ignored.
+const BOOKING_VIDEO = { en: "/media/booking/booking-01-travel-insurance-pros-and-cons.mp4", es: "/media/booking/booking-01-travel-insurance-pros-and-cons-es.mp4" } as const;
+export function bookingInsuranceVideo(lang: "en" | "es", env: Record<string, string | undefined> = process.env): string {
+  const set = (env["GROUP_INSURANCE_VIDEO_URL"] ?? "").trim();
+  if (/^https:\/\//.test(set) && !/youtu\.?be|youtube/i.test(set)) return set;
+  return `${BUSINESS.site.replace(/\/$/, "").replace("://", "://www.")}${BOOKING_VIDEO[lang]}`;
+}
