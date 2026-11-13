@@ -278,7 +278,7 @@
     $('pr-video').innerHTML = v;
     var play = $('pr-play');
     if(play) play.addEventListener('click', function(){
-      $('pr-video').innerHTML = '<div class="pr-video"><iframe src="' + esc(em + '&autoplay=1') + '" title="' + esc(T.pr_video) + '" allow="autoplay; accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>';
+      $('pr-video').innerHTML = '<div class="pr-video"><iframe src="' + esc(em + '&autoplay=1') + '" title="' + esc(T.pr_video) + '" referrerpolicy="strict-origin" allow="autoplay; accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>';
     });
     var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '']; });
     rows.push(['own', prot.own, '', ''], ['none', prot.none, '', '']);
