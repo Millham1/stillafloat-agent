@@ -1331,7 +1331,7 @@ async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; fi
     lang, doc, guestName: who, groupLabel: facts.label,
     dateText: new Date().toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" }),
     agentName: BUSINESS.agentName, businessName: BUSINESS.legalName, phone: BUSINESS.phone, email: BUSINESS.email, sellerOfTravel: SELLER_OF_TRAVEL,
-    answerUrl: answer ? `${publicSite()}${answer}` : null, logo: quoteLogo(),
+    answerUrl: answer ? `${publicSite()}${answer}` : null, logo: quoteLogo(), sheet: sheetOf(b, lang),
     // the travel protection the guest chose on the page, when they have: the PDF then prints that one and the trip total with it
     picked: ((key) => {
       if (!key || !doc.protection) return null;
