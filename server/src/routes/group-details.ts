@@ -10,6 +10,8 @@ import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../
 import { DOC_SPECS } from "../lib/group-documents";
 import { pipelineStage } from "../lib/group-pipeline";
 import { renderQuotePdf } from "../lib/group-quote-pdf";
+import { loadVideos } from "../lib/group-journey-store";
+import { pickVideos } from "../lib/group-journey-facts";
 import { resolvePublicDir } from "../lib/public-dir";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -885,6 +887,8 @@ function bookingView(b: BookingFile) {
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
     review: reviewOf(b),
+    // the guest's own private quote page, once the quote has been emailed (it does not open before): for Mark to see exactly what they see
+    guestPage: storedPrice(b.reply.quote).sent_at ? pricePath(String(b.reply.id), b.lead.lang === "es" ? "es" : "en") : null,
     paperwork: b.quote?.paperwork ?? "booking",
     // the price the guest approves before the paperwork goes out
     price: storedPrice(b.reply.quote),
@@ -1285,8 +1289,21 @@ async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; fi
     dateText: new Date().toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" }),
     agentName: BUSINESS.agentName, businessName: BUSINESS.legalName, phone: BUSINESS.phone, email: BUSINESS.email, sellerOfTravel: SELLER_OF_TRAVEL,
     answerUrl: answer ? `${publicSite()}${answer}` : null, logo: quoteLogo(),
+    // the travel protection the guest chose on the page, when they have: the PDF then prints that one and the trip total with it
+    picked: ((key) => {
+      if (!key || !doc.protection) return null;
+      const plan = doc.protection.plans.find((p) => p.key === key);
+      return plan ? { name: plan.name, price: plan.price, withTotal: plan.withTotal } : key === "own" ? { name: doc.protection.own, price: "", withTotal: null } : key === "none" ? { name: doc.protection.none, price: "", withTotal: null } : null;
+    })(storedPrice(b.reply.quote).protection?.key),
   });
   return { bytes, filename: `${lang === "es" ? "cotizacion" : "quote"}-${who.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "guest"}.pdf` };
+}
+/** The insurance video the guest is offered before they choose (Mark 2026-11-12: "Watch this insurance video (the video in the group library)"): the one
+ *  set for the paperwork's insurance step (GROUP_INSURANCE_VIDEO_URL), else Mark's own channel video on insurance, the same pick the journey emails make. */
+async function insuranceVideo(lang: Lang): Promise<string | null> {
+  const set = (process.env["GROUP_INSURANCE_VIDEO_URL"] ?? "").trim();
+  if (/^https:\/\//.test(set)) return set;
+  try { return pickVideos(await loadVideos(), "insurance", lang, ["own"], 1)[0]?.url ?? null; } catch { return null; }
 }
 const pdfPath = (iid: string): string | null => {
   const linkKey = hubKey();
@@ -1332,7 +1349,7 @@ router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req:
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: "#", changesUrl: "#", pdfUrl: "#" });
+    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), pageUrl: "#" });
     return res.json({ success: true, subject: mail.subject, html: mail.html, to: (b.lead.email ?? b.reply.email ?? "").trim() });
   } catch (err) {
     return fail(req, res, err, "group price preview failed");
@@ -1365,7 +1382,7 @@ router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: 
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
       sent = "held";
     } else {
-      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), doc, bookUrl: `${publicSite()}${book}`, changesUrl: `${publicSite()}${changes}`, pdfUrl: pdfPath(iid) ? `${publicSite()}${pdfPath(iid)}` : null });
+      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), pageUrl: `${publicSite()}${pricePath(iid, lang)}` });
       const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
       const at = new Date().toISOString();
       await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
@@ -1430,7 +1447,7 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])) });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: await insuranceVideo(lang) });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
   }
@@ -1472,15 +1489,26 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
       const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price: next }, updated_at: new Date().toISOString() }).eq("id", iid);
       if (error) throw new Error(error.message);
     };
+    // Mark 2026-11-12: the guest chooses the travel protection on the page (a pop-up with the video and the plans) BEFORE Book It: the choice is kept
+    // so that the quote on the page and the PDF show it. It approves nothing and tells Mark nothing yet.
+    if (action === "protect") {
+      if (state !== "open") return res.json({ success: true, state, already: true });
+      const key = typeof body["protection"] === "string" ? body["protection"] : "";
+      const plan = quoteDoc(b, "en").protection?.plans.find((p) => p.key === key);
+      if (!quoteDoc(b, "en").protection || (!plan && key !== "own" && key !== "none")) return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija una de las opciones, por favor." : "Pick one of the choices, please." });
+      await save({ ...price, protection: { key, label: plan ? `${plan.name}, ${plan.price}` : key === "own" ? "their own policy" : "no insurance" } });
+      return res.json({ success: true, state: "open", protection: key });
+    }
     if (action === "book") {
       if (state === "approved" || state === "paperwork") return res.json({ success: true, state, already: true });
       // Mark 2026-11-10: when the quote offers travel protection, the guest picks one (a plan, their own policy, or none) with their "Book It"
       const offer = quoteDoc(b, "en").protection, stored = protectionPlans(b.lead.form_data);
       let picked: PriceState["protection"] = null, protectNote = "";
       if (offer) {
-        const key = typeof body["protection"] === "string" ? body["protection"] : "";
+        // the choice made in the pop-up is on file; a choice sent with Book It itself still counts
+        const key = typeof body["protection"] === "string" && body["protection"] ? body["protection"] : price.protection?.key ?? "";
         const plan = offer.plans.find((p) => p.key === key);
-        if (!plan && key !== "own" && key !== "none") return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija primero su protección de viaje, arriba." : "Pick your travel protection above first." });
+        if (!plan && key !== "own" && key !== "none") return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija primero su protección de viaje." : "Choose your travel protection first." });
         picked = { key, label: plan ? `${plan.name}, ${plan.price}` : key === "own" ? "their own policy" : "no insurance" };
         const typed = /^p\d+$/.test(key) ? stored[Number(key.slice(1))] : undefined;
         const inPrice = offer.plans.some((p) => p.key === "included");

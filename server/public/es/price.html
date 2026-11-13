@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261110b">
+<link rel="stylesheet" href="/css/price-page.css?v=20261112a">
 </head>
 <body>
 <div class="wrap">
@@ -64,6 +64,20 @@
     </div>
   </div>
 
+  <!-- Travel protection (Mark 2026-11-12): the insurance video, the plans priced for this trip (or my own policy, or none), a tick box each, Select. -->
+  <div class="fp-modal" id="pr-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pr-title">
+    <div class="p-box pr-box">
+      <div class="fp-bar"><span id="pr-title"></span><button type="button" class="fp-close" id="pr-close" aria-label="Close">&#10005;</button></div>
+      <div class="p-body">
+        <div id="pr-video"></div>
+        <p id="pr-pick"></p>
+        <div class="pr-opts" id="pr-opts"></div>
+        <p class="err" id="pr-err" hidden></p>
+        <button type="button" class="btn" id="pr-select"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="foot">
     <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
     <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
@@ -90,7 +104,8 @@
     after:'¿Preguntas? Llame o escriba a Mark al ' + PHONE + '.',
     pdf:'Descargar esta cotización en PDF',
     fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
-    pr_q:'¿Qué protección de viaje desea?', pr_need:'Elija primero su protección de viaje, arriba.', pr_yours:'Su protección de viaje: {pick}.'
+    pr_need:'Elija primero su protección de viaje.', pr_yours:'Su protección de viaje: {pick}.',
+    pr_btn:'Elegir mi protección de viaje', pr_change:'Cambiar', pr_title:'Protección de viaje', pr_video:'Vea este video sobre el seguro', pr_pick:'Marque una opción:', pr_select:'Seleccionar', pr_one:'Marque una de las opciones, por favor.', pr_saving:'Un momento…'
   } : {
     title:'Your price', plaque:'Your price', loading:'One moment…',
     bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
@@ -105,7 +120,8 @@
     after:'Questions? Call or text Mark at ' + PHONE + '.',
     pdf:'Download this quote as a PDF',
     fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.',
-    pr_q:'Which travel protection would you like?', pr_need:'Pick your travel protection above first.', pr_yours:'Your travel protection: {pick}.'
+    pr_need:'Choose your travel protection first.', pr_yours:'Your travel protection: {pick}.',
+    pr_btn:'Choose my travel protection', pr_change:'Change', pr_title:'Travel protection', pr_video:'Watch this insurance video', pr_pick:'Tick one choice:', pr_select:'Select', pr_one:'Tick one of the choices, please.', pr_saving:'One moment…'
   };
 
   function $(id){ return document.getElementById(id); }
@@ -122,14 +138,14 @@
   if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
   var API = '/api/price-confirm/' + reply + '/' + key;
   var busy = false;
-  var prot = null, pick = '', curState = '';   // the travel protection on offer (Mark 2026-11-10) and the one the guest picked
+  var prot = null, pick = '', curState = '', video = '';   // the travel protection on offer (Mark 2026-11-10) and the one the guest picked
 
   function draw(d){
     state.textContent = '';
     $('p-label').textContent = d.label || '';
     $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
     $('p-lede').textContent = T.lede;
-    prot = (d.doc || {}).protection || null; pick = d.protection || '';
+    prot = (d.doc || {}).protection || null; pick = d.protection || ''; video = d.video || '';
     $('p-lines').innerHTML = quoteHtml(d.doc || {});
     $('p-note').textContent = T.note;
     if(d.pdf){ var pdf = $('p-pdf'); pdf.href = d.pdf; pdf.textContent = T.pdf; pdf.hidden = false; }
@@ -170,15 +186,15 @@
     var box = $('p-prot'); if(!box || !prot) return;
     var h = '';
     if(open){
-      h += '<p class="q-sub">' + esc(T.pr_q) + '</p><div class="q-opts">';
-      prot.plans.forEach(function(p){
-        h += '<button type="button" class="q-opt' + (pick === p.key ? ' on' : '') + '" data-prot="' + esc(p.key) + '" aria-pressed="' + (pick === p.key ? 'true' : 'false') + '"><b>' + esc(p.name) + '</b><span>' + esc(p.price) + (p.note ? ' · ' + esc(p.note) : '') + '</span></button>';
-      });
-      [['own', prot.own], ['none', prot.none]].forEach(function(o){
-        h += '<button type="button" class="q-opt' + (pick === o[0] ? ' on' : '') + '" data-prot="' + o[0] + '" aria-pressed="' + (pick === o[0] ? 'true' : 'false') + '"><b>' + esc(o[1]) + '</b></button>';
-      });
-      h += '</div>';
-      prot.plans.forEach(function(p){ if(pick === p.key && p.withTotal) h += '<div class="q-total big"><span>' + esc(p.withTotal.label) + '</span><span>' + esc(p.withTotal.value) + '</span></div>'; });
+      // Mark 2026-11-12: the choice is made in a pop-up (the video, the plans, a tick box each); once made it shows here, in the quote, with its trip total
+      if(!pick){
+        h += '<button type="button" class="btn" data-prot-open="1">' + esc(T.pr_btn) + '</button>';
+      } else {
+        var chosen = null; prot.plans.forEach(function(p){ if(p.key === pick) chosen = p; });
+        h += '<div class="q-trip"><div><b>' + esc(chosen ? chosen.name : protLabel(pick)) + '</b>' + (chosen && chosen.note ? '<span>' + esc(chosen.note) + '</span>' : '') + '</div><b>' + esc(chosen ? chosen.price : '') + '</b></div>';
+        if(chosen && chosen.withTotal) h += '<div class="q-total big"><span>' + esc(chosen.withTotal.label) + '</span><span>' + esc(chosen.withTotal.value) + '</span></div>';
+        h += '<p class="center"><button type="button" class="q-link" data-prot-open="1">' + esc(T.pr_change) + '</button></p>';
+      }
     } else {
       prot.plans.forEach(function(p){ h += '<div class="q-trip"><div><b>' + esc(p.name) + '</b>' + (p.note ? '<span>' + esc(p.note) + '</span>' : '') + '</div><b>' + esc(p.price) + '</b></div>'; });
       if(pick && protLabel(pick)) h += '<p class="q-sub">' + esc(T.pr_yours.replace('{pick}', protLabel(pick))) + '</p>';
@@ -211,7 +227,7 @@
   $('p-book').addEventListener('click', function(){
     if(busy) return;
     // a button that cannot go ahead says what to do first (Mark 2026-11-10)
-    if(prot && !pick){ var need = $('p-err'); need.textContent = T.pr_need; need.hidden = false; var pb = $('p-prot'); if(pb && pb.scrollIntoView) pb.scrollIntoView({ block: 'center' }); return; }
+    if(prot && !pick){ var need = $('p-err'); need.textContent = T.pr_need; need.hidden = false; openProt(); return; }
     busy = true; show('p-err', false); drawState('open');
     post({ action: 'book', protection: pick, website: '' }).then(function(x){
       busy = false;
@@ -219,10 +235,44 @@
       var err = $('p-err'); err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false; drawState('open');
     }).catch(function(){ busy = false; var err = $('p-err'); err.textContent = T.fail; err.hidden = false; drawState('open'); });
   });
+  // The travel protection pop-up: the video first, then one tick box per choice (only one stays ticked), then Select. The choice is kept on the
+  // booking (it approves nothing), shows in the quote above with its trip total, and is on the PDF.
+  function embedUrl(u){ var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : ''; }
+  function openProt(){
+    if(!prot || curState !== 'open') return;
+    $('pr-title').textContent = T.pr_title; $('pr-pick').textContent = T.pr_pick; $('pr-select').textContent = T.pr_select; show('pr-err', false);
+    var em = embedUrl(video), v = '';
+    if(video) v = '<p class="pr-watch"><b>' + esc(T.pr_video) + '</b></p>' + (em ? '<div class="pr-video"><iframe src="' + esc(em) + '" title="' + esc(T.pr_video) + '" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>' : '<p><a href="' + esc(video) + '" target="_blank" rel="noopener">' + esc(T.pr_video) + '</a></p>');
+    $('pr-video').innerHTML = v;
+    var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '']; });
+    rows.push(['own', prot.own, '', ''], ['none', prot.none, '', '']);
+    $('pr-opts').innerHTML = rows.map(function(r){
+      return '<label class="pr-opt"><input type="checkbox" data-prot="' + esc(r[0]) + '"' + (pick === r[0] ? ' checked' : '') + '><span><b>' + esc(r[1]) + '</b>' + (r[2] ? '<em>' + esc(r[2]) + '</em>' : '') + (r[3] ? '<em>' + esc(r[3]) + '</em>' : '') + '</span></label>';
+    }).join('');
+    show('pr-modal');
+  }
+  function closeProt(){ show('pr-modal', false); $('pr-video').innerHTML = ''; }
+  $('pr-opts').addEventListener('change', function(e){
+    var boxes = this.querySelectorAll('input[type=checkbox]');
+    for(var i = 0; i < boxes.length; i++) if(boxes[i] !== e.target) boxes[i].checked = false;
+    show('pr-err', false);
+  });
+  $('pr-close').addEventListener('click', closeProt);
+  $('pr-select').addEventListener('click', function(){
+    if(busy) return;
+    var on = $('pr-opts').querySelector('input[type=checkbox]:checked'), err = $('pr-err');
+    if(!on){ err.textContent = T.pr_one; err.hidden = false; return; }
+    busy = true; $('pr-select').textContent = T.pr_saving;
+    post({ action: 'protect', protection: on.getAttribute('data-prot'), website: '' }).then(function(x){
+      busy = false; $('pr-select').textContent = T.pr_select;
+      if(x.body && x.body.success){ pick = x.body.protection || on.getAttribute('data-prot'); closeProt(); show('p-err', false); drawProt(curState === 'open'); return; }
+      err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false;
+    }).catch(function(){ busy = false; $('pr-select').textContent = T.pr_select; err.textContent = T.fail; err.hidden = false; });
+  });
   $('p-lines').addEventListener('click', function(e){
-    var el = e && e.target; while(el && el !== this && !(el.getAttribute && el.getAttribute('data-prot'))) el = el.parentNode;
+    var el = e && e.target; while(el && el !== this && !(el.getAttribute && el.getAttribute('data-prot-open'))) el = el.parentNode;
     if(!el || el === this || curState !== 'open' || busy) return;
-    pick = el.getAttribute('data-prot'); show('p-err', false); drawProt(true);
+    openProt();
   });
   $('p-changes').addEventListener('click', openModal);
   $('p-modal-close').addEventListener('click', closeModal);

@@ -35,7 +35,7 @@ type Plan = { name: string; price: string; party: boolean; line: boolean };
 type GuestPrice = { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 export type Booking = {
-  success: boolean; guest: { name: string; email: string | null }; review?: Review;
+  success: boolean; guest: { name: string; email: string | null }; review?: Review; guestPage?: string | null;
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
@@ -367,12 +367,11 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         const rv = data.review;
         const noPrice = (r: TripLine) => r.price === null || String(r.price).trim() === "";
         const unpriced = trip.filter(noPrice);
-        // what the guest asked Mark to price that has no priced line on the booking yet (a drink package with no cruise extra, say)
-        const words = (t: string) => t.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3);
-        const asked = (rv?.chose ?? []).filter((c) => /mark (prices|quotes) it/i.test(c.detail ?? "") && !trip.some((r) => r.label === c.label)
-          && !extras.some((x) => x.total.trim() !== "" && words(x.name).some((w) => words(c.label).includes(w))));
+        // Mark 2026-11-12 ("this is still not right"): the page guessed that things the guest asked for were missing (a flight and a hotel that his
+        // air-and-hotel package already covers). It no longer guesses. Only two FACTS stop a quote: no cruise price, and a travel line with no price.
+        // What the guest asked for is listed as they said it, for Mark to judge.
         const askedInsurance = (rv?.chose ?? []).find((c) => /insurance/i.test(c.label)) ?? null;
-        const complete = cruiseSum > 0 && unpriced.length === 0 && asked.length === 0;
+        const complete = cruiseSum > 0 && unpriced.length === 0;
         const total = round(cruiseSum + travelSum);
         const bar = "bg-primary/15 text-sm font-bold uppercase tracking-wide px-4 py-2.5";
         const cell = "px-3 py-3 align-top first:pl-4";
@@ -384,8 +383,9 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
             {/* 1. What is still missing, in words; or that the quote is complete and what it comes to */}
             {complete ? (
               <div className="rounded-md border border-green-600/50 bg-green-600/10 px-4 py-3">
-                <p className="text-lg font-bold text-green-500">The quote is complete: {usd(total)} for {party} traveler{party === 1 ? "" : "s"}.</p>
-                {plans.length === 0 && <p className="text-base">No travel protection is on it{askedInsurance ? <> (the guest asked for insurance)</> : null}. <button className="underline font-semibold" onClick={() => setTab("protection")}>Add protection plans</button></p>}
+                <p className="text-lg font-bold text-green-500">The quote is priced: {usd(total)} for {party} traveler{party === 1 ? "" : "s"} (cruise and travel).</p>
+                {plans.length === 0 && <p className="text-base text-amber-500 font-semibold">No travel protection is on it yet{askedInsurance ? <>, and the guest asked for insurance</> : null}. The guest cannot choose a plan on their page until you add some. <button className="underline" onClick={() => setTab("protection")}>Choose the plans to offer</button></p>}
+                {plans.length > 0 && !price?.protection && <p className="text-base">{plans.length} travel protection plan{plans.length === 1 ? " is" : "s are"} on it for the guest to choose from.</p>}
               </div>
             ) : (
               <div className="rounded-md border border-red-500/60 bg-red-500/10 px-4 py-3 space-y-1">
@@ -393,8 +393,6 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
                 <ul className="text-base list-disc pl-6 space-y-0.5">
                   {cruiseSum <= 0 && <li>The cruise has no price. <button className="underline font-semibold" onClick={() => setTab("cruise")}>Enter the cruise price</button></li>}
                   {unpriced.length > 0 && <li>{unpriced.length} travel item{unpriced.length === 1 ? " has" : "s have"} no price: {unpriced.map((r) => r.label).join("; ")}. Type each price in the sheet below.</li>}
-                  {asked.map((c) => <li key={c.label}>The guest asked for <b>{c.label}</b> and it is not on the booking with a price. <button className="underline font-semibold" onClick={() => setTab("cruise")}>Add it under Cruise extras</button></li>)}
-                  {plans.length === 0 && <li>No travel protection is on the quote{askedInsurance ? <> (the guest asked for insurance)</> : null}. <button className="underline font-semibold" onClick={() => setTab("protection")}>Add protection plans</button></li>}
                 </ul>
               </div>
             )}
@@ -418,9 +416,6 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
                   </tr>
                   {extras.map((x, n) => (
                     <tr key={`x${n}`}><td className={cell}>{x.name}</td><td className={cell} /><td className={`${cell} text-muted-foreground`}>whole booking</td><td className={num}>{x.total.trim() ? usd(amount(x.total)) : need}</td><td className={cell} /></tr>
-                  ))}
-                  {asked.map((c) => (
-                    <tr key={`a${c.label}`}><td className={cell}><b>{c.label}</b><span className="block text-sm text-muted-foreground">the guest asked for it</span></td><td className={cell} /><td className={cell} /><td className={num}>{need}</td><td className={cell} /></tr>
                   ))}
                   <tr className="font-bold"><td className={cell} colSpan={3}>Cruise total</td><td className={num}>{cruiseSum > 0 ? usd(cruiseSum) : need}</td><td className={cell} /></tr>
 
@@ -463,12 +458,19 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               {!sent && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={emailPrice}><Send className="w-4 h-4" /> {price?.sent_at ? "Email the quote again" : "Email the quote"}</button>}
               <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50" disabled={busy} onClick={previewPrice}>Preview the email</button>
               <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={downloadPdf}><Download className="w-4 h-4" /> Download the PDF</button>
+              {data.guestPage && <a className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40" href={data.guestPage} target="_blank" rel="noopener noreferrer">See the guest's page</a>}
               {!sent && !approved && <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50" disabled={busy} onClick={recordYes}>They said yes another way</button>}
               {!sent && approved && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={send}><Send className="w-4 h-4" /> Send the paperwork</button>}
             </div>
             {!stage && stop && <p className="text-base font-semibold text-red-500" role="alert">{stop.text}</p>}
 
-            {/* 4. Who the customer is, and what has happened */}
+            {/* 4. What the guest asked for, as they said it; who the customer is; what has happened */}
+            <div className="rounded-md border">
+              <div className={bar}>What the guest asked for</div>
+              <div className="px-4 py-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+                {(rv?.chose ?? []).map((c, n) => <p key={n} className="text-base py-0.5"><b>{c.label.replace(/\s*\(TEST FIGURE[^)]*\)/, "")}</b>{c.detail && !/mark (prices|quotes) it/i.test(c.detail) ? <span className="text-muted-foreground"> · {c.detail}</span> : null}</p>)}
+              </div>
+            </div>
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="rounded-md border">
                 <div className={bar}>The customer</div>

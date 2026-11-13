@@ -451,12 +451,15 @@ test("the friendly group emails carry no Cornerstone logo; the quote is signed M
   for (const html of [callEmail({ ...CALL }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
     assert.ok(!/cornerstone/i.test(html) && !/Seller of Travel/.test(html));
   }
-  const q = priceEmail({ ...base, doc: QUOTE, bookUrl: "https://dev.example.test/price.html?do=book", changesUrl: "https://dev.example.test/price.html?do=changes" });
+  // Mark 2026-11-12: "the email tells them the quote is ready and provide a link to the secured page": no figure and no Book It button in the email;
+  // one button opens the guest's own private page, where the quote, the travel protection choice, the PDF and the two answers are.
+  const q = priceEmail({ ...base, pageUrl: "https://dev.example.test/price.html?r=x&k=y" });
   assert.equal(q.subject, "Your quote from Mark… Fam 2027");
   assert.ok(q.html.indexOf("cornerstone-white.png") > 0 && q.html.indexOf("Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620") > q.html.indexOf("cornerstone-white.png"));
   assert.match(q.html, /font-size:24px;color:#9a6b00">Mark<\/p>/, "signed Mark, not the group's hosts");
   assert.ok(!q.html.includes("Mark &amp; Ceci"));
-  // one matrix: a column per guest, a row per printed line; the add-ons named once; each piece of travel its own block
-  for (const piece of [">Pat Example<", ">Ana Example<", ">Cruise fare<", ">Total per guest<", "Add-ons for each guest", "<li>Dining package</li>", "Cruise total", "$2,108.26", "Air and hotel package, before the cruise", "Going: flight DL9914 · RDU to ORD · May 8, 2027", "$2,475.26", ">Book It</a>", ">I need changes</a>"]) assert.ok(q.html.includes(piece), piece);
-  assert.match(q.text, /Pat Example: Cruise fare \$437\.00, Add-ons \$471\.74, Taxes \$145\.39, Total per guest \$1,054\.13/);
+  for (const piece of ["your quote is ready on your private page", 'href="https://dev.example.test/price.html?r=x&amp;k=y"', ">See my quote</a>", "choose your travel protection, download the whole quote as a PDF, and tap Book It or I need changes"]) assert.ok(q.html.includes(piece), `the quote email says ${piece}`);
+  assert.ok(!/\$\d/.test(q.html) && !q.html.includes(">Book It</a>"), "no price and no Book It button in the email itself");
+  assert.match(q.text, /See my quote: https:\/\/dev\.example\.test\/price\.html\?r=x&k=y/);
+  assert.equal(priceEmail({ ...base, lang: "es", pageUrl: "https://dev.example.test/es/price.html" }).subject, "Su cotización de Mark… Fam 2027");
 });

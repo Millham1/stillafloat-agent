@@ -1029,11 +1029,12 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal(mails.length, 1);
   assert.equal(mails[0]!["subject"], "Your quote from Mark… Friends and Family 2027");
   const priceHtml = String(mails[0]!["html"]);
-  for (const piece of ["Premium Extra drinks", "$80.00", "Cruise total", "$1,153.58", "$272.40", "Trip total (cruise and travel)", "$1,425.98", ">Book It</a>", ">I need changes</a>", "Tapping Book It charges nothing."]) assert.ok(priceHtml.includes(piece), `the price email says ${piece}`);
+  // Mark 2026-11-12: the email says the quote is ready and links to the guest's private page; the figures and the answers are on the page
+  for (const piece of ["your quote is ready on your private page", ">See my quote</a>"]) assert.ok(priceHtml.includes(piece), `the quote email says ${piece}`);
+  assert.ok(!priceHtml.includes("$1,153.58") && !priceHtml.includes(">Book It</a>"), "no figure and no Book It button in the email");
   assert.ok(/cornerstone-white\.png/.test(priceHtml) && priceHtml.includes("Seller of Travel: CA #2158353-50"), "Mark 2026-11-10: the quote carries the Cornerstone logo and the Seller of Travel numbers");
-  const link = /\/price\.html\?r=([0-9a-f-]{36})&amp;k=([A-Za-z0-9_-]{43})&amp;do=book/.exec(priceHtml);
-  assert.ok(link, "the Book It button opens the guest's own price page");
-  assert.ok(priceHtml.includes(`/price.html?r=${link![1]}&amp;k=${link![2]}&amp;do=changes`), "I need changes opens the same page with the box open");
+  const link = /\/price\.html\?r=([0-9a-f-]{36})&amp;k=([A-Za-z0-9_-]{43})"/.exec(priceHtml);
+  assert.ok(link, "the button opens the guest's own private quote page");
   const pricePage = `/price-confirm/${link![1]}/${link![2]}`;
   assert.equal((await call("GET", `/price-confirm/${link![1]}/${"A".repeat(43)}`)).status, 404, "a wrong key is not found");
   const shown = await call("GET", pricePage);
@@ -1142,9 +1143,21 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
     { key: "p1", name: "OneTrip Prime (Allianz)", price: "$129.50 per person", note: null, withTotal: { label: "Trip total with OneTrip Prime (Allianz)", value: "$1,684.98" } },
   ], "each plan with its price per person and the trip total with it for the party of two");
   const protMail = String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]);
-  for (const piece of ["Travel protection", "MSC Cruise Protection", "$99.00 per person", "OneTrip Prime (Allianz)", "$129.50 per person", "I have my own policy", "No insurance for us", "Pick one on your quote page before you tap Book It."]) assert.ok(protMail.includes(piece), `the quote email says ${piece}`);
+  assert.ok(!protMail.includes("MSC Cruise Protection") && protMail.includes(">See my quote</a>"), "the plans are on the private page, not in the email");
   const noPick = await call("POST", pricePage, { body: { action: "book" } });
-  assert.deepEqual([noPick.status, noPick.json["field"], noPick.json["error"]], [400, "protection", "Pick your travel protection above first."], "Book It says what to do first");
+  assert.deepEqual([noPick.status, noPick.json["field"], noPick.json["error"]], [400, "protection", "Choose your travel protection first."], "Book It says what to do first");
+  // Mark 2026-11-12: the guest chooses in the pop-up BEFORE Book It; the choice is kept (the page and the PDF show it) and approves nothing
+  assert.equal((await call("POST", pricePage, { body: { action: "protect", protection: "p9" } })).status, 400, "a plan that is not on the quote is not a choice");
+  const chose = await call("POST", pricePage, { body: { action: "protect", protection: "p0" } });
+  assert.deepEqual([chose.status, chose.json["state"], chose.json["protection"]], [200, "open", "p0"]);
+  const withChoice = (await call("GET", pricePage)).json;
+  assert.deepEqual([withChoice["protection"], withChoice["state"]], ["p0", "open"], "the page shows the choice and the quote is still open");
+  assert.ok("video" in withChoice, "the page is told where the insurance video is (null when none is set)");
+  assert.equal(mails.length, 2, "choosing protection emails nobody");
+  const changed = await call("POST", pricePage, { body: { action: "protect", protection: "p1" } });
+  assert.equal(changed.json["protection"], "p1", "the choice can be changed until Book It");
+  const pdfChosen = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`, { token: true });
+  assert.ok(pdfChosen.status === 200 && pdfChosen.text.startsWith("%PDF-"), "the PDF prints with the choice on it");
   assert.equal((await call("POST", pricePage, { body: { action: "book", protection: "p9" } })).status, 400, "a plan that is not on the quote is not a pick");
   const booked = await call("POST", pricePage, { body: { action: "book", protection: "p1" } });
   assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
@@ -1173,12 +1186,17 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual(withGuests.json["guestPrices"], perGuest);
   const preview = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true });
   assert.equal(preview.status, 200);
-  for (const piece of [">Pat Example<", ">Ana Example<", ">Cruise fare<", ">Add-ons<", "Add-ons for each guest", "<li>Dining package</li>", "<li>Drink package</li>", "$100.00", "$76.79", ">Total per guest<", "$576.79", "Cruise total", "$1,153.58"]) assert.ok(String(preview.json["html"]).includes(piece), `the per-guest price email says ${piece}`);
-  assert.ok(!String(preview.json["html"]).includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
+  // the guest-by-guest lines are on the guest's private page (the email only links to it, Mark 2026-11-12)
+  const matrix = (await call("GET", pricePage)).json["doc"]["matrix"] as Row;
+  assert.deepEqual(matrix["names"], ["Pat Example", "Ana Example"]);
+  const printed = JSON.stringify(matrix);
+  for (const piece of ["Cruise fare", "Add-ons", "Add-ons for each guest", "Dining package", "Drink package", "$100.00", "$76.79", "Total per guest", "$576.79"]) assert.ok(printed.includes(piece), `the per-guest quote says ${piece}`);
+  assert.ok(!printed.includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
   assert.equal(mails.length, 3, "a preview sends nothing");
   const off = await call("PUT", booking, { token: true, body: { guest_prices: [{ ...perGuest[0], total: 500 }, perGuest[1]] } });
   assert.equal(off.status, 200);
-  assert.ok(String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]).includes("Premium Extra drinks"), "guest lines that no longer add up to the saved total are not shown: the cabin and the extras are");
+  const plainDoc = (await call("GET", pricePage)).json["doc"] as Row;
+  assert.ok(plainDoc["matrix"] === null && JSON.stringify(plainDoc["cruise"]).includes("Premium Extra drinks"), "guest lines that no longer add up to the saved total are not shown: the cabin and the extras are");
   mails.length = 0;
   const done = await call("POST", path, { token: true });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);

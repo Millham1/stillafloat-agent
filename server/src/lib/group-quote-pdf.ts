@@ -19,6 +19,8 @@ export interface QuotePdfInput {
   /** the guest's own quote page, where Book It and I need changes are */
   answerUrl: string | null;
   logo?: Buffer | null;
+  /** the travel protection the guest chose on their page: printed alone, with the trip total it makes */
+  picked?: { name: string; price: string; withTotal: { label: string; value: string } | null } | null;
 }
 
 const NAVY = "#07183f", MUTED = "#4a5a7a", RULE = "#c5cfdf", BAND = "#eef2f8";
@@ -110,7 +112,11 @@ export function renderQuotePdf(i: QuotePdfInput): Promise<Buffer> {
     if (d.tripTotal) { pdf.moveDown(0.4); line(d.tripTotal.label, d.tripTotal.value, { bold: true, size: 13, band: true }); }
 
     // ── travel protection ──
-    if (d.protection) {
+    if (d.protection && i.picked) {
+      head(d.protection.head);
+      line(i.picked.name, i.picked.price);
+      if (i.picked.withTotal) { pdf.moveDown(0.4); line(i.picked.withTotal.label, i.picked.withTotal.value, { bold: true, size: 13, band: true }); }
+    } else if (d.protection) {
       head(d.protection.head);
       small(d.protection.lede);
       for (const p of d.protection.plans) {
