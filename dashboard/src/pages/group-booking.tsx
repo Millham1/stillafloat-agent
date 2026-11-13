@@ -573,71 +573,54 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", price: "", party: false, line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
         </div>
         {guestPrices.some((g) => g.insurance > 0) && <p className="text-sm text-muted-foreground">The cruise line's quote already has its protection plan in the price ({guestPrices.map((g) => `${g.name}: ${usd(g.insurance)}`).join("; ")}). It shows on the quote as printed; do not add it again here.</p>}
-        {/* Mark 2026-11-10: "once I complete adding the travel costs the agent goes out to Allianz and enters the information to get the quotes."
-            Saving the confirmation sends it; the plans Allianz returns for THIS trip list here, each with its one price for the party. */}
-        <div className="rounded-md border p-2 mb-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-sm font-semibold">Allianz quote for this trip</p>
-            {!sent && <button className={btn} disabled={busy || data.allianz?.status === "pending"} onClick={() => { if (dirty) { setAllianzStop(UNSAVED); return; } void askAllianz(true); }}>{data.allianz ? "Ask Allianz again" : "Ask Allianz now"}</button>}
-          </div>
-          {allianzStop && <p className="text-sm font-semibold text-red-600">{allianzStop}</p>}
-          {!data.allianz && !allianzStop && <p className="text-sm text-muted-foreground">Not asked yet. Save the confirmation with the cruise and travel costs in, and the agent goes to Allianz with the whole trip.</p>}
-          {data.allianz?.status === "pending" && <p className="text-sm text-muted-foreground flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Getting the Allianz quotes… (about a minute)</p>}
-          {data.allianz?.status === "unavailable" && <p className="text-sm font-semibold text-red-600">Allianz could not be quoted: {data.allianz.reason ?? "no reason given"}. Nothing was made up; press "Ask Allianz again" once that is fixed.</p>}
-          {data.allianz?.status === "ready" && (
-            <>
-              <p className="text-sm text-muted-foreground mb-1">Quoted {when(data.allianz.quoted_at)} for a trip of {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Each price is Allianz's one figure for the whole party.{(data.allianz.hidden ?? 0) > 0 ? ` Left off this list: ${data.allianz.hidden} plans that are not for a single trip (annual plans, rental car, Professional Travel Program).` : ""} Pick the ones to put on this quote:</p>
-              <div className="space-y-1">
-                {data.allianz.plans.map((q, i) => {
-                  const on = plans.some((x) => x.name.trim() === `${q.name} (Allianz)` && x.party);
-                  return (
-                    <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
-                      <span><b>{q.name}</b> · {usd(q.total)} for the party</span>
-                      {on ? <span className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> On this quote</span>
-                        : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.price.trim()), { name: `${q.name} (Allianz)`, price: String(q.total), party: true, line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+        {/* Mark 2026-11-13: "i do not need to see this twice. use the bottom lines and add a check box to select it. and it is still missing the
+            ships policy choices." ONE list: every plan Allianz returned for this trip, the cruise line's own plan, and any typed by hand, each on
+            one line with a tick box. Ticked = offered on the guest's quote. The agent still asks Allianz by itself after a save. */}
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <p className="text-sm text-muted-foreground">
+            {data.allianz?.status === "ready" ? <>Allianz priced this trip {when(data.allianz.quoted_at)}: {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Tick the plans to offer.</>
+              : data.allianz?.status === "pending" ? <span className="inline-flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Getting the Allianz prices… (about a minute)</span>
+              : data.allianz?.status === "unavailable" ? <span className="font-semibold text-red-600">Allianz could not be priced: {data.allianz.reason ?? "no reason given"}. Nothing was made up.</span>
+              : "Allianz has not been asked yet. Save the booking with the cruise and travel costs in, and the agent asks."}
+          </p>
+          {!sent && <button className={btn} disabled={busy || data.allianz?.status === "pending"} onClick={() => { if (dirty) { setAllianzStop(UNSAVED); return; } void askAllianz(true); }}>{data.allianz ? "Ask Allianz again" : "Ask Allianz now"}</button>}
         </div>
-        {/* Mark 2026-11-10: the quotes on file for this sailing show here, each with its own button: he picks which ones go on this guest's quote */}
-        {/* Mark 2026-11-12 ("why do the allianz quotes show up twice"): the group file can hold Allianz figures typed in for the sailing, and the agent
-            also fetches Allianz's real prices for THIS trip. Once the real ones are in, the typed Allianz figures are not shown: one Allianz list only. */}
-        {onFile.length > 0 ? (
-          <div className="rounded-md border p-2 mb-2">
-            <p className="text-sm font-semibold mb-1">{data.allianz?.status === "ready" ? "The cruise line's own plan (from the group file). Add it to this quote if you want to offer it:" : "Quotes on file for this sailing (from the group file). Pick the ones to put on this quote:"}</p>
-            <div className="space-y-1">
-              {onFile.map((q, i) => {
-                const on = plans.some((x) => x.name.trim() === q.name && x.line === q.line && !x.party);
-                return (
-                  <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
-                    <span><b>{q.name}</b> · {usd(q.per_person)} per person · {q.line ? "the cruise line's own plan" : "Allianz"}</span>
-                    {on ? <span className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> On this quote</span>
-                      : !sent && <button className={btn} onClick={() => { setPlans((x) => [...x.filter((r) => r.name.trim() || r.price.trim()), { name: q.name, price: String(q.per_person), party: false, line: q.line }]); setDirty(true); }}><Plus className="w-3 h-3" /> Add to the quote</button>}
-                  </div>
-                );
-              })}
+        {allianzStop && <p className="text-sm font-semibold text-red-600 mb-2">{allianzStop}</p>}
+        {(() => {
+          const same = (a: Plan, b: Plan) => a.name.trim().toLowerCase() === b.name.trim().toLowerCase() && a.line === b.line;
+          const offered: Plan[] = (data.allianz?.status === "ready" ? data.allianz.plans : []).map((q) => ({ name: `${q.name} (Allianz)`, price: String(q.total), party: true, line: false }));
+          const onFileRows: Plan[] = (data.protectionOnFile ?? []).filter((q) => q.line).map((q) => ({ name: q.name, price: String(q.per_person), party: false, line: true }));
+          // the cruise line's own plan always has a line: its price is the cruise line's, typed in once it is ticked
+          const lineRow: Plan[] = plans.some((x) => x.line) || onFileRows.length ? [] : [{ name: `${data.sheet?.trip.line ?? "The cruise line"} travel protection`, price: "", party: false, line: true }];
+          const notOffered = [...offered, ...onFileRows, ...lineRow].filter((c) => !plans.some((x) => same(x, c)));
+          const grid = "grid grid-cols-[2rem_1fr_8rem_11rem_10rem] gap-2 items-end";
+          const tick = "h-5 w-5 mb-2";
+          return (
+            <div className="space-y-2">
+              <div className={`${grid} text-xs text-muted-foreground`}><span>Offer</span><span>Plan</span><span>Quoted price ($)</span><span>The price is</span><span>This plan is from</span></div>
+              {plans.map((x, i) => (
+                <div key={`on${i}`} className={grid}>
+                  <input type="checkbox" className={tick} checked aria-label={`${x.name || "This plan"} is offered on the quote`} disabled={sent} onChange={() => { setPlans((v) => v.filter((_, j) => j !== i)); setDirty(true); }} />
+                  <input className={input} placeholder="Plan name" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} />
+                  <input className={`${input} ${x.price.trim() ? "" : "border-red-500"}`} inputMode="decimal" placeholder={x.line ? "the cruise line's price" : ""} value={x.price} onChange={(e) => setPl(i, { price: e.target.value })} disabled={sent} />
+                  <select className={input} value={x.party ? "party" : "person"} onChange={(e) => setPl(i, { party: e.target.value === "party" })} disabled={sent}><option value="person">per person</option><option value="party">for the whole party</option></select>
+                  <select className={input} value={x.line ? "line" : "allianz"} onChange={(e) => setPl(i, { line: e.target.value === "line" })} disabled={sent}><option value="allianz">Allianz</option><option value="line">the cruise line</option></select>
+                </div>
+              ))}
+              {notOffered.map((c, i) => (
+                <div key={`off${i}`} className={`${grid} opacity-80`}>
+                  <input type="checkbox" className={tick} checked={false} aria-label={`Offer ${c.name} on the quote`} disabled={sent} onChange={() => { setPlans((v) => [...v.filter((r) => r.name.trim() || r.price.trim()), c]); setDirty(true); }} />
+                  <p className="px-2 py-1 text-sm">{c.name}</p>
+                  <p className="px-2 py-1 text-sm">{c.price ? usd(amount(c.price)) : <span className="text-muted-foreground">tick, then type it</span>}</p>
+                  <p className="px-2 py-1 text-sm text-muted-foreground">{c.party ? "for the whole party" : "per person"}</p>
+                  <p className="px-2 py-1 text-sm text-muted-foreground">{c.line ? "the cruise line" : "Allianz"}</p>
+                </div>
+              ))}
+              <p className="text-sm text-muted-foreground">{plans.length === 0 ? "Nothing is ticked: the guest's quote has no travel protection to choose from." : `${plans.length} ticked: the guest chooses one of them, their own policy, or none, on their quote page.`}{(data.allianz?.hidden ?? 0) > 0 ? ` Not listed: ${data.allianz!.hidden} Allianz plans that are not for a single trip (annual, rental car, Professional Travel Program).` : ""}</p>
             </div>
-          </div>
-        ) : data.allianz?.status === "ready" ? null : (
-          <p className="text-sm text-amber-700">No protection quote is on the group file for this sailing. Type the cruise line's plan and the Allianz plans on the group's details (as quoted), or add a plan by hand with "+ plan".</p>
-        )}
-        {plans.length === 0 && <p className="text-sm text-muted-foreground">Nothing is on this guest's quote yet: with no plan added, the quote has no travel protection section.</p>}
-        <div className="space-y-2">
-          {plans.map((x, i) => (
-            <div key={i} className="grid grid-cols-[1fr_9rem_11rem_12rem_auto] gap-2 items-end">
-              <Field label="Plan on this quote"><input className={input} placeholder="Plan name" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} /></Field>
-              <Field label="Quoted price ($)"><input className={input} inputMode="decimal" value={x.price} onChange={(e) => setPl(i, { price: e.target.value })} disabled={sent} /></Field>
-              <Field label="The price is"><select className={input} value={x.party ? "party" : "person"} onChange={(e) => setPl(i, { party: e.target.value === "party" })} disabled={sent}><option value="person">per person</option><option value="party">for the whole party</option></select></Field>
-              <Field label="This plan is from"><select className={input} value={x.line ? "line" : "allianz"} onChange={(e) => setPl(i, { line: e.target.value === "line" })} disabled={sent}><option value="allianz">Allianz</option><option value="line">the cruise line</option></select></Field>
-              {!sent && <button className={btn} aria-label="Remove this plan" onClick={() => { setPlans((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
-            </div>
-          ))}
-        </div>
+          );
+        })()}
       </div>
-
       )}
       {tab === "travel" && (
       <div>

@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261113c">
+<link rel="stylesheet" href="/css/price-page.css?v=20261113d">
 </head>
 <body>
 <div class="wrap">
@@ -108,6 +108,7 @@
     c_booking:'Número de reserva', c_status:'Estado', c_none:'Aún sin asignar', st_open:'Cotización lista: esperando su respuesta', st_approved:'Usted pidió reservar', st_changes:'Cambios solicitados', st_paperwork:'Reservado: documentos enviados', c_held:'Cabina apartada hasta el {when}',
     h_trip:'Detalles del viaje', h_booking:'Detalles de la reserva', h_travel:'Cómo llegar', h_prot:'Protección de viaje', h_pay:'Detalles de pago',
     k_ship:'Barco', k_from:'Salida', k_back:'Regreso', k_nights:'Duración', nights:'{n} noches', k_room:'Cabina', k_deck:'cubierta', k_items:'Adicionales', t_day:'Día', t_date:'Fecha', t_port:'Puerto', t_arr:'Llegada', t_dep:'Salida',
+    pr_cov:'Ver qué cubre', pr_cov_hide:'Ocultar', pr_cov_th1:'Beneficio', pr_cov_th2:'Cobertura', pr_cov_src:'Según Allianz para este viaje. La póliza es la que manda.',
     pr_ask:'Elija su protección de viaje antes de reservar.', pr_none_yet:'Aún sin elegir',
     pr_btn:'Elegir mi protección de viaje', pr_change:'Cambiar', pr_title:'Protección de viaje', pr_video:'Vea este video sobre el seguro', pr_pick:'Marque una opción:', pr_select:'Seleccionar', pr_one:'Marque una de las opciones, por favor.', pr_saving:'Un momento…'
   } : {
@@ -128,6 +129,7 @@
     c_booking:'Booking number', c_status:'Status', c_none:'Not assigned yet', st_open:'Quote ready: waiting for your answer', st_approved:'You said Book It', st_changes:'Changes requested', st_paperwork:'Booked: paperwork sent', c_held:'Cabin held until {when}',
     h_trip:'Trip details', h_booking:'Booking details', h_travel:'Getting there', h_prot:'Travel protection', h_pay:'Payment details',
     k_ship:'Ship', k_from:'Departure', k_back:'Return', k_nights:'Duration', nights:'{n} nights', k_room:'Stateroom', k_deck:'deck', k_items:'Additional items', t_day:'Day', t_date:'Date', t_port:'Port', t_arr:'Arrival', t_dep:'Departure',
+    pr_cov:'See what it covers', pr_cov_hide:'Hide', pr_cov_th1:'Benefit', pr_cov_th2:'Coverage', pr_cov_src:'As listed by Allianz for this trip. The policy itself governs.',
     pr_ask:'Choose your travel protection before you book.', pr_none_yet:'Not chosen yet',
     pr_btn:'Choose my travel protection', pr_change:'Change', pr_title:'Travel protection', pr_video:'Watch this insurance video', pr_pick:'Tick one choice:', pr_select:'Select', pr_one:'Tick one of the choices, please.', pr_saving:'One moment…'
   };
@@ -272,10 +274,18 @@
       $('pr-video').innerHTML = '<video class="pr-film" controls playsinline preload="metadata" src="' + esc(video) + '"></video>';
       var film = $('pr-video').querySelector('video'); if(film && film.play){ var pr = film.play(); if(pr && pr.catch) pr.catch(function(){}); }
     });
-    var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '']; });
-    rows.push(['own', prot.own, '', ''], ['none', prot.none, '', '']);
+    var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '', p]; });
+    rows.push(['own', prot.own, '', '', null], ['none', prot.none, '', '', null]);
+    // Mark 2026-11-13: "there also should be a choice to view the coverages": under a plan, a button opens its benefit table as Allianz lists it
     $('pr-opts').innerHTML = rows.map(function(r){
-      return '<label class="pr-opt"><input type="checkbox" data-prot="' + esc(r[0]) + '"' + (pick === r[0] ? ' checked' : '') + '><span><b>' + esc(r[1]) + '</b>' + (r[2] ? '<em>' + esc(r[2]) + '</em>' : '') + (r[3] ? '<em>' + esc(r[3]) + '</em>' : '') + '</span></label>';
+      var p = r[4], cov = '';
+      if(p && (p.covers || []).length){
+        cov = '<button type="button" class="q-link pr-cov-btn" data-cov="' + esc(r[0]) + '">' + esc(T.pr_cov) + '</button><div class="pr-cov" id="pr-cov-' + esc(r[0]) + '" hidden>' +
+          (p.about ? '<p>' + esc(p.about) + '</p>' : '') + '<table><thead><tr><th>' + esc(T.pr_cov_th1) + '</th><th>' + esc(T.pr_cov_th2) + '</th></tr></thead><tbody>' +
+          p.covers.map(function(c){ return '<tr><td><b>' + esc(c.name) + '</b>' + (c.limits || []).map(function(l){ return '<span>' + esc(l.name) + ': ' + esc(l.value) + '</span>'; }).join('') + '</td><td>' + esc(c.coverage) + '</td></tr>'; }).join('') +
+          '</tbody></table><p class="pr-cov-src">' + esc(T.pr_cov_src) + '</p></div>';
+      }
+      return '<div class="pr-row"><label class="pr-opt"><input type="checkbox" data-prot="' + esc(r[0]) + '"' + (pick === r[0] ? ' checked' : '') + '><span><b>' + esc(r[1]) + '</b>' + (r[2] ? '<em>' + esc(r[2]) + '</em>' : '') + (r[3] ? '<em>' + esc(r[3]) + '</em>' : '') + '</span></label>' + cov + '</div>';
     }).join('');
     show('pr-modal');
   }
@@ -284,6 +294,11 @@
     var boxes = this.querySelectorAll('input[type=checkbox]');
     for(var i = 0; i < boxes.length; i++) if(boxes[i] !== e.target) boxes[i].checked = false;
     show('pr-err', false);
+  });
+  $('pr-opts').addEventListener('click', function(e){
+    var b = e.target && e.target.getAttribute && e.target.getAttribute('data-cov') ? e.target : null; if(!b) return;
+    var box = $('pr-cov-' + b.getAttribute('data-cov')); if(!box) return;
+    box.hidden = !box.hidden; b.textContent = box.hidden ? T.pr_cov : T.pr_cov_hide;
   });
   $('pr-close').addEventListener('click', closeProt);
   $('pr-select').addEventListener('click', function(){

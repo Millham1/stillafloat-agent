@@ -150,7 +150,11 @@ export async function fetchAllianzQuote(input: QuoteInput, env: QuoteEnv, portal
 // is never pressed.
 
 export interface TripQuoteInput { state: string; total_trip_cost: number; ages: number[]; depart_date: string; return_date: string; deposit_date: string }
-export interface TripPlan { name: string; total: number }
+/** One line of a plan's benefit table as Allianz's site prints it: the benefit, its coverage, and the limits listed under it. */
+export interface PlanBenefit { name: string; coverage: string; limits: Array<{ name: string; value: string }> }
+/** benefits and about (Mark 2026-11-13: "in the insurance popup on the quote page there also should be a choice to view the coverages"): read off
+ *  Allianz's own results screen with the price, word for word; absent on a quote fetched before that date. */
+export interface TripPlan { name: string; total: number; benefits?: PlanBenefit[]; about?: string }
 export type TripQuoteOutcome = { status: "ready"; plans: TripPlan[] } | { status: "unavailable"; reason: string };
 
 export const ALLIANZ_SITE = {
@@ -158,7 +162,7 @@ export const ALLIANZ_SITE = {
   state: "#StateOfResidence", tripCost: "#tripCost", ages: "#TravelerAges", age: (i: number) => `#age-traveler-${i}`,
   addTraveler: "popover-container button.btn-link:not(.done-button)", agesDone: "popover-container .done-button",
   depart: "#DepartureDate", back: "#ReturnDate", deposit: "#InitialDepositDate", getQuote: "Get Quote",
-  planRow: ".panel-heading", planName: ".col-xs-9", planPrice: ".product-price",
+  planRow: ".panel-heading", planName: ".col-xs-9", planPrice: ".product-price", plan: "accordion-group.product",
 } as const;
 
 /** 2027-05-09 → 05/09/2027, the way the site's date boxes take it. */
@@ -174,6 +178,23 @@ export function tripPlanFrom(nameText: string, priceText: string): TripPlan | nu
   const m = /\$\s*([\d,]+(?:\.\d{1,2})?)/.exec(priceText);
   const total = m ? Number(m[1]!.replace(/,/g, "")) : NaN;
   return name && Number.isFinite(total) && total > 0 ? { name, total } : null;
+}
+
+const tidy = (v: unknown, max: number): string => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().replace(/\s*[-:]\s*$/, "").slice(0, max) : "");
+/** A plan's benefit rows as read off the screen → clean lines: blanks dropped, a trailing dash or colon off the labels, nothing reworded. */
+export function planBenefits(raw: unknown): PlanBenefit[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PlanBenefit[] = [];
+  for (const r of raw.slice(0, 40)) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>, name = tidy(o["name"], 120);
+    if (!name || /^benefit$/i.test(name)) continue;
+    const limits = (Array.isArray(o["limits"]) ? o["limits"] : []).slice(0, 12)
+      .map((l) => (l && typeof l === "object" ? { name: tidy((l as Record<string, unknown>)["name"], 120), value: tidy((l as Record<string, unknown>)["value"], 80) } : { name: "", value: "" }))
+      .filter((l) => l.name && l.value);
+    out.push({ name, coverage: tidy(o["coverage"], 80), limits });
+  }
+  return out;
 }
 
 /** Mark 2026-11-10: the list he picks from holds the plans for THIS trip only. Allianz's site also returns its annual plans, the rental car plan and
@@ -237,8 +258,33 @@ export async function fetchAllianzTripQuote(input: TripQuoteInput, env: QuoteEnv
     if (!pressed) return { status: "unavailable", reason: "the Get Quote button was not found on Allianz's site (its screens may have changed)" };
     at = "waiting for the plans";
     await page.waitForSelector(S.planPrice, { visible: true });
-    const rows = await page.$$eval(S.planRow, (els, nameSel, priceSel) => els.map((r) => ({ name: r.querySelector(nameSel as string)?.textContent ?? "", price: r.querySelector(priceSel as string)?.textContent ?? "" })), S.planName, S.planPrice);
-    const plans = rows.map((r) => tripPlanFrom(r.name, r.price)).filter((p): p is TripPlan => !!p);
+    // for running it down by hand: ALLIANZ_DEBUG_DIR=<folder> also keeps the results screen as the site wrote it (never set on a box)
+    if (process.env["ALLIANZ_DEBUG_DIR"]) { const { writeFileSync } = await import("node:fs"); writeFileSync(`${process.env["ALLIANZ_DEBUG_DIR"]}/allianz-results.html`, await page.content()); await page.screenshot({ path: `${process.env["ALLIANZ_DEBUG_DIR"]}/allianz-results.png`, fullPage: true }).catch(() => undefined); }
+    // each plan is one block of the results list: its name and price in the heading, its Benefits table and its Description underneath (both are
+    // on the screen already, folded away). A benefit's own limits sit in a small table inside its cell.
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const rows = await page.$$eval(S.plan, (els, nameSel, priceSel) => els.map((el: any) => {
+      const table = el.querySelector('[id^="benefits_collapse"] table.benefit-table');
+      const lines = table && table.tBodies[0] ? Array.from(table.tBodies[0].rows as any[]).filter((row: any) => row.cells.length >= 2 && row.cells[0].tagName !== "TH").map((row: any) => {
+        const first = row.cells[0], link = first.querySelector(":scope > a");
+        const own = first.cloneNode(true); own.querySelectorAll("div, table").forEach((x: any) => x.remove());
+        return {
+          name: (link ? link.textContent : own.textContent) ?? "", coverage: row.cells[row.cells.length - 1].textContent ?? "",
+          limits: Array.from(first.querySelectorAll("table tr") as any[]).filter((tr: any) => tr.cells.length >= 2).map((tr: any) => ({ name: tr.cells[0].textContent ?? "", value: tr.cells[1].textContent ?? "" })),
+        };
+      }) : [];
+      return {
+        name: el.querySelector(`.panel-heading ${nameSel as string}`)?.textContent ?? "", price: el.querySelector(`.panel-heading ${priceSel as string}`)?.textContent ?? "",
+        benefits: lines, about: el.querySelector('[id^="description_collapse"]')?.textContent ?? "",
+      };
+    }), S.planName, S.planPrice);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    const plans = rows.map((r) => {
+      const plan = tripPlanFrom(r.name, r.price);
+      if (!plan) return null;
+      const benefits = planBenefits(r.benefits), about = typeof r.about === "string" ? r.about.replace(/\s+/g, " ").trim().slice(0, 1200) : "";
+      return { ...plan, ...(benefits.length ? { benefits } : {}), ...(about ? { about } : {}) } as TripPlan;
+    }).filter((p): p is TripPlan => !!p);
     return plans.length ? { status: "ready", plans } : { status: "unavailable", reason: "Allianz's site showed no plan with a price" };
   } catch (err) {
     if (shot) await shot();

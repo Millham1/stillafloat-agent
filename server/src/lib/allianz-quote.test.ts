@@ -2,7 +2,7 @@
 // browser, a sign-in or the portal map the job says so and invents nothing.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { QUOTE_NOTE, fetchAllianzQuote, plansFromText, quoteInputFor } from "./allianz-quote";
+import { QUOTE_NOTE, fetchAllianzQuote, plansFromText, quoteInputFor, planBenefits } from "./allianz-quote";
 
 const GROUP = { sail_date: "2027-05-09", return_date: "2027-05-13", embark_port: "Port Canaveral", itinerary: [{ day: 1, port: "Port Canaveral" }, { day: 2, port: "Nassau" }, { day: 3, port: "Ocean Cay" }],
   terms: { cabin_categories: [{ category: "Balcony Bella", code: "BB", price_per_person: 536.79 }] } };
@@ -53,4 +53,20 @@ test("the trip quote's helpers: dates the way the site takes them, a traveler's 
   const noSignIn = await fetchAllianzTripQuote(input, { chromePath: "/x", user: undefined, password: undefined });
   assert.equal(noSignIn.status, "unavailable");
   assert.match((noSignIn as { reason: string }).reason, /sign-in is not on this box/);
+});
+
+test("Mark 2026-11-13: a plan's benefits are kept as Allianz's screen lists them (labels tidied, nothing reworded, blanks and the header dropped)", () => {
+  const read = planBenefits([
+    { name: " Benefit ", coverage: "Coverage", limits: [] },
+    { name: " Trip Cancellation ", coverage: "Up to amount purchased", limits: [{ name: "Pre-existing Medical Condition Limit:", value: "$50,000.00" }] },
+    { name: " Travel/Trip Delay Coverage ", coverage: " $800.00 ", limits: [{ name: "No Receipts Daily Limit - ", value: "$100.00" }, { name: "", value: "5" }] },
+    { name: "", coverage: "$1.00", limits: [] },
+    { name: "Concierge", coverage: "Included", limits: "nope" },
+  ]);
+  assert.deepEqual(read, [
+    { name: "Trip Cancellation", coverage: "Up to amount purchased", limits: [{ name: "Pre-existing Medical Condition Limit", value: "$50,000.00" }] },
+    { name: "Travel/Trip Delay Coverage", coverage: "$800.00", limits: [{ name: "No Receipts Daily Limit", value: "$100.00" }] },
+    { name: "Concierge", coverage: "Included", limits: [] },
+  ]);
+  assert.deepEqual(planBenefits("x"), []);
 });

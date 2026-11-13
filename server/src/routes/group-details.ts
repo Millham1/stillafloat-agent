@@ -21,7 +21,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
+import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planBenefits, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -610,7 +610,11 @@ interface AllianzRecord { status: "pending" | "ready" | "unavailable"; requested
 const allianzRecord = (formData: unknown): AllianzRecord | null => {
   const a = ((formData as Record<string, any> | null)?.["trip"] ?? {})["allianz"];
   if (!a || typeof a !== "object" || !["pending", "ready", "unavailable"].includes(a["status"])) return null;
-  const plans = (Array.isArray(a["plans"]) ? a["plans"] : []).filter((p: unknown): p is Row => !!p && typeof p === "object").map((p: Row) => ({ name: text(p["name"], 120) ?? "", total: posNum(p["total"]) ?? 0 })).filter((p: TripPlan) => p.name && p.total > 0);
+  const plans = (Array.isArray(a["plans"]) ? a["plans"] : []).filter((p: unknown): p is Row => !!p && typeof p === "object").map((p: Row): TripPlan => {
+    // the plan's benefit table and description, as read off Allianz's screen with the price (Mark 2026-11-13: the guest can view the coverages)
+    const benefits = planBenefits(p["benefits"]), about = text(p["about"], 1200);
+    return { name: text(p["name"], 120) ?? "", total: posNum(p["total"]) ?? 0, ...(benefits.length ? { benefits } : {}), ...(about ? { about } : {}) };
+  }).filter((p: TripPlan) => p.name && p.total > 0);
   return { status: a["status"], requested_at: String(a["requested_at"] ?? ""), quoted_at: text(a["quoted_at"], 40), plans, reason: text(a["reason"], 400), input: a["input"] && typeof a["input"] === "object" ? (a["input"] as TripQuoteInput) : null };
 };
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -804,7 +808,11 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     const same = insured.length === guests.length && insured.every((g) => g.insurance === insured[0]!.insurance);
     plans.push({ key: "included", name: W.linePlan, price: same ? `${usd(insured[0]!.insurance)} ${W.perPerson}` : insured.map((g) => `${properName(g.name)} ${usd(g.insurance)}`).join(" · "), note: W.inCruise, withTotal: null });
   }
+  // what each Allianz plan covers, from the quote the agent fetched for this trip: matched by the plan's name ("Classic Plan (Allianz)")
+  const fetched = allianzRecord(b.lead.form_data)?.plans ?? [];
+  const coverOf = (name: string) => fetched.find((f) => `${f.name} (Allianz)`.toLowerCase() === name.trim().toLowerCase() || f.name.toLowerCase() === name.trim().toLowerCase());
   v.protection.forEach((p, i) => plans.push({
+    ...(coverOf(p.name)?.benefits?.length ? { covers: coverOf(p.name)!.benefits!, ...(coverOf(p.name)!.about ? { about: coverOf(p.name)!.about! } : {}) } : {}),
     key: `p${i}`, name: p.name, price: p.total !== null ? `${usd(p.total)} ${W.forParty(count)}` : `${usd(p.per_person ?? 0)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
     withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + (p.total ?? (p.per_person ?? 0) * count))) } : null,
   }));
