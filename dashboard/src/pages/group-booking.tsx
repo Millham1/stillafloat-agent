@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
 import { api } from "@/lib/group-api";
 import { authHeaders } from "@/lib/auth-token";
-import { Tile } from "./group-big-picture";
 import { useToast } from "@/hooks/use-toast";
 
 // Booking confirmation (Mark 2026-11-04, reshaped 2026-11-05). The guest sent their choices; Mark re-quotes them in the cruise line's system and
@@ -37,6 +36,12 @@ type GuestPrice = { name: string; cruise: number; packaging: number; addons: num
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 export type Booking = {
   success: boolean; guest: { name: string; email: string | null }; review?: Review; guestPage?: string | null;
+  // the booking's facts as the cruise line's confirmation lays them out, and the money as the guest's quote prints it (Mark 2026-11-12)
+  sheet?: { bookingNumber: string | null; optionUntil: { day: string; text: string } | null;
+    trip: { line: string | null; ship: string | null; from: string | null; nights: number | null; departs: string | null; returns: string | null; stops: Array<{ weekday: string; date: string; port: string; arrive: string | null; depart: string | null }> };
+    cabin: { number: string | null; deck: string | null; type: string | null }; travelers: Array<{ name: string; lead: boolean; items: string[] }> };
+  doc?: { matrix: null | { names: string[]; rows: Array<{ label: string; values: string[]; strong?: boolean }> }; cruise: Array<{ label: string; value: string }>; cruiseTotal: { label: string; value: string } | null;
+    travel: Array<{ title: string; value: string; details: string[] }>; tripTotal: { label: string; value: string } | null };
   // the price the guest approves before the paperwork goes out (Mark 2026-11-09)
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
@@ -367,58 +372,107 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
       </div>
       <div className="p-4 space-y-4">
       {tab === "summary" && (() => {
-        // Mark 2026-11-12: "i dont need to see all of the insurance detail, that would be on the insurance detail card … it is almost unreadable and
-        // doesn't give me the info I need quickly." The summary is the same kind of screen as the top level he approved: a few big numbers, each one a
-        // card that opens its own detail (Cruise, Flights/hotels/transfers, Travel protection, Paperwork). No table and no typing here.
-        const rv = data.review;
-        const unpriced = trip.filter((r) => r.price === null || String(r.price).trim() === "").length;
-        const complete = cruiseSum > 0 && unpriced === 0;
-        const total = round(cruiseSum + travelSum);
-        const people = `${party} traveler${party === 1 ? "" : "s"}`;
-        const pickedPlan = price?.protection?.label ?? null;
-        const fact = (label: string, value: React.ReactNode) => <div className="flex gap-4 py-1.5 text-base"><span className="w-24 shrink-0 text-muted-foreground">{label}</span><span className="min-w-0">{value || <span className="text-muted-foreground">not on file</span>}</span></div>;
-        const head = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2";
+        // Mark 2026-11-12, of the cruise line's own confirmation page: "it is clean, easy to understand and the info is at my fingertips." The
+        // booking's first screen is laid out the same way: ONE page read top to bottom; the booking number and the status on top; plainly named
+        // sections (trip, booking, getting there, travel protection, payment); label and value; all the money in one right-hand column that ends in
+        // one total. No typing and no warnings among the facts: each section has an Edit that opens its detail, and the actions sit above the page.
+        const rv = data.review, sh = data.sheet, doc = data.doc;
+        const unpriced = data.trip.filter((r) => r.price === null);
+        const complete = (data.totals.cruise ?? 0) > 0 && unpriced.length === 0;
+        const today = new Date().toISOString().slice(0, 10);
+        const lapsed = !!sh?.optionUntil && sh.optionUntil.day < today && !sent;
+        const H = ({ children, edit }: { children: React.ReactNode; edit?: BookingTab }) => (
+          <div className="mt-8 mb-3 flex items-end justify-between gap-3 border-b-2 border-[#c5cfdf] pb-1.5">
+            <h4 className="text-lg font-extrabold uppercase tracking-wider">{children}</h4>
+            {edit && !sent && <button className="text-sm font-semibold underline text-[#0b4fa8]" onClick={() => setTab(edit)}>Edit</button>}
+          </div>
+        );
+        const kv = (k: string, v: React.ReactNode) => (v ? <p className="text-base leading-7"><span className="text-[#4a5a7a]">{k}:</span> <b>{v}</b></p> : null);
+        const pay = (label: React.ReactNode, value: React.ReactNode, kind?: "sub" | "total") => (
+          <div className={`flex justify-between gap-6 tabular-nums ${kind === "total" ? "mt-3 border-t-[3px] border-[#07183f] py-3 text-2xl font-extrabold" : kind === "sub" ? "my-2 border-y-2 border-[#07183f] py-2.5 text-base font-extrabold" : "py-1 text-base"}`}><span className="min-w-0">{label}</span><span className="whitespace-nowrap">{value}</span></div>
+        );
+        const missing = <span className="font-bold text-red-600">not entered yet</span>;
+        const picked = price?.protection?.label ?? null;
+        const act = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
         return (
-          <div className="space-y-5">
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-              <Tile label="Trip total" value={complete ? usd(total) : "Not finished"} bad={!complete}
-                caption={complete ? `dollars · cruise and travel, ${people}` : cruiseSum <= 0 ? "the cruise has no price yet" : `${unpriced} travel item${unpriced === 1 ? " has" : "s have"} no price`} captionBad={!complete} />
-              <Tile label="Cruise" value={cruiseSum > 0 ? usd(cruiseSum) : "No price"} bad={cruiseSum <= 0} onClick={() => setTab("cruise")}
-                caption={`dollars · ${cabin["cabin_num"] ? `cabin ${cabin["cabin_num"]}` : "no cabin number"} · ${cabin["booking_number"] ? `booking ${cabin["booking_number"]}` : "no booking number"}`} />
-              <Tile label="Flights, hotels, transfers" value={trip.length === 0 ? "None" : unpriced ? `${unpriced} to price` : usd(travelSum)} bad={unpriced > 0} onClick={() => setTab("travel")}
-                caption={trip.length === 0 ? "nothing on this booking" : `${unpriced ? "" : "dollars · "}${trip.length} item${trip.length === 1 ? "" : "s"}${unpriced ? "" : ", all priced"}`} />
-              <Tile label="Travel protection" value={pickedPlan ? "Chosen" : plans.length ? `${plans.length} offered` : "None offered"} small={false} onClick={() => setTab("protection")}
-                caption={pickedPlan ?? (plans.length ? "plans · the guest has not chosen" : "the guest cannot choose until you add plans")} captionBad={!pickedPlan && plans.length === 0} />
-              <Tile label="Paperwork" value={data.completedAt ? "Confirmed" : data.signed ? `${data.signed.signed} of ${data.signed.required}` : "Not sent"} onClick={() => setTab("paperwork")}
-                caption={data.completedAt ? "booking confirmed" : data.signed ? "documents signed" : "goes out after Book It"} />
-            </div>
-
+          <div className="space-y-4">
             <div className="flex flex-wrap gap-3 items-center">
               {!sent && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={emailPrice}><Send className="w-4 h-4" /> {price?.sent_at ? "Email the quote again" : "Email the quote"}</button>}
-              {data.guestPage && <a className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40" href={data.guestPage} target="_blank" rel="noopener noreferrer">See the guest's page</a>}
-              <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={downloadPdf}><Download className="w-4 h-4" /> Download the PDF</button>
-              <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50" disabled={busy} onClick={previewPrice}>Preview the email</button>
-              {!sent && !approved && <button className="text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50" disabled={busy} onClick={recordYes}>They said yes another way</button>}
+              {data.guestPage && <a className={act} href={data.guestPage} target="_blank" rel="noopener noreferrer">See the guest's page</a>}
+              <button className={act} disabled={busy} onClick={downloadPdf}><Download className="w-4 h-4" /> Download the PDF</button>
+              {!sent && !approved && <button className={act} disabled={busy} onClick={recordYes}>They said yes another way</button>}
               {!sent && approved && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={send}><Send className="w-4 h-4" /> Send the paperwork</button>}
             </div>
             {!stage && stop && <p className="text-base font-semibold text-red-500" role="alert">{stop.text}</p>}
 
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="rounded-md border p-4">
-                <div className={head}>The customer</div>
-                {(rv?.travelers ?? []).map((t, n) => <React.Fragment key={n}>{fact(t.lead ? "Lead" : `Traveler ${n + 1}`, <><b>{t.name}</b>{t.age != null ? `, ${t.age}` : ""}</>)}</React.Fragment>)}
-                {fact("Email", rv?.email ? <a className="underline" href={`mailto:${rv.email}`}>{rv.email}</a> : null)}
-                {fact("Phone", rv?.phone ? <a className="underline" href={`tel:${rv.phone}`}>{rv.phone}</a> : null)}
-                {fact("Home", rv?.home)}
-                {rv?.lang === "es" && fact("Language", "Spanish")}
-                {rv?.flexpay && fact("FlexPay", "They asked for it")}
+            <div className="rounded-md bg-white text-[#07183f] px-6 py-7 sm:px-10">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="border-t-[3px] border-[#07183f] pt-2">
+                  <p className="text-base text-[#4a5a7a]">Booking number</p>
+                  <p className="text-3xl font-extrabold leading-tight">{sh?.bookingNumber ?? <span className="text-xl text-red-600">not entered yet</span>}</p>
+                </div>
+                <div className="border-t-[3px] border-[#07183f] pt-2">
+                  <p className="text-base text-[#4a5a7a]">Status</p>
+                  <p className="text-3xl font-extrabold leading-tight">{stage?.status ?? (sent ? "Paperwork sent" : approved ? "Said Book It" : price?.sent_at ? "Quote emailed" : "Choices are in")}</p>
+                  {sh?.optionUntil && <p className={`text-base font-bold ${lapsed ? "text-red-600" : "text-[#8a5f00]"}`}>{lapsed ? "The cruise line's hold ended " : "The cruise line holds the cabin until "}{sh.optionUntil.text}</p>}
+                </div>
               </div>
-              <div className="rounded-md border p-4">
-                <div className={head}>What they asked for</div>
-                {(rv?.chose ?? []).filter((c) => c.label !== "FlexPay").map((c, n) => <p key={n} className="text-base py-1">{c.label}</p>)}
-                {rv?.note && <p className="text-base py-1 text-muted-foreground">Their note: {rv.note}</p>}
+
+              <H>Trip details</H>
+              {kv("Ship", [sh?.trip.ship, sh?.trip.line].filter(Boolean).join(" · "))}
+              {kv("Departure", [sh?.trip.from, sh?.trip.departs].filter(Boolean).join(", "))}
+              {kv("Return", sh?.trip.returns)}
+              {kv("Duration", sh?.trip.nights ? `${sh.trip.nights} nights` : null)}
+              {(sh?.trip.stops ?? []).length > 0 && (
+                <table className="mt-3 w-full text-base">
+                  <thead><tr className="border-b-2 border-[#c5cfdf] text-left"><th className="py-2 pr-3 font-extrabold">Day</th><th className="py-2 pr-3 font-extrabold">Date</th><th className="py-2 pr-3 font-extrabold">Port</th><th className="py-2 pr-3 font-extrabold whitespace-nowrap">Arrival</th><th className="py-2 font-extrabold whitespace-nowrap">Departure</th></tr></thead>
+                  <tbody>{sh!.trip.stops.map((x, n) => <tr key={n} className="border-b border-[#dde5f1]"><td className="py-2 pr-3">{x.weekday}</td><td className="py-2 pr-3 whitespace-nowrap">{x.date}</td><td className="py-2 pr-3">{x.port}</td><td className="py-2 pr-3 whitespace-nowrap">{x.arrive ?? "-"}</td><td className="py-2 whitespace-nowrap">{x.depart ?? "-"}</td></tr>)}</tbody>
+                </table>
+              )}
+
+              <H edit="cruise">Booking details</H>
+              {kv("Stateroom", [sh?.cabin.number, sh?.cabin.type, sh?.cabin.deck ? `deck ${sh.cabin.deck}` : null].filter(Boolean).join(" · ") || missing)}
+              {(sh?.travelers ?? []).map((t, n) => {
+                const age = rv?.travelers.find((x) => x.name === t.name)?.age;
+                return (
+                  <div key={n} className="grid gap-4 border-b border-[#dde5f1] py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                    <p className="text-lg font-extrabold">{t.name}{age != null ? <span className="font-normal text-[#4a5a7a]">, {age}</span> : null}</p>
+                    {t.items.length > 0 && <div><p className="text-base text-[#4a5a7a]">Additional items:</p>{t.items.map((x, k) => <p key={k} className="text-base font-bold leading-7">{x}</p>)}</div>}
+                  </div>
+                );
+              })}
+              <div className="mt-3">
+                {kv("Email", rv?.email)}{kv("Phone", rv?.phone ?? <span className="font-normal text-[#4a5a7a]">not on file</span>)}{kv("Home", rv?.home)}{rv?.flexpay ? kv("FlexPay", "they asked for it") : null}
               </div>
+
+              <H edit="travel">Getting there</H>
+              {data.trip.length === 0 && <p className="text-base text-[#4a5a7a]">No flights, hotels or transfers on this booking.</p>}
+              {data.trip.map((r, n) => (
+                <div key={n} className="grid gap-4 border-b border-[#dde5f1] py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                  <div><p className="text-lg font-extrabold">{r.kind === "package" ? `Air and hotel package, ${r.direction === "post" ? "after" : "before"} the cruise` : r.label}</p>{r.provider && <p className="text-base text-[#4a5a7a]">{r.provider}</p>}</div>
+                  <p className="text-base"><span className="text-[#4a5a7a]">Confirmation:</span> <b>{r.confirmation ?? missing}</b></p>
+                </div>
+              ))}
+
+              <H edit="protection">Travel protection</H>
+              <p className="text-base">{picked ? <>The guest chose: <b>{picked}</b></> : (data.protection ?? []).length ? <><b>{(data.protection ?? []).length} plan{(data.protection ?? []).length === 1 ? "" : "s"}</b> offered on the quote. The guest has not chosen yet.</> : <span className="font-bold text-red-600">No plans are offered on this quote yet.</span>}</p>
+
+              <H>Payment details</H>
+              {doc?.matrix ? doc.matrix.names.map((name, n) => (
+                <React.Fragment key={n}>
+                  <div className="grid gap-4 pt-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                    <p className="text-lg font-extrabold">{name}</p>
+                    <div>{doc.matrix!.rows.filter((r) => !r.strong).map((r, k) => <React.Fragment key={k}>{pay(r.label, r.values[n])}</React.Fragment>)}</div>
+                  </div>
+                  {doc.matrix!.rows.filter((r) => r.strong).map((r, k) => <React.Fragment key={k}>{pay(`${r.label} · ${name}`, r.values[n], "sub")}</React.Fragment>)}
+                </React.Fragment>
+              )) : (doc?.cruise ?? []).map((l, n) => <React.Fragment key={n}>{pay(l.label, l.value)}</React.Fragment>)}
+              {pay("Cruise total", doc?.cruiseTotal?.value ?? <span className="text-red-600">no price yet</span>, "sub")}
+              {data.trip.map((r, n) => <React.Fragment key={n}>{pay(<>{r.kind === "package" ? "Air and hotel package" : r.label}{r.per === "person" && r.unit_price != null ? <span className="text-[#4a5a7a]"> · {usd(Number(r.unit_price))} per person × {party}</span> : null}</>, r.price != null ? usd(Number(r.price)) : <span className="font-bold text-red-600">no price yet</span>)}</React.Fragment>)}
+              {pay(`Trip total · cruise and travel, ${party} traveler${party === 1 ? "" : "s"}`, complete && data.totals.trip != null ? usd(data.totals.trip) : <span className="text-red-600">not finished</span>, "total")}
+              {data.cabin?.deposit_amount != null && <p className="mt-2 text-base text-[#4a5a7a]">Deposit: <b className="text-[#07183f]">{usd(Number(data.cabin.deposit_amount))}</b></p>}
             </div>
+            {dirty && <p className="text-base text-amber-500">You have changes that are not saved: this page shows the saved booking.</p>}
             {!sent && <div className="flex justify-end"><button className="text-sm px-3 py-1.5 rounded-md border border-red-500/50 text-red-500 hover:bg-red-500/10 inline-flex items-center gap-1 disabled:opacity-50" disabled={busy} onClick={removeBooking}><Trash2 className="w-4 h-4" /> Delete this quote</button></div>}
           </div>
         );

@@ -636,7 +636,7 @@ async function loadBooking(groupId: string, iid: string) {
   let signed: SignedView | null = null;
   if (quote?.paperwork && quote.paperwork !== "booking") signed = await signedFor(groupId, lead);
   // the sailing's protection quotes on the group file (the cruise line's plan and the Allianz plans, as Mark typed them there)
-  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans, sail_date, return_date").eq("id", groupId).maybeSingle();
+  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans, sail_date, return_date, cruise_line, ship_name, embark_port, nights, itinerary").eq("id", groupId).maybeSingle();
   if (fe) throw new Error(fe.message);
   // everyone on this booking (the lead and whoever shares the lead's cabin), for Mark's review of the customer
   const { data: party, error: pe } = lead.cabin_id
@@ -856,6 +856,44 @@ function reviewOf(b: BookingFile) {
     happened: happened.filter((h) => h.at).sort((x, y) => String(x.at).localeCompare(String(y.at))),
   };
 }
+/**
+ * The facts of the booking laid out the way the cruise line's own confirmation lays them out (Mark 2026-11-12, of MSC's confirmation page: "it is
+ * clean, easy to understand and the info is at my fingertips"): the booking number and where it stands on top, then the trip, then who is in the
+ * cabin with what each of them has. The money is the quote's own document (quoteDoc). Read from the file; nothing is worked out.
+ */
+function sheetOf(b: BookingFile, lang: Lang) {
+  const g = (b.file ?? {}) as Row;
+  const read = b.carrier && b.carrier["extracted"] && typeof b.carrier["extracted"] === "object" ? (b.carrier["extracted"] as Record<string, unknown>) : null;
+  const guests = storedGuestPrices(b.lead.form_data);
+  const stops = (Array.isArray(g["itinerary"]) ? g["itinerary"] : []).filter((x: unknown): x is Row => !!x && typeof x === "object").slice(0, 40).map((x: Row) => {
+    const day = text(x["date"], 10);
+    return {
+      weekday: day ? new Date(`${day}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { weekday: "short", timeZone: "UTC" }) : "",
+      date: day ? new Date(`${day}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "",
+      port: text(x["port"], 120) ?? "", arrive: clockTime(text(x["arrive"], 10), lang) || null, depart: clockTime(text(x["depart"], 10), lang) || null,
+    };
+  });
+  const optionDay = text(read?.["option_until"], 10);
+  return {
+    bookingNumber: text(b.cabin?.["booking_number"], 60),
+    // an optioned booking: the day (and hour) the cruise line holds the cabin until, as its quote prints it
+    optionUntil: optionDay ? { day: optionDay, text: [longDay(optionDay, lang), text(read?.["option_until_time"], 30)].filter(Boolean).join(", ") } : null,
+    trip: {
+      line: text(g["cruise_line"], 80), ship: text(g["ship_name"], 80), from: text(g["embark_port"], 120), nights: Number.isFinite(Number(g["nights"])) && Number(g["nights"]) > 0 ? Number(g["nights"]) : null,
+      departs: longDay(text(g["sail_date"], 10), lang) || null, returns: longDay(text(g["return_date"], 10), lang) || null, stops,
+    },
+    cabin: { number: text(b.cabin?.["cabin_num"], 20), deck: text(b.cabin?.["deck"], 20), type: text(b.cabin?.["category"], 120) },
+    // each traveler with the add-ons the cruise line's quote lists under their name
+    travelers: b.party.map((t) => {
+      const name = nameOf(t) || "Traveler";
+      const first = name.split(/\s+/)[0]!.toLowerCase(), last = name.split(/\s+/).slice(-1)[0]!.toLowerCase();
+      const own = guests.find((x) => { const n = x.name.toLowerCase(); return n.includes(first) && n.includes(last); }) ?? guests.find((x) => x.name.toLowerCase().includes(first));
+      return { name, lead: t["id"] === b.lead.id, items: own?.items ?? [] };
+    }).sort((x, y) => Number(y.lead) - Number(x.lead)),
+  };
+}
+/** What Mark's booking page is sent: the booking, and the money exactly as the guest's quote prints it (the per-guest lines, the travel, the totals). */
+const bookingPage = (b: BookingFile) => ({ ...bookingView(b), doc: quoteDoc(b, "en") });
 function bookingView(b: BookingFile) {
   const chosen = tripEntries(b.lead.form_data);
   const needs = ((b.lead.form_data as Record<string, any> | null)?.["trip"]?.["needs"] ?? {}) as Record<string, boolean>;
@@ -886,7 +924,7 @@ function bookingView(b: BookingFile) {
     success: true,
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
-    review: reviewOf(b),
+    review: reviewOf(b), sheet: sheetOf(b, "en"),
     // the guest's own private quote page, once the quote has been emailed (it does not open before): for Mark to see exactly what they see
     guestPage: storedPrice(b.reply.quote).sent_at ? pricePath(String(b.reply.id), b.lead.lang === "es" ? "es" : "en") : null,
     paperwork: b.quote?.paperwork ?? "booking",
@@ -1083,7 +1121,7 @@ router.get("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
     if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
     const b = await loadBooking(groupId, iid);
     if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
-    return res.json(bookingView(b));
+    return res.json(bookingPage(b));
   } catch (err) {
     return fail(req, res, err, "group booking read failed");
   }
@@ -1177,7 +1215,7 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       if (error) throw new Error(error.message);
     }
     const again = await loadBooking(groupId, iid);
-    return res.json(bookingView(again ?? b));
+    return res.json(bookingPage(again ?? b));
   } catch (err) {
     return fail(req, res, err, "group booking save failed");
   }
@@ -1452,7 +1490,7 @@ router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
     }
     const { b, group, lang, price } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: await insuranceVideo(lang) });
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, sheet: sheetOf(b, lang), businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: await insuranceVideo(lang) });
   } catch (err) {
     return fail(req, res, err, "price confirm read failed");
   }
