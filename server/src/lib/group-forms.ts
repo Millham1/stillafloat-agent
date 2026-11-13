@@ -25,7 +25,7 @@
 //     signer_role "cardholder"; the lead's own packet has no card authorization in it.
 
 import {
-  BUSINESS, bookingInsuranceVideo, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
+  BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
   CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
@@ -106,7 +106,7 @@ export interface FormsDeps {
 export interface InsuranceDeps extends QuoteEnv {
   /** Tests only: stands in for the Allianz portal so the background quote can be timed. */
   fetchQuote?: typeof fetchAllianzQuote;
-  /** No longer read (2026-11-13): the insurance step always plays the booking video, bookingInsuranceVideo() in group-secure.ts. */
+  /** GROUP_INSURANCE_VIDEO_URL: the video the client watches before choosing; null = no video yet. */
   videoUrl: string | null;
   /** "Waiting on you": send this traveler an Allianz quote by hand (made once per traveler). */
   quoteNeeded: (n: { title: string; body: string; groupId: string; travelerId: string }) => Promise<void>;
@@ -1141,8 +1141,7 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
     return pub;
   }) : [];
   return {
-    // Mark 2026-11-13: the insurance step plays OUR booking video (English or Spanish, by the traveler's language), never a YouTube address
-    video_url: bookingInsuranceVideo(loaded.ctx.lang === "es" ? "es" : "en"),
+    video_url: deps.insurance?.videoUrl ?? null,
     line_protection: lineText,
     quote,
     // the choice made on the page (Mark 2026-10-30) and the lines that ask it; locked once the insurance document is signed

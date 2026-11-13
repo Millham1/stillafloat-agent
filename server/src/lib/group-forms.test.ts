@@ -1,4 +1,3 @@
-import { bookingInsuranceVideo } from "./group-secure";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -1095,13 +1094,4 @@ test("the traveler information form carries a block for the other traveler, and 
   const doc = pkt(await getPacket(t.deps, token)).docs[0]!;
   assert.ok(doc.html.includes("ADDITIONAL TRAVELER 2") && doc.html.includes('data-field="m1_legal_name"'));
   assert.ok(pdf === null || "status" in pdf);
-});
-
-test("Mark 2026-11-13: the insurance video is OUR booking video (English or Spanish), never a YouTube address, whatever the setting says", () => {
-  assert.equal(bookingInsuranceVideo("en", {}), "https://www.stillafloatcruising.com/media/booking/booking-01-travel-insurance-pros-and-cons.mp4");
-  assert.equal(bookingInsuranceVideo("es", {}), "https://www.stillafloatcruising.com/media/booking/booking-01-travel-insurance-pros-and-cons-es.mp4");
-  for (const yt of ["https://youtu.be/k5U_dm_s4B0", "https://www.youtube.com/watch?v=k5U_dm_s4B0", "https://www.youtube-nocookie.com/embed/k5U_dm_s4B0"]) {
-    assert.ok(!/youtu/i.test(bookingInsuranceVideo("en", { GROUP_INSURANCE_VIDEO_URL: yt })), `${yt} is ignored`);
-  }
-  assert.equal(bookingInsuranceVideo("en", { GROUP_INSURANCE_VIDEO_URL: "https://www.stillafloatcruising.com/media/booking/other.mp4" }), "https://www.stillafloatcruising.com/media/booking/other.mp4", "another file of ours may be set");
 });
