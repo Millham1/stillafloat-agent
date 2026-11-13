@@ -197,6 +197,8 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const STEP_OF: Record<string, number> = { "choices-in": 0, changes: 0, "quote-not-sent": 0, "quote-sent": 1, "book-it": 2, "paperwork-not-sent": 2, signing: 3, signed: 3, confirmed: 5 };
   const step = stage ? STEP_OF[stage.key] ?? 0 : 0;
 
+  // the group file's plans to show: all of them, or only the cruise line's own once Allianz's real quote for this trip is in
+  const onFile = (data.protectionOnFile ?? []).filter((q) => q.line || data.allianz?.status !== "ready");
   const TABS: Array<{ key: BookingTab; label: string }> = [
     { key: "summary", label: "Quote sheet" }, { key: "cruise", label: "Cruise" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "protection", label: "Travel protection" },
     { key: "paperwork", label: "Paperwork" },
@@ -605,11 +607,13 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           )}
         </div>
         {/* Mark 2026-11-10: the quotes on file for this sailing show here, each with its own button: he picks which ones go on this guest's quote */}
-        {(data.protectionOnFile ?? []).length > 0 ? (
+        {/* Mark 2026-11-12 ("why do the allianz quotes show up twice"): the group file can hold Allianz figures typed in for the sailing, and the agent
+            also fetches Allianz's real prices for THIS trip. Once the real ones are in, the typed Allianz figures are not shown: one Allianz list only. */}
+        {onFile.length > 0 ? (
           <div className="rounded-md border p-2 mb-2">
-            <p className="text-sm font-semibold mb-1">Quotes on file for this sailing (from the group file). Pick the ones to put on this quote:</p>
+            <p className="text-sm font-semibold mb-1">{data.allianz?.status === "ready" ? "The cruise line's own plan (from the group file). Add it to this quote if you want to offer it:" : "Quotes on file for this sailing (from the group file). Pick the ones to put on this quote:"}</p>
             <div className="space-y-1">
-              {(data.protectionOnFile ?? []).map((q, i) => {
+              {onFile.map((q, i) => {
                 const on = plans.some((x) => x.name.trim() === q.name && x.line === q.line && !x.party);
                 return (
                   <div key={i} className="flex items-center justify-between gap-2 flex-wrap text-sm">
@@ -621,7 +625,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               })}
             </div>
           </div>
-        ) : (
+        ) : data.allianz?.status === "ready" ? null : (
           <p className="text-sm text-amber-700">No protection quote is on the group file for this sailing. Type the cruise line's plan and the Allianz plans on the group's details (as quoted), or add a plan by hand with "+ plan".</p>
         )}
         {plans.length === 0 && <p className="text-sm text-muted-foreground">Nothing is on this guest's quote yet: with no plan added, the quote has no travel protection section.</p>}
