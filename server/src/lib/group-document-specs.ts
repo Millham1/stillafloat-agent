@@ -923,8 +923,13 @@ const BOOKING_12: DocSpec = {
       const extras: Array<Record<string, any>> = Array.isArray(trip?.extras) ? trip.extras : [];
       for (const x of extras) if (typeof x?.["total"] === "number" && x["total"] > 0) rows.push([`${cleanValue(x["name"]) || "Cruise extra"} (cruise line add-on, in the total below)`, fmtMoney(x["total"])]);
       // Mark 2026-10-31: the protection chosen on the page, at the price the page showed; not added into the cabin's total below
+      // Mark 2026-11-13: a plan chosen on the quote is part of the final quote here: its amount for the booking goes after the travel, with the
+      // trip total including it (below). A choice made the older way, on the paperwork page itself, keeps its per-person line.
+      const made = (ctx.traveler?.form_data?.insurance ?? {}) as Record<string, any>;
+      const onQuote = made["from_quote"] === true;
+      const planAmount = onQuote && typeof made["amount"] === "number" && made["amount"] > 0 ? (made["amount"] as number) : null;
       const premium = chosenPremium(ctx);
-      if (premium) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
+      if (premium && !onQuote) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
       const f = fee(ctx, "planning_fee") ?? fee(ctx, "service_fee");
       if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
       const total = cabinTotal(ctx);
@@ -932,7 +937,13 @@ const BOOKING_12: DocSpec = {
       // the flights, hotels and transfers Mark booked, each at its booked price, and the trip's total with them
       const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
       for (const r of travel) rows.push([cleanValue(r["label"]) || "Travel", fmtMoney(r["price"])]);
-      if (travel.length && total) rows.push(["**Estimated Trip Total (cruise and travel)**", `**${fmtMoney(Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100)}**`]);
+      const tripSum = total ? Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100 : 0;
+      if (travel.length && total) rows.push(["**Estimated Trip Total (cruise and travel)**", `**${fmtMoney(tripSum)}**`]);
+      if (onQuote) {
+        const what = cleanValue(made["name"]) || (insuranceChoice(ctx) === "own" ? "My own policy" : insuranceChoice(ctx) === "decline" ? "No travel insurance" : "Travel protection");
+        rows.push([`Travel Protection, as chosen on your quote: ${what}`, planAmount ? fmtMoney(planAmount) : insuranceChoice(ctx) === "own" ? "Own policy" : insuranceChoice(ctx) === "decline" ? "Declined" : premium]);
+        if (planAmount && total) rows.push(["**Estimated Trip Total with travel protection**", `**${fmtMoney(Math.round((tripSum + planAmount) * 100) / 100)}**`]);
+      }
       if (!rows.length) return [{ t: "p", text: "*The amounts for this cabin are shown on your cruise line booking confirmation.*" }];
       return [{ ...t, rows }];
     }),

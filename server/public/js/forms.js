@@ -432,6 +432,15 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
   function insuranceBody(s) {
     var ins = packet.insurance || {};
+    // Mark 2026-11-13: "the only place the insurance option is is in the quote email. if they have made their choice then it is done and only the
+    // decision is needed in the paperwork." A choice made on the quote is stated here, never asked again: no video, no prices, no options. The
+    // choice stays on the page as a hidden answer so the lines that depend on it (an own policy's company and number) still show.
+    if (ins.decided) {
+      return '<p class="lead">Your travel protection decision, as you chose it on your quote:</p><p class="w-decision"><b>' + esc(ins.decided.label) + '</b></p>' +
+        '<p class="hint">To change it, call or text Mark before you sign.</p>' +
+        '<input type="hidden" data-field="insurance_plan" value="' + esc(ins.decided.plan || '') + '">' +
+        '<div class="w-decided">' + fieldsHtml(s.fields || []) + '</div>';
+    }
     var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
     if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
     var chosen = (ins.choice && ins.choice.plan) || (fields.insurance_plan && fields.insurance_plan.f.value) || '';
@@ -463,6 +472,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var quoteTimer = null;
   function pollQuote() {
     clearTimeout(quoteTimer);
+    if (packet.insurance && packet.insurance.decided) return;   // decided on the quote: there is no price to fetch here
     var box = $('w-quote'); if (!box) return;
     api('/insurance').then(function (r) {
       var j = r.json || {}; if (r.status !== 200 || !j.success) return;
@@ -475,6 +485,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // the quote starts in the background as soon as the information page is submitted (Mark 2026-10-29)
   function requestQuote() {
     if (packet.kind !== 'traveler' || !steps.some(function (s) { return s.id === 'insurance'; })) return;
+    if (packet.insurance && packet.insurance.decided) return;   // decided on the quote: Allianz is not asked again from here
     api('/insurance/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(function () {});
   }
 

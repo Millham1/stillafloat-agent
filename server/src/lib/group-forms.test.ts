@@ -1095,3 +1095,23 @@ test("the traveler information form carries a block for the other traveler, and 
   assert.ok(doc.html.includes("ADDITIONAL TRAVELER 2") && doc.html.includes('data-field="m1_legal_name"'));
   assert.ok(pdf === null || "status" in pdf);
 });
+
+test("Mark 2026-11-13: a choice made on the quote is done: the paperwork states it, offers no video and no prices, and keeps it whatever the page sends", async () => {
+  const t = setup({ insurance: { videoUrl: "https://www.stillafloatcruising.com/media/booking/booking-01-travel-insurance-pros-and-cons.mp4", chromePath: undefined, user: undefined, password: undefined, quoteNeeded: async () => undefined, fetchQuote: async () => ({ status: "unavailable", plans: [], reason: "not asked" }) } as any });
+  ownCabin(t);
+  const made = { choice: "quote", plan: "Classic Plan (Allianz): $265.00 total for 2 travelers", chosen_at: "2026-11-13T01:00:00.000Z", from_quote: true, name: "Classic Plan (Allianz)", amount: 265 };
+  t.state.travelers.find((x: any) => x.id === "t2")!.form_data = { insurance: made };
+  const token = t.link("t2");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const p = pkt(await getPacket(t.deps, token)) as any;
+  assert.deepEqual(p.insurance.decided, { choice: "quote", plan: made.plan, label: made.plan }, "the decision, in the quote's own words");
+  assert.equal(p.insurance.video_url, null, "no video is offered again");
+  assert.deepEqual(p.insurance.quote.plans, [], "no prices are offered again");
+  assert.ok(p.docs.some((d: any) => d.key === "23-insurance-plan") && !p.docs.some((d: any) => d.key === "07-travel-insurance-declination"), "the plan document follows the decision");
+  // the page cannot change it: a different answer is ignored and the decision on the file stays
+  const tried = await chooseInsurance(t.deps, token, { insurance_choice: "decline" });
+  assert.equal(tried.status, 200);
+  assert.deepEqual([tried.json["choice"], tried.json["plan"]], ["quote", made.plan]);
+  const kept = t.state.travelers.find((x: any) => x.id === "t2")!.form_data.insurance;
+  assert.deepEqual([kept.choice, kept.plan, kept.from_quote, kept.amount], ["quote", made.plan, true, 265]);
+});

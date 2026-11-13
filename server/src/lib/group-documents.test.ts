@@ -192,6 +192,16 @@ test("Mark 2026-11-09: the cruise line's extras and each booked flight, hotel an
   assert.ok(t.includes("Flight from Raleigh (RDU) | $272.40"));
   assert.ok(!t.includes("Hotel the night before |"), "a travel line with no booked price prints no amount row");
   assert.ok(t.includes("Estimated Trip Total (cruise and travel) | $2,870.40"));
+  // Mark 2026-11-13 ("only the decision is needed in the paperwork and part of the final quote in the paperwork"): a plan chosen on the quote
+  // prints with its amount for the booking, and the trip total then includes it
+  const chose = { ...lead, form_data: { ...lead.form_data, insurance: { choice: "quote", plan: "Classic Plan (Allianz): $265.00 total for 2 travelers", from_quote: true, name: "Classic Plan (Allianz)", amount: 265 } } };
+  const withPlan = renderDocument("12-cruise-booking-agreement", ctxFor({}, chose)).text;
+  assert.ok(withPlan.includes("Travel Protection, as chosen on your quote: Classic Plan (Allianz) | $265"), withPlan.split("\n").filter((l) => l.includes("Protection")).join("\n"));
+  assert.ok(withPlan.includes("Estimated Trip Total with travel protection | $3,135.40"));
+  assert.ok(!withPlan.includes("as chosen on the paperwork"), "the older per-person line is not printed beside it");
+  const none = { ...lead, form_data: { ...lead.form_data, insurance: { choice: "decline", plan: null, from_quote: true, name: "No travel insurance", amount: null } } };
+  const declined = renderDocument("12-cruise-booking-agreement", ctxFor({}, none)).text;
+  assert.ok(declined.includes("Travel Protection, as chosen on your quote: No travel insurance | Declined") && !declined.includes("with travel protection"));
   // with nothing priced the table is as it was
   assert.ok(!renderDocument("12-cruise-booking-agreement", ctxFor()).text.includes("Estimated Trip Total"));
 });

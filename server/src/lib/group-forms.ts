@@ -1058,19 +1058,22 @@ export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { i
   if (!loaded || loaded.kind !== "traveler" || !loaded.traveler) return NOT_FOUND;
   if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
   if (INSURANCE_DOCUMENTS.some((k) => loaded.signed.has(k))) return reply(409, { success: false, code: "insurance-signed", error: "Your travel insurance document is already signed, so the choice cannot change here. Ask Mark to take that signature back if you need to change it." });
-  const choice = typeof body.insurance_choice === "string" ? body.insurance_choice : "";
+  // a choice made on the quote stands: whatever the page sends, the decision on the file is the one kept (only the details of an own policy are taken)
+  const made = rowOf(rowOf(loaded.traveler.form_data)["insurance"]);
+  const fromQuote = made["from_quote"] === true && (INSURANCE_CHOICES as readonly string[]).includes(made["choice"]);
+  const choice = fromQuote ? String(made["choice"]) : typeof body.insurance_choice === "string" ? body.insurance_choice : "";
   if (!(INSURANCE_CHOICES as readonly string[]).includes(choice)) return reply(400, { success: false, error: "Please choose one of the options.", fields: { insurance_choice: "Please choose one." } });
   const pub = insurancePublic(loaded, deps);
   const quote = pub["quote"] as { status: string; plans: Row[] };
-  let plan: string | null = null;
-  if (choice === "quote") {
+  let plan: string | null = fromQuote && typeof made["plan"] === "string" ? made["plan"] : null;
+  if (choice === "quote" && !fromQuote) {
     const typed = typeof body.insurance_plan === "string" ? body.insurance_plan.replace(/\s+/g, " ").trim() : "";
     const offered = (quote.plans ?? []).map((p) => planLabel(p));
     if (!offered.length) return reply(400, { success: false, error: "There is no price to pick from yet. Please wait for the quote, or choose another option for now.", fields: { insurance_plan: "No plan to pick from yet." } });
     if (!offered.includes(typed)) return reply(400, { success: false, error: "Please choose your plan.", fields: { insurance_plan: "Please choose your plan." } });
     plan = typed;
   }
-  if (choice === "line") {
+  if (choice === "line" && !fromQuote) {
     const line = pub["line_protection"];
     if (typeof line !== "string" || !line) return reply(400, { success: false, error: "The cruise line's own plan is not on file for this sailing. Please choose another option, or ask Mark.", fields: { insurance_choice: "Not on file for this sailing." } });
     plan = line;
@@ -1140,10 +1143,18 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
     if (f.name === "insurance_choice") pub["options"] = (pub["options"] as Array<{ value: string; label: string }>).flatMap((o) => (o.value !== "line" ? [o] : lineText ? [{ value: "line", label: `The cruise line's own protection plan: ${lineText}` }] : []));
     return pub;
   }) : [];
+  // Mark 2026-11-13: a choice made on the quote is DONE: the paperwork states it and never offers or asks again (no video, no prices, no options)
+  const decidedChoice = ins["from_quote"] === true && (INSURANCE_CHOICES as readonly string[]).includes(ins["choice"]) ? String(ins["choice"]) : null;
+  const decided = decidedChoice ? {
+    choice: decidedChoice, plan: typeof ins["plan"] === "string" ? ins["plan"] : null,
+    label: decidedChoice === "own" ? "My own travel insurance policy" : decidedChoice === "decline" ? "No travel insurance for this trip"
+      : (typeof ins["plan"] === "string" && ins["plan"].trim() ? ins["plan"].trim() : typeof ins["name"] === "string" ? ins["name"] : "Travel protection through Mark"),
+  } : null;
   return {
-    video_url: deps.insurance?.videoUrl ?? null,
+    decided,
+    video_url: decided ? null : deps.insurance?.videoUrl ?? null,
     line_protection: lineText,
-    quote,
+    quote: decided ? { status: "decided", source: null, plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null } : quote,
     // the choice made on the page (Mark 2026-10-30) and the lines that ask it; locked once the insurance document is signed
     choice: {
       value: (INSURANCE_CHOICES as readonly string[]).includes(ins["choice"]) ? ins["choice"] : null,

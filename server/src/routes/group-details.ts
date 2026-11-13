@@ -1571,7 +1571,11 @@ router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
         if (pe) throw new Error(pe.message);
         for (const t of (party ?? []) as Row[]) {
           const fd = (t["form_data"] && typeof t["form_data"] === "object" ? t["form_data"] : {}) as Record<string, any>;
-          const { error: ue } = await db().from("group_travelers").update({ form_data: { ...fd, insurance: { ...(fd["insurance"] ?? {}), choice, plan: planText, chosen_at: new Date().toISOString() } } }).eq("id", t["id"]);
+          const { error: ue } = await db().from("group_travelers").update({ form_data: { ...fd, insurance: { ...(fd["insurance"] ?? {}), choice, plan: planText, chosen_at: new Date().toISOString(),
+            // Mark 2026-11-13: "the only place the insurance option is is in the quote email. if they have made their choice then it is done and only
+            // the decision is needed in the paperwork and part of the final quote in the paperwork." The paperwork reads these: it does not ask again.
+            from_quote: true, name: plan?.name ?? (key === "own" ? "My own policy" : key === "none" ? "No travel insurance" : null),
+            amount: typed ? cents(typed.total ?? (typed.per_person ?? 0) * Math.max(1, ((party ?? []) as Row[]).length)) : null } } }).eq("id", t["id"]);
           if (ue) throw new Error(ue.message);
         }
       }

@@ -1174,6 +1174,8 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.ok(!/Mark (and|&amp;|y) /.test(decided), "signed by Mark alone");
   assert.equal((await call("GET", pricePage)).json["protection"], "p1", "the page shows the pick afterwards");
   for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["choice"], t["form_data"]["insurance"]["plan"]], ["quote", "OneTrip Prime (Allianz): $129.50 per person"], "the pick is on every traveler of the cabin, in the paperwork's own words");
+  // Mark 2026-11-13: the decision is marked as made on the quote, with the plan's name and its amount for the whole booking, so the paperwork states it
+  for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["from_quote"], t["form_data"]["insurance"]["name"], t["form_data"]["insurance"]["amount"]], [true, "OneTrip Prime (Allianz)", 259], "$129.50 a person, two travelers: $259 for the booking");
   assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
   assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
   const saidYes = ((await call("GET", `/groups/${GROUP_ID}/pipeline`, { token: true })).json["people"] as Row[]).find((x) => x["id"] === REPLY_ID)!;
