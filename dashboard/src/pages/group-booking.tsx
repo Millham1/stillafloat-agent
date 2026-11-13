@@ -443,7 +443,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
                   <tr><td colSpan={5} className={bar}>Travel protection · the guest picks one on the quote; it is added to the trip total</td></tr>
                   {price?.protection && <tr><td className={cell} colSpan={5}>The guest picked: <b>{price.protection.label}</b></td></tr>}
                   {plans.length === 0 && (
-                    <tr><td colSpan={5} className={cell}><span className="font-bold text-amber-500">None on the quote yet.</span>{askedInsurance ? <> The guest asked for: {askedInsurance.label.replace(/\s*\(TEST FIGURE[^)]*\)/, "")}.</> : null}{" "}
+                    <tr><td colSpan={5} className={cell}><span className="font-bold text-amber-500">None on the quote yet.</span>{askedInsurance ? <> The guest asked for: {askedInsurance.label}.</> : null}{" "}
                       {data.allianz?.status === "ready" ? <>Allianz returned {data.allianz.plans.length} plan{data.allianz.plans.length === 1 ? "" : "s"} for this trip. </> : (data.protectionOnFile ?? []).length ? <>{(data.protectionOnFile ?? []).length} plans are on the group file. </> : null}
                       <button className="underline font-semibold" onClick={() => setTab("protection")}>Choose the plans to offer</button></td></tr>
                   )}
@@ -470,7 +470,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
             <div className="rounded-md border">
               <div className={bar}>What the guest asked for</div>
               <div className="px-4 py-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
-                {(rv?.chose ?? []).map((c, n) => <p key={n} className="text-base py-0.5"><b>{c.label.replace(/\s*\(TEST FIGURE[^)]*\)/, "")}</b>{c.detail && !/mark (prices|quotes) it/i.test(c.detail) ? <span className="text-muted-foreground"> · {c.detail}</span> : null}</p>)}
+                {(rv?.chose ?? []).map((c, n) => <p key={n} className="text-base py-0.5"><b>{c.label}</b>{c.detail && !/mark (prices|quotes) it/i.test(c.detail) ? <span className="text-muted-foreground"> · {c.detail}</span> : null}</p>)}
               </div>
             </div>
             <div className="grid gap-6 lg:grid-cols-2">

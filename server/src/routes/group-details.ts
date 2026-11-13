@@ -956,13 +956,18 @@ router.post("/groups/:id/interests/:iid/delete", requireToken, async (req: Reque
     if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
     let cabinNote: string | null = null, travelersGone = 0;
     if (reply.traveler_id) {
-      const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id").eq("id", reply.traveler_id).maybeSingle();
+      const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, created_at").eq("id", reply.traveler_id).maybeSingle();
       if (le) throw new Error(le.message);
+      // With a cabin, the party is everyone on it. With NO cabin (every cabin of the type was taken), the lead's companions are the travelers of
+      // the group with no cabin that were put on the file in the same moment as the lead: they go too (2026-11-12: two were left behind as orphans).
       const { data: party, error: pe } = lead?.cabin_id
-        ? await db().from("group_travelers").select("id").eq("cabin_id", lead.cabin_id)
-        : await db().from("group_travelers").select("id").eq("id", reply.traveler_id);
+        ? await db().from("group_travelers").select("id, created_at, is_lead").eq("cabin_id", lead.cabin_id)
+        : await db().from("group_travelers").select("id, created_at, is_lead").eq("group_id", groupId).is("cabin_id", null);
       if (pe) throw new Error(pe.message);
-      const ids = ((party ?? []) as Row[]).map((t) => String(t["id"]));
+      const born = Date.parse(String(lead?.created_at ?? ""));
+      const ids = ((party ?? []) as Row[])
+        .filter((t) => lead?.cabin_id || t["id"] === reply.traveler_id || (t["is_lead"] !== true && Number.isFinite(born) && Math.abs(Date.parse(String(t["created_at"] ?? "")) - born) < 10_000))
+        .map((t) => String(t["id"]));
       if (ids.length) {
         const { data: sigs, error: se } = await db().from("group_signatures").select("id").in("traveler_id", ids);
         if (se) throw new Error(se.message);

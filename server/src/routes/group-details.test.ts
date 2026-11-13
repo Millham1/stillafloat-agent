@@ -1468,3 +1468,18 @@ test("Mark 2026-11-12: a person can be deleted (the reply, its travelers, its it
   assert.equal(all.status, 200);
   assert.equal(tables["groups"]!.length, 0);
 });
+
+test("2026-11-12: deleting a person whose party has NO cabin takes their companions too (put on the file in the same moment), and nobody else's", async () => {
+  const made = "2026-11-10T01:26:06.000Z";
+  tables["group_interests"]![0]!["traveler_id"] = "t-lead";
+  tables["group_interests"]![0]!["quote_requested_at"] = made;
+  tables["group_travelers"] = [
+    { id: "t-lead", group_id: GROUP_ID, cabin_id: null, is_lead: true, first_name: "Mark", last_name: "Millham", created_at: made },
+    { id: "t-with", group_id: GROUP_ID, cabin_id: null, is_lead: false, first_name: "Ana", last_name: "Example", created_at: "2026-11-10T01:26:06.400Z" },
+    { id: "t-other", group_id: GROUP_ID, cabin_id: null, is_lead: false, first_name: "Someone", last_name: "Else", created_at: "2026-11-09T09:00:00.000Z" },
+  ];
+  const gone = await call("POST", `/groups/${GROUP_ID}/interests/${REPLY_ID}/delete`, { token: true });
+  assert.equal(gone.status, 200);
+  assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
+  assert.deepEqual(tables["group_travelers"]!.map((t) => t["id"]), ["t-other"], "the companion went with the lead; a traveler from another time stayed");
+});
