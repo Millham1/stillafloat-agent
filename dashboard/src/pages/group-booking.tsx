@@ -97,6 +97,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   // Mark 2026-11-10: a button that cannot go ahead SAYS what has to be done first, in red beside it, when it is pressed. No silent grey buttons.
   const [stop, setStop] = useState<{ at: "price" | "paperwork"; text: string } | null>(null);
   const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" at the bottom of the screen, then press this again.';
+  const [preview, setPreview] = useState<{ html: string; subject: string; to: string } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -205,6 +206,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
 
   // the group file's plans to show: all of them, or only the cruise line's own once Allianz's real quote for this trip is in
   const onFile = (data.protectionOnFile ?? []).filter((q) => q.line || data.allianz?.status !== "ready");
+  const actBtn = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
   const TABS: Array<{ key: BookingTab; label: string }> = [
     { key: "summary", label: "Summary" }, { key: "cruise", label: "Cruise" }, { key: "travel", label: "Flights, hotels, transfers" }, { key: "protection", label: "Travel protection" },
     { key: "paperwork", label: "Paperwork" },
@@ -298,17 +300,12 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
+  // Mark 2026-11-13: "there is also no way for me to send the email that I see": the preview opens on this page with its own Send button
   const previewPrice = async () => {
     const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
-    // the preview window is opened at the click itself (a browser blocks one opened later), then filled
-    const win = window.open("", "_blank");
     setBusy(true);
-    try {
-      const r = await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`);
-      const page = `<!doctype html><meta charset="utf-8"><title>Quote email preview</title><body style="margin:0;background:#eef2f8"><p style="font:16px Arial,sans-serif;color:#07183f;max-width:760px;margin:16px auto;padding:0 16px"><b>Preview only, nothing has been sent.</b> To: ${r.to || "no email on file"} · Subject: ${r.subject}</p><div style="max-width:760px;margin:0 auto 24px">${r.html}</div></body>`;
-      const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
-      if (win) win.location.href = url; else window.open(url, "_blank");
-    } catch (e) { win?.close(); setStop({ at: "price", text: (e as Error).message }); }   // the reason stays in red beside the button (it names what to fix)
+    try { setPreview(await api<{ html: string; subject: string; to: string }>(`/groups/${groupId}/interests/${guest.id}/price-preview`)); }
+    catch (e) { setStop({ at: "price", text: (e as Error).message }); }   // the reason stays in red (it names what to fix)
     finally { setBusy(false); }
   };
   const recordYes = async () => {
@@ -359,6 +356,34 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           {stop && <p className="text-base font-semibold text-red-500 flex items-start gap-2" role="alert"><AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" /> {stop.text}</p>}
         </div>
       )}
+      {/* Mark 2026-11-13: what can be done with the quote is on EVERY tab, not only the first: after adding plans there was no button to send from */}
+      <div className="px-5 py-3 border-b space-y-2">
+        <div className="flex flex-wrap gap-3 items-center">
+          {!sent && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={emailPrice}><Send className="w-4 h-4" /> {price?.sent_at ? "Email the quote again" : "Email the quote"}</button>}
+          <button className={actBtn} disabled={busy} onClick={previewPrice}>Preview the email</button>
+          {data.guestPage && <a className={actBtn} href={data.guestPage} target="_blank" rel="noopener noreferrer">See the guest's page</a>}
+          <button className={actBtn} disabled={busy} onClick={downloadPdf}><Download className="w-4 h-4" /> Download the PDF</button>
+          {!sent && !approved && <button className={actBtn} disabled={busy} onClick={recordYes}>They said yes another way</button>}
+          {!sent && approved && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={send}><Send className="w-4 h-4" /> Send the paperwork</button>}
+        </div>
+        {dirty && <p className="text-base font-semibold text-amber-500">You have changes that are not saved. Save them first: the email and the guest's page show the saved booking.</p>}
+        {!stage && stop && <p className="text-base font-semibold text-red-500" role="alert">{stop.text}</p>}
+      </div>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Preview of the quote email">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-lg bg-card">
+            <div className="border-b px-5 py-3">
+              <p className="text-lg font-bold">Preview of the quote email</p>
+              <p className="text-base text-muted-foreground">To: {preview.to || "no email address on file"} · Subject: {preview.subject}</p>
+            </div>
+            <iframe title="The quote email" srcDoc={preview.html} className="min-h-[50vh] flex-1 bg-[#eef2f8]" />
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t px-5 py-3">
+              <button className={actBtn} onClick={() => setPreview(null)}>Close</button>
+              {!sent && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={async () => { setPreview(null); await emailPrice(); }}><Send className="w-4 h-4" /> Send this email now</button>}
+            </div>
+          </div>
+        </div>
+      )}
       <div role="tablist" aria-label="The parts of this booking" className="flex flex-wrap gap-x-1 border-b px-2">
         {TABS.map((t) => {
           const note = tabNote(t.key);
@@ -396,15 +421,6 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         const act = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
         return (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-3 items-center">
-              {!sent && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={emailPrice}><Send className="w-4 h-4" /> {price?.sent_at ? "Email the quote again" : "Email the quote"}</button>}
-              {data.guestPage && <a className={act} href={data.guestPage} target="_blank" rel="noopener noreferrer">See the guest's page</a>}
-              <button className={act} disabled={busy} onClick={downloadPdf}><Download className="w-4 h-4" /> Download the PDF</button>
-              {!sent && !approved && <button className={act} disabled={busy} onClick={recordYes}>They said yes another way</button>}
-              {!sent && approved && <button className="text-base font-semibold px-5 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy} onClick={send}><Send className="w-4 h-4" /> Send the paperwork</button>}
-            </div>
-            {!stage && stop && <p className="text-base font-semibold text-red-500" role="alert">{stop.text}</p>}
-
             <div className="rounded-md bg-white text-[#07183f] px-6 py-7 sm:px-10">
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="border-t-[3px] border-[#07183f] pt-2">
@@ -611,11 +627,11 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         {plans.length === 0 && <p className="text-sm text-muted-foreground">Nothing is on this guest's quote yet: with no plan added, the quote has no travel protection section.</p>}
         <div className="space-y-2">
           {plans.map((x, i) => (
-            <div key={i} className="grid grid-cols-[1fr_9rem_11rem_auto_auto] gap-2 items-end">
+            <div key={i} className="grid grid-cols-[1fr_9rem_11rem_12rem_auto] gap-2 items-end">
               <Field label="Plan on this quote"><input className={input} placeholder="Plan name" value={x.name} onChange={(e) => setPl(i, { name: e.target.value })} disabled={sent} /></Field>
               <Field label="Quoted price ($)"><input className={input} inputMode="decimal" value={x.price} onChange={(e) => setPl(i, { price: e.target.value })} disabled={sent} /></Field>
               <Field label="The price is"><select className={input} value={x.party ? "party" : "person"} onChange={(e) => setPl(i, { party: e.target.value === "party" })} disabled={sent}><option value="person">per person</option><option value="party">for the whole party</option></select></Field>
-              <label className="text-sm flex items-center gap-1 pb-2"><input type="checkbox" checked={x.line} onChange={(e) => setPl(i, { line: e.target.checked })} disabled={sent} /> The cruise line's own plan</label>
+              <Field label="This plan is from"><select className={input} value={x.line ? "line" : "allianz"} onChange={(e) => setPl(i, { line: e.target.value === "line" })} disabled={sent}><option value="allianz">Allianz</option><option value="line">the cruise line</option></select></Field>
               {!sent && <button className={btn} aria-label="Remove this plan" onClick={() => { setPlans((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
             </div>
           ))}

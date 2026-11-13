@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261109c">
-<link rel="stylesheet" href="/css/price-page.css?v=20261113b">
+<link rel="stylesheet" href="/css/price-page.css?v=20261113c">
 </head>
 <body>
 <div class="wrap">
@@ -108,6 +108,7 @@
     c_booking:'Número de reserva', c_status:'Estado', c_none:'Aún sin asignar', st_open:'Cotización lista: esperando su respuesta', st_approved:'Usted pidió reservar', st_changes:'Cambios solicitados', st_paperwork:'Reservado: documentos enviados', c_held:'Cabina apartada hasta el {when}',
     h_trip:'Detalles del viaje', h_booking:'Detalles de la reserva', h_travel:'Cómo llegar', h_prot:'Protección de viaje', h_pay:'Detalles de pago',
     k_ship:'Barco', k_from:'Salida', k_back:'Regreso', k_nights:'Duración', nights:'{n} noches', k_room:'Cabina', k_deck:'cubierta', k_items:'Adicionales', t_day:'Día', t_date:'Fecha', t_port:'Puerto', t_arr:'Llegada', t_dep:'Salida',
+    pr_ask:'Elija su protección de viaje antes de reservar.', pr_none_yet:'Aún sin elegir',
     pr_btn:'Elegir mi protección de viaje', pr_change:'Cambiar', pr_title:'Protección de viaje', pr_video:'Vea este video sobre el seguro', pr_pick:'Marque una opción:', pr_select:'Seleccionar', pr_one:'Marque una de las opciones, por favor.', pr_saving:'Un momento…'
   } : {
     title:'Your price', plaque:'Your price', loading:'One moment…',
@@ -127,6 +128,7 @@
     c_booking:'Booking number', c_status:'Status', c_none:'Not assigned yet', st_open:'Quote ready: waiting for your answer', st_approved:'You said Book It', st_changes:'Changes requested', st_paperwork:'Booked: paperwork sent', c_held:'Cabin held until {when}',
     h_trip:'Trip details', h_booking:'Booking details', h_travel:'Getting there', h_prot:'Travel protection', h_pay:'Payment details',
     k_ship:'Ship', k_from:'Departure', k_back:'Return', k_nights:'Duration', nights:'{n} nights', k_room:'Stateroom', k_deck:'deck', k_items:'Additional items', t_day:'Day', t_date:'Date', t_port:'Port', t_arr:'Arrival', t_dep:'Departure',
+    pr_ask:'Choose your travel protection before you book.', pr_none_yet:'Not chosen yet',
     pr_btn:'Choose my travel protection', pr_change:'Change', pr_title:'Travel protection', pr_video:'Watch this insurance video', pr_pick:'Tick one choice:', pr_select:'Select', pr_one:'Tick one of the choices, please.', pr_saving:'One moment…'
   };
 
@@ -167,6 +169,7 @@
     var h = '', heads = q.heads || {}, trip = sh.trip || {}, cabin = sh.cabin || {};
     h += '<div class="c-top"><div><span>' + esc(T.c_booking) + '</span><b>' + esc(sh.bookingNumber || T.c_none) + '</b></div>'
        + '<div><span>' + esc(T.c_status) + '</span><b id="c-status">' + esc(T['st_' + st] || '') + '</b>' + (sh.optionUntil && sh.optionUntil.day >= new Date().toISOString().slice(0, 10) ? '<em>' + esc(T.c_held.replace('{when}', sh.optionUntil.text)) + '</em>' : '') + '</div></div>';
+    if(q.protection) h += '<div class="c-choose" id="p-prot"></div>';
     // the trip
     h += '<h2 class="c-h">' + esc(T.h_trip) + '</h2>' + kv(T.k_ship, [trip.ship, trip.line].filter(Boolean).join(' · ')) + kv(T.k_from, [trip.from, trip.departs].filter(Boolean).join(', '))
        + kv(T.k_back, trip.returns) + kv(T.k_nights, trip.nights ? T.nights.replace('{n}', trip.nights) : '');
@@ -200,7 +203,7 @@
     if(q.cruiseTotal) h += money(q.cruiseTotal.label, q.cruiseTotal.value, 'sub');
     (q.travel || []).forEach(function(t){ h += money(t.title, t.value); });
     if(q.tripTotal) h += money(q.tripTotal.label, q.tripTotal.value, 'total');
-    if(q.protection) h += '<h2 class="c-h">' + esc(q.protection.head || T.h_prot) + '</h2><div id="p-prot"></div>';
+    if(q.protection) h += '<div id="p-prot-pay"></div>';
     return h;
   }
   // Travel protection (Mark 2026-11-10): each plan Mark priced, its price per person, then "my own policy" and "no insurance". While the quote is
@@ -212,23 +215,14 @@
     return '';
   }
   function drawProt(open){
-    var box = $('p-prot'); if(!box || !prot) return;
-    var h = '';
-    if(open){
-      // Mark 2026-11-12: the choice is made in a pop-up (the video, the plans, a tick box each); once made it shows here, in the quote, with its trip total
-      if(!pick){
-        h += '<button type="button" class="btn" data-prot-open="1">' + esc(T.pr_btn) + '</button>';
-      } else {
-        var chosen = null; prot.plans.forEach(function(p){ if(p.key === pick) chosen = p; });
-        h += money(chosen ? chosen.name : protLabel(pick), chosen ? chosen.price : '');
-        if(chosen && chosen.withTotal) h += money(chosen.withTotal.label, chosen.withTotal.value, 'total');
-        h += '<p class="center"><button type="button" class="q-link" data-prot-open="1">' + esc(T.pr_change) + '</button></p>';
-      }
-    } else {
-      prot.plans.forEach(function(p){ h += '<div class="q-trip"><div><b>' + esc(p.name) + '</b>' + (p.note ? '<span>' + esc(p.note) + '</span>' : '') + '</div><b>' + esc(p.price) + '</b></div>'; });
-      if(pick && protLabel(pick)) h += '<p class="q-sub">' + esc(T.pr_yours.replace('{pick}', protLabel(pick))) + '</p>';
-    }
-    box.innerHTML = h;
+    var box = $('p-prot'), pay = $('p-prot-pay'); if(!box || !prot) return;
+    var chosen = null; prot.plans.forEach(function(p){ if(p.key === pick) chosen = p; });
+    var name = chosen ? chosen.name : (pick ? protLabel(pick) : '');
+    var h = '<div class="c-choose-in"><div><span>' + esc(prot.head || T.h_prot) + '</span><b>' + esc(pick ? name : T.pr_none_yet) + '</b>' + (chosen ? '<em>' + esc(chosen.price) + '</em>' : (!pick && open ? '<em>' + esc(T.pr_ask) + '</em>' : '')) + '</div>';
+    // Mark 2026-11-12: the choice is made in a pop-up (the video, the plans, a tick box each); once made it shows here and in the money below
+    if(open) h += '<button type="button" class="btn' + (pick ? ' alt' : '') + ' c-choose-btn" data-prot-open="1">' + esc(pick ? T.pr_change : T.pr_btn) + '</button>';
+    box.innerHTML = h + '</div>';
+    if(pay) pay.innerHTML = chosen ? money(chosen.name, chosen.price) + (chosen.withTotal ? money(chosen.withTotal.label, chosen.withTotal.value, 'total') : '') : (pick ? money(prot.head || T.h_prot, name) : '');
   }
   function drawState(s){
     var open = s === 'open';
