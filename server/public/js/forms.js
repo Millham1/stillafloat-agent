@@ -117,7 +117,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     function typed() { if (look.off || keyNow() === look.key) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
     street.addEventListener('input', typed); csz.addEventListener('input', typed);
-    if (tidy(street.value) && tidy(csz.value)) typed();
+    // Mark 2026-11-13 ("i dont like this message about not checking the address. We already verified it earlier in the process"): an address that
+    // came from the file was checked on the details page, so it is not checked again here. Only an address typed or changed on this page is.
   }
 
   function firstName() { return (packet && packet.traveler && packet.traveler.first_name) || ''; }
