@@ -81,6 +81,10 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   // Mark 2026-11-13: "the summary should be closed. If I want to see it I will select it": a booking opens with every tab closed (status, steps and
   // buttons only); pressing a tab opens it, pressing the open tab closes it
   const [tab, setTab] = useState<BookingTab | null>(initialTab ?? null);
+  // Mark 2026-11-13 (opening the Cruise tab into a form of boxes: "the presentation is wrong. we fixed this yesterday"): every detail tab opens as a
+  // clean read page in the confirmation layout, like the Summary. The boxes appear only after "Edit" on that tab.
+  const [editing, setEditing] = useState<BookingTab | null>(null);
+  const openEdit = (t: BookingTab) => { setTab(t); setEditing(t); };
   const qc = useQueryClient();
   const { toast } = useToast();
   const key = ["group-booking", groupId, guest.id];
@@ -195,8 +199,8 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   // Mark 2026-11-12 ("there are too many steps here"): the Next step card IS the button. Where the step is a press, it does it; where it is work
   // (re-quote, enter the confirmation numbers), it opens the tab that work is on.
   const NEXT: Record<string, { label: string; run: () => void }> = {
-    "choices-in": { label: "Upload the cruise line's quote", run: () => setTab("cruise") },
-    changes: { label: "Re-price the cruise", run: () => setTab("cruise") },
+    "choices-in": { label: "Upload the cruise line's quote", run: () => openEdit("cruise") },
+    changes: { label: "Re-price the cruise", run: () => openEdit("cruise") },
     "quote-not-sent": { label: "Email the quote now", run: () => void emailPrice() },
     "book-it": { label: "Send the paperwork now", run: () => void send() },
     "paperwork-not-sent": { label: "Send the paperwork now", run: () => void send() },
@@ -338,6 +342,29 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     finally { setBusy(false); }
   };
 
+    const H = ({ children, edit }: { children: React.ReactNode; edit?: BookingTab }) => (
+      <div className="mt-8 mb-3 flex items-end justify-between gap-3 border-b-2 border-[#c5cfdf] pb-1.5">
+        <h4 className="text-lg font-extrabold uppercase tracking-wider">{children}</h4>
+        {edit && !sent && <button className="text-sm font-semibold underline text-[#0b4fa8]" onClick={() => openEdit(edit)}>Edit</button>}
+      </div>
+    );
+    const kv = (k: string, v: React.ReactNode) => (v ? <p className="text-base leading-7"><span className="text-[#4a5a7a]">{k}:</span> <b>{v}</b></p> : null);
+    const pay = (label: React.ReactNode, value: React.ReactNode, kind?: "sub" | "total") => (
+      <div className={`flex justify-between gap-6 tabular-nums ${kind === "total" ? "mt-3 border-t-[3px] border-[#07183f] py-3 text-2xl font-extrabold" : kind === "sub" ? "my-2 border-y-2 border-[#07183f] py-2.5 text-base font-extrabold" : "py-1 text-base"}`}><span className="min-w-0">{label}</span><span className="whitespace-nowrap">{value}</span></div>
+    );
+    const missing = <span className="font-bold text-red-600">not entered yet</span>;
+  // the white page every tab of a booking is read on, and the one button that opens its boxes
+  const PAPER = "rounded-md bg-white text-[#07183f] px-6 py-7 sm:px-10";
+  const editBtn = (t: BookingTab, label: string) => (sent ? null : (
+    <div className="flex justify-end"><button className="text-base font-semibold px-4 py-2 rounded-md border-2 border-[#07183f] hover:bg-[#eef2f8]" onClick={() => setEditing(t)}>{label}</button></div>
+  ));
+  const backBtn = (label: string) => (
+    <button className="text-base font-semibold underline" onClick={() => setEditing(null)}>← {label}</button>
+  );
+  const top = (label: string, value: React.ReactNode, under?: React.ReactNode) => (
+    <div className="border-t-[3px] border-[#07183f] pt-2"><p className="text-base text-[#4a5a7a]">{label}</p><p className="text-3xl font-extrabold leading-tight">{value}</p>{under}</div>
+  );
+
   return (
     <div>
       {/* Mark 2026-11-12 ("I look at this mess and see nothing, it all blurs together into a blob"): the top of a booking is ONE line of where it
@@ -409,17 +436,6 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         const complete = (data.totals.cruise ?? 0) > 0 && unpriced.length === 0;
         const today = new Date().toISOString().slice(0, 10);
         const lapsed = !!sh?.optionUntil && sh.optionUntil.day < today && !sent;
-        const H = ({ children, edit }: { children: React.ReactNode; edit?: BookingTab }) => (
-          <div className="mt-8 mb-3 flex items-end justify-between gap-3 border-b-2 border-[#c5cfdf] pb-1.5">
-            <h4 className="text-lg font-extrabold uppercase tracking-wider">{children}</h4>
-            {edit && !sent && <button className="text-sm font-semibold underline text-[#0b4fa8]" onClick={() => setTab(edit)}>Edit</button>}
-          </div>
-        );
-        const kv = (k: string, v: React.ReactNode) => (v ? <p className="text-base leading-7"><span className="text-[#4a5a7a]">{k}:</span> <b>{v}</b></p> : null);
-        const pay = (label: React.ReactNode, value: React.ReactNode, kind?: "sub" | "total") => (
-          <div className={`flex justify-between gap-6 tabular-nums ${kind === "total" ? "mt-3 border-t-[3px] border-[#07183f] py-3 text-2xl font-extrabold" : kind === "sub" ? "my-2 border-y-2 border-[#07183f] py-2.5 text-base font-extrabold" : "py-1 text-base"}`}><span className="min-w-0">{label}</span><span className="whitespace-nowrap">{value}</span></div>
-        );
-        const missing = <span className="font-bold text-red-600">not entered yet</span>;
         const picked = price?.protection?.label ?? null;
         const act = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
         return (
@@ -496,7 +512,52 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           </div>
         );
       })()}
-      {tab === "cruise" && (<>
+      {tab === "cruise" && editing !== "cruise" && (() => {
+        const sh = data.sheet, doc = data.doc, read = data.carrier?.read ?? null;
+        const saved = data.totals.cruise ?? 0, printed = read?.booking_total ?? null;
+        const off = printed != null && saved > 0 ? Math.round((saved - printed) * 100) / 100 : null;
+        return (
+          <div className={PAPER}>
+            {editBtn("cruise", "Edit the cruise details")}
+            <div className="mt-3 grid gap-6 sm:grid-cols-2">
+              {top("Cruise line booking number", sh?.bookingNumber ?? <span className="text-xl text-red-600">not entered yet</span>)}
+              {top("Total cruise price", doc?.cruiseTotal?.value ?? <span className="text-xl text-red-600">no price yet</span>,
+                off === null ? null : Math.abs(off) < 0.005
+                  ? <p className="text-base font-bold text-green-700">Matches the cruise line's quote</p>
+                  : <p className="text-base font-bold text-red-600">{usd(Math.abs(off))} {off > 0 ? "over" : "under"} the cruise line's quote of {usd(printed!)}</p>)}
+            </div>
+
+            <H>Stateroom</H>
+            {kv("Cabin", sh?.cabin.number ?? missing)}
+            {kv("Deck", sh?.cabin.deck)}
+            {kv("Cabin type", sh?.cabin.type ?? missing)}
+            {sh?.optionUntil && kv("The cruise line holds it until", sh.optionUntil.text)}
+
+            <H>Guests and prices</H>
+            {doc?.matrix ? doc.matrix.names.map((name, n) => (
+              <React.Fragment key={n}>
+                <div className="grid gap-4 pt-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                  <div>
+                    <p className="text-lg font-extrabold">{name}</p>
+                    {(sh?.travelers.find((t) => t.name === name)?.items ?? []).map((x, k) => <p key={k} className="text-base text-[#4a5a7a] leading-6">{x}</p>)}
+                  </div>
+                  <div>{doc.matrix!.rows.filter((r) => !r.strong).map((r, k) => <React.Fragment key={k}>{pay(r.label, r.values[n])}</React.Fragment>)}</div>
+                </div>
+                {doc.matrix!.rows.filter((r) => r.strong).map((r, k) => <React.Fragment key={k}>{pay(`${r.label} · ${name}`, r.values[n], "sub")}</React.Fragment>)}
+              </React.Fragment>
+            )) : (doc?.cruise ?? []).map((l, n) => <React.Fragment key={n}>{pay(l.label, l.value)}</React.Fragment>)}
+            {pay("Cruise total", doc?.cruiseTotal?.value ?? <span className="text-red-600">no price yet</span>, "total")}
+            {data.cabin?.deposit_amount != null && <p className="mt-2 text-base text-[#4a5a7a]">Deposit: <b className="text-[#07183f]">{usd(Number(data.cabin.deposit_amount))}</b></p>}
+
+            <H>The cruise line's quote</H>
+            {kv("File", data.carrier ? data.carrier.filename : <span className="font-bold text-red-600">not uploaded yet</span>)}
+            {read && read.inclusions.length > 0 && kv("Included", read.inclusions.join(" · "))}
+            {(read?.warnings ?? []).map((w) => <p key={w} className="text-base font-bold text-[#8a5f00]">{w}</p>)}
+          </div>
+        );
+      })()}
+      {tab === "cruise" && editing === "cruise" && (<>
+      {backBtn("Back to the cruise details")}
       {!sent && (
         <div className="rounded-md border p-3 space-y-2">
           <h4 className="text-sm font-semibold">1. The cruise line's quote</h4>
@@ -569,8 +630,27 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
       {/* Mark 2026-11-10: insurance is priced on the QUOTE, not asked on the guest's choices page: each plan and its price per person go here, and the
           guest picks one (or their own policy, or none) on the quote page before "Book It". */}
       </>)}
-      {tab === "protection" && (
+      {tab === "protection" && editing !== "protection" && (
+        <div className={PAPER}>
+          {editBtn("protection", "Edit the plans offered")}
+          <H>Travel protection</H>
+          <p className="text-base leading-7">{price?.protection?.label ? <>The guest chose: <b>{price.protection.label}</b></> : <span className="text-[#4a5a7a]">The guest has not chosen yet. They choose on their quote page.</span>}</p>
+
+          <H>Plans offered on the quote</H>
+          {(data.protection ?? []).length === 0 && <p className="text-base font-bold text-red-600">No plans are offered on this quote yet.</p>}
+          {(data.protection ?? []).map((p, n) => (
+            <React.Fragment key={n}>{pay(
+              <><b>{p.name}</b>{p.line ? <span className="text-[#4a5a7a]"> · the cruise line's plan</span> : /allianz/i.test(p.name) ? null : <span className="text-[#4a5a7a]"> · Allianz</span>}</>,
+              p.total != null ? `${usd(p.total)} for the whole party` : p.per_person != null ? `${usd(p.per_person)} per person` : <span className="font-bold text-red-600">no price yet</span>,
+            )}</React.Fragment>
+          ))}
+          {data.allianz?.status === "pending" && <p className="mt-3 text-base text-[#4a5a7a]">Allianz is being asked for this trip's prices.</p>}
+          {data.allianz?.status === "unavailable" && <p className="mt-3 text-base font-bold text-[#8a5f00]">Allianz's prices could not be fetched{data.allianz.reason ? `: ${data.allianz.reason}` : ""}.</p>}
+        </div>
+      )}
+      {tab === "protection" && editing === "protection" && (
       <div>
+      <div className="mb-3">{backBtn("Back to travel protection")}</div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Travel protection (the guest picks one on the quote)</h4>
           {!sent && <button className={btn} onClick={() => { setPlans((x) => [...x, { name: "", price: "", party: false, line: false }]); setDirty(true); }}><Plus className="w-3 h-3" /> plan</button>}
@@ -625,8 +705,31 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         })()}
       </div>
       )}
-      {tab === "travel" && (
+      {tab === "travel" && editing !== "travel" && (() => {
+        const lines = data.doc?.travel ?? [], same = lines.length === data.trip.length;
+        const unpriced = data.trip.filter((r) => r.price === null).length;
+        return (
+          <div className={PAPER}>
+            {editBtn("travel", "Edit flights, hotels, transfers")}
+            <H>Flights, hotels and transfers</H>
+            {data.trip.length === 0 && <p className="text-base text-[#4a5a7a]">None on this booking.</p>}
+            {data.trip.map((r, n) => (
+              <div key={n} className="border-b border-[#dde5f1] py-3">
+                {pay(<span className="text-lg font-extrabold">{r.kind === "package" ? `Air and hotel package, ${r.direction === "post" ? "after" : "before"} the cruise` : r.label}</span>,
+                  r.price != null ? <b>{usd(Number(r.price))}</b> : <span className="font-bold text-red-600">no price yet</span>)}
+                {r.provider && !(same && lines[n]!.details.some((x) => x.includes(r.provider!))) && <p className="text-base text-[#4a5a7a]">{r.provider}</p>}
+                {same && lines[n]!.details.map((x, k) => <p key={k} className="text-base leading-7">{x}</p>)}
+                {r.per === "person" && r.unit_price != null && <p className="text-base text-[#4a5a7a]">{usd(Number(r.unit_price))} per person × {party}</p>}
+                <p className="text-base leading-7"><span className="text-[#4a5a7a]">Confirmation:</span> <b>{r.confirmation ?? missing}</b></p>
+              </div>
+            ))}
+            {data.trip.length > 0 && pay("Travel total", unpriced === 0 && data.totals.travel != null ? usd(data.totals.travel) : <span className="text-red-600">not finished</span>, "total")}
+          </div>
+        );
+      })()}
+      {tab === "travel" && editing === "travel" && (
       <div>
+      <div className="mb-3">{backBtn("Back to flights, hotels, transfers")}</div>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
           <h4 className="text-sm font-semibold">Flights, hotels, transfers and packages</h4>
           {!sent && <div className="flex gap-2">{["flight", "hotel", "transfer", "package"].map((k) => <button key={k} className={btn} onClick={() => addLine(k)}><Plus className="w-3 h-3" /> {k}</button>)}</div>}
@@ -803,7 +906,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
       )}
       </div>
       {/* The save bar stays at the bottom of the screen on every tab: one button, always in the same place. */}
-      {!sent && (dirty || ["cruise", "travel", "protection"].includes(tab ?? "")) && (
+      {!sent && (dirty || (editing !== null && editing === tab)) && (
         <div data-save-bar className="sticky -bottom-4 md:-bottom-6 z-10 flex items-center justify-between gap-3 flex-wrap border-t bg-card px-4 py-3 rounded-b-lg shadow-[0_-4px_12px_rgba(0,0,0,0.25)]">
           <p className={`text-sm font-medium ${dirty ? "text-amber-500" : "text-muted-foreground"}`}>{dirty ? "You have changes on this booking that are not saved." : "Everything on this booking is saved."}</p>
           <button className="text-base font-semibold px-6 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy || !dirty} onClick={save}>
