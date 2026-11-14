@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ask } from "@/components/confirm";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -72,7 +73,7 @@ function usePersonActions(groupId: string) {
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] }); qc.invalidateQueries({ queryKey: ["group", groupId] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-interests", groupId] }); };
   const press = async (p: Person) => {
     const a = ONE_PRESS[p.key];
-    if (!a || !window.confirm(a.ask(p.name))) return;
+    if (!a || !await ask(a.ask(p.name))) return;
     setBusy(p.id); setProblem(null);
     try {
       const r = await api<{ price?: { sent?: string } }>(a.path(groupId, p.id), "POST", {});
@@ -83,7 +84,7 @@ function usePersonActions(groupId: string) {
   };
   const remove = async (p: Person): Promise<boolean> => {
     const what = p.level === "lead" || p.level === "closed" ? "lead" : p.level === "quote" ? "quote" : "booking";
-    if (!window.confirm(`Delete ${p.name}'s ${what}${p.has_booking ? " and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held" : ""}? This cannot be undone.`)) return false;
+    if (!await ask(`Delete ${p.name}'s ${what}${p.has_booking ? " and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held" : ""}? This cannot be undone.`)) return false;
     setBusy(p.id); setProblem(null);
     try {
       const r = await api<{ cabin: string | null }>(`/groups/${groupId}/interests/${p.id}/delete`, "POST", {});
@@ -322,7 +323,7 @@ export function LeadPage({ groupId, iid }: { groupId: string; iid: string }) {
               </div>
               <div className="flex flex-wrap gap-2 items-center">
                 {p.key === "call-booked" && <button className={`${btn} bg-primary text-primary-foreground border-primary`} disabled={busy} onClick={() => act(() => api(`/groups/${groupId}/interests/${iid}/mark/talked`, "POST", {}), "Marked: you talked")}>We talked</button>}
-                {p.level !== "closed" && <button className={btn} disabled={busy} onClick={() => { if (window.confirm(`Close ${p.name} as declined? They leave the Leads list. You can reopen them here.`)) void act(() => api(`/groups/${groupId}/interests/${iid}`, "PATCH", { status: "declined" }), "Lead closed"); }}>Close this lead (declined)</button>}
+                {p.level !== "closed" && <button className={btn} disabled={busy} onClick={async () => { if (await ask(`Close ${p.name} as declined? They leave the Leads list. You can reopen them here.`)) void act(() => api(`/groups/${groupId}/interests/${iid}`, "PATCH", { status: "declined" }), "Lead closed"); }}>Close this lead (declined)</button>}
                 {p.level === "closed" && <button className={btn} disabled={busy} onClick={() => act(() => api(`/groups/${groupId}/interests/${iid}`, "PATCH", { status: "new" }), "Lead reopened")}>Reopen this lead</button>}
                 <button className={`${btn} ml-auto text-red-500 border-red-500/50 inline-flex items-center gap-1`} disabled={busy || people.busy === iid} onClick={async () => { if (await people.remove(p)) go(`/groups/${groupId}/leads`); }}><Trash2 className="w-4 h-4" /> Delete this lead</button>
               </div>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ask } from "@/components/confirm";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Mail, Link2, ExternalLink, Trash2, FileSignature } from "lucide-react";
@@ -78,8 +79,8 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
     setUrl(r.url);
     toast({ title: "Link made", description: "Copy it now: it is shown only this once." });
   }, "Could not make the link");
-  const emailLink = () => {
-    if (!window.confirm(`Email a new paperwork link to ${row.email}? Any earlier link for this traveler stops working.`)) return;
+  const emailLink = async () => {
+    if (!await ask(`Email a new paperwork link to ${row.email}? Any earlier link for this traveler stops working.`)) return;
     return run(async () => {
       const r = await api<{ sentTo: string }>(`/groups/${groupId}/travelers/${row.id}/form-link/send`, "POST", {});
       setUrl(null);
@@ -88,16 +89,16 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
   };
   // Mark 2026-10-30: someone else's card — the owner signs the authorization on a link of their own
   const card = status?.card ?? null;
-  const emailCardLink = () => {
-    if (!card?.email || !window.confirm(`Email ${card.name ?? "the card owner"} (${card.email}) a new link to sign the credit card authorization? Any earlier link of theirs stops working.`)) return;
+  const emailCardLink = async () => {
+    if (!card?.email || !await ask(`Email ${card.name ?? "the card owner"} (${card.email}) a new link to sign the credit card authorization? Any earlier link of theirs stops working.`)) return;
     return run(async () => {
       const r = await api<{ sentTo: string }>(`/groups/${groupId}/travelers/${row.id}/card-link/send`, "POST", {});
       toast({ title: "Card owner's link emailed", description: `Sent to ${r.sentTo}` });
     }, "The email did not go out");
   };
   // Mark 2026-10-31: the passport checklist is prepared from the file and emailed on its own (on the last signature, and from here)
-  const emailChecklist = () => {
-    if (!row.email || !window.confirm(`Email ${row.email} their passport and travel document checklist, prepared from the file as it stands today? Any earlier checklist link stops working.`)) return;
+  const emailChecklist = async () => {
+    if (!row.email || !await ask(`Email ${row.email} their passport and travel document checklist, prepared from the file as it stands today? Any earlier checklist link stops working.`)) return;
     return run(async () => {
       const r = await api<{ sentTo: string }>(`/groups/${groupId}/travelers/${row.id}/checklist/send`, "POST", {});
       toast({ title: "Checklist emailed", description: `Sent to ${r.sentTo}` });
@@ -164,7 +165,7 @@ function Fees({ api, groupId, fees, onChanged }: { api: ApiFn; groupId: string; 
             return (
               <li key={k} className="flex items-center gap-2">
                 <span>{label(k)}: ${Number(o.amount).toLocaleString("en-US")}{o.per ? ` ${o.per}` : ""}</span>
-                <button className="text-muted-foreground hover:text-destructive" title="Remove this fee" onClick={() => { if (window.confirm(`Remove the ${label(k).toLowerCase()}?`)) { const next = { ...fees }; delete next[k]; save(next); } }}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button className="text-muted-foreground hover:text-destructive" title="Remove this fee" onClick={async () => { if (await ask(`Remove the ${label(k).toLowerCase()}?`)) { const next = { ...fees }; delete next[k]; save(next); } }}><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             );
           })}
@@ -209,7 +210,7 @@ export function ClientPaperwork({ api, groupId, group, data, onChanged }: { api:
     catch (e) { toast({ variant: "destructive", title: "Could not make the link", description: (e as Error).message }); }
   };
   const remove = async (s: Row) => {
-    if (!window.confirm(`Remove ${s.signer_name}'s signature on "${s.doc_title}"? Use this only for a mistake: they will be asked to sign it again.`)) return;
+    if (!await ask(`Remove ${s.signer_name}'s signature on "${s.doc_title}"? Use this only for a mistake: they will be asked to sign it again.`)) return;
     try { await api(`/groups/${groupId}/signatures/${s.id}`, "DELETE"); onChanged(); }
     catch (e) { toast({ variant: "destructive", title: "Not removed", description: (e as Error).message }); }
   };

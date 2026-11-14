@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ask, askTyped } from "@/components/confirm";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -178,7 +179,7 @@ function Section({
                 <td className="pr-2">
                   <button
                     title="Remove this row"
-                    onClick={() => { if (window.confirm("Remove this row?")) run(() => api(`/groups/${groupId}/${child}/${r.id}`, "DELETE")); }}
+                    onClick={async () => { if (await ask("Remove this row?")) run(() => api(`/groups/${groupId}/${child}/${r.id}`, "DELETE")); }}
                     className="text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -357,7 +358,7 @@ function GroupDetail({ id, part }: { id: string; part: string }) {
     }
   };
   const deleteGroup = async () => {
-    const typed = window.prompt(`Delete "${g.name}" and everything in it? This cannot be undone.\n\nType the group's name to confirm:`);
+    const typed = await askTyped(`Delete "${g.name}" and everything in it? This cannot be undone.\n\nType the group's name to confirm:`);
     if (typed === null) return;
     setDeleteError(null);
     try {

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { ask } from "@/components/confirm";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
@@ -180,7 +181,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   };
   // Mark 2026-11-12: "i need to be able to delete a group, quotes, and individuals"
   const removeBooking = async () => {
-    if (!window.confirm(`Delete ${data.guest.name}'s quote and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held. This cannot be undone.`)) return;
+    if (!await ask(`Delete ${data.guest.name}'s quote and everything on it (their travelers, the uploaded cruise line quote, your open items)? The cabin goes back to held. This cannot be undone.`)) return;
     setBusy(true);
     try {
       const r = await api<{ cabin: string | null }>(`/groups/${groupId}/interests/${guest.id}/delete`, "POST", {});
@@ -268,7 +269,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     catch (e) { w?.close(); toast({ variant: "destructive", title: "Could not open it", description: (e as Error).message }); }
   };
   const complete = async () => {
-    if (!window.confirm(`${data.guest.name}'s booking is confirmed with: ${data.confirmWith.join("; ")}?`)) return;
+    if (!await ask(`${data.guest.name}'s booking is confirmed with: ${data.confirmWith.join("; ")}?`)) return;
     setBusy(true);
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/complete`, "POST");
@@ -283,7 +284,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const priceStop = (): string | null => (dirty ? UNSAVED : cruiseSum <= 0 ? "There is no price to send yet. Enter the cabin fare, then save the confirmation." : null);
   const emailPrice = async () => {
     const why = priceStop(); setStop(why ? { at: "price", text: why } : null); if (why) return;
-    if (!window.confirm(`Send this quote to ${data.guest.name}${data.guest.email ? ` at ${data.guest.email}` : ""} now? It is a real email. They answer with "Book It" or "I need changes".`)) return;
+    if (!await ask(`Send this quote to ${data.guest.name}${data.guest.email ? ` at ${data.guest.email}` : ""} now? It is a real email. They answer with "Book It" or "I need changes".`)) return;
     setBusy(true);
     try {
       const r = await api<{ price: { sent: string } }>(`/groups/${groupId}/interests/${guest.id}/price-email`, "POST");
@@ -310,7 +311,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   };
   const recordYes = async () => {
     const why = dirty ? UNSAVED : null; setStop(why ? { at: "price", text: why } : null); if (why) return;
-    if (!window.confirm(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
+    if (!await ask(`Record that ${data.guest.name} approved this price another way (a call, a text)?`)) return;
     setBusy(true);
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/price-approved`, "POST");
@@ -323,7 +324,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const send = async () => {
     const why = dirty ? UNSAVED : !data.ready ? `Finish the booking confirmation first: ${data.missing.join("; ")}.` : !approved ? "The guest has not approved the price yet. Email the price to them (or record their yes), then send the paperwork." : null;
     setStop(why ? { at: "paperwork", text: why } : null); if (why) return;
-    if (!window.confirm(`Send the paperwork link to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?`)) return;
+    if (!await ask(`Send the paperwork link to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?`)) return;
     setBusy(true);
     try {
       await api(`/groups/${groupId}/interests/${guest.id}/booked`, "POST");
