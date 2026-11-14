@@ -1516,3 +1516,25 @@ test("2026-11-12: deleting a person whose party has NO cabin takes their compani
   assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
   assert.deepEqual(tables["group_travelers"]!.map((t) => t["id"]), ["t-other"], "the companion went with the lead; a traveler from another time stayed");
 });
+
+test("Mark 2026-11-13: a cruise line's plan coverages can be pulled ahead of any booking; they are kept; what cannot be read is said and nothing is kept", async () => {
+  const path = "/protection-plans/pull";
+  assert.equal((await call("POST", path, { body: { cruise_line: "Norwegian Cruise Line", state: "NC" } })).status, 401, "Mark's token only");
+  assert.equal((await call("POST", path, { token: true, body: { state: "NC" } })).status, 400);
+  assert.equal((await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "North" } })).status, 400);
+  assert.equal((await call("POST", path, { token: true, body: { cruise_line: "No Such Line", state: "NC" } })).status, 409);
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "the administrator's page gave no NWENCL04 document for NC" }));
+  const no = await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "nc" } });
+  assert.equal(no.status, 502);
+  assert.match(String(no.json["error"]), /Nothing was kept: the administrator's page gave no NWENCL04 document for NC/);
+  assert.equal((tables["protection_plans"] ?? []).length, 0);
+  mod.setLinePullForTests(async (_l: string, state: string) => ({ status: "ready", plan: { cruise_line: "Norwegian Cruise Line", plan_name: "NorwegianCare Travel Protection", product_code: "NWENCL04", state, about: "x", source_en: "From Norwegian's plan document.", source_es: "Del documento.", source_url: "https://example.test", benefits: [{ name: "Trip Delay", coverage: "$1,000", limits: [] }] } }));
+  const yes = await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "nc" } });
+  assert.deepEqual([yes.status, yes.json["kept"], yes.json["plan"]["state"], yes.json["plan"]["benefits"].length], [200, true, "NC", 1]);
+  assert.deepEqual(tables["protection_plans"]!.map((r) => [r["provider"], r["cruise_line"], r["plan_name"], r["state"]]), [["cruise-line", "Norwegian Cruise Line", "NorwegianCare Travel Protection", "NC"]]);
+  // pulled again: the one row is refreshed, never doubled
+  await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "NC" } });
+  assert.equal(tables["protection_plans"]!.length, 1);
+  assert.equal(tables["protection_plan_benefits"]!.length, 1);
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
+});

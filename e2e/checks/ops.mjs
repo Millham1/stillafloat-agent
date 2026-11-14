@@ -1675,7 +1675,7 @@ export default [
     id: "ops.price-confirm-writes-refuse",
     basis: "ruling: Mark 2026-11-09 — the guest approves the price ('Book It') or asks for changes before the paperwork goes out; only the guest Mark emailed can answer, and only Mark can send the price or record a yes he got another way",
     title: "Book It and I need changes refuse a link that does not exist, the bot trap records nothing, and sending the price or recording an approval is Mark's alone",
-    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote", "GET /api/price-confirm/:iid/:key/quote.pdf", "GET /api/groups/:id/interests/:iid/quote-pdf", "POST /api/groups/:id/interests/:iid/delete", "DELETE /api/groups/:id"],
+    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote", "GET /api/price-confirm/:iid/:key/quote.pdf", "GET /api/groups/:id/interests/:iid/quote-pdf", "POST /api/groups/:id/interests/:iid/delete", "DELETE /api/groups/:id", "POST /api/protection-plans/pull"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap, no token, a guest that does not exist; nothing is approved and nobody is emailed); prod sweeps are read-only",
     run: async (t) => {
@@ -1699,6 +1699,12 @@ export default [
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/delete`, {}, true), 404, "deleting a person who does not exist", /not found/i);
       unauthorized(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: false, body: {} }), "DELETE /api/groups/:id");
       refused(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: true, body: { confirm: "x" } }), 404, "deleting a group that does not exist", /group not found/i);
+      // Mark 2026-11-13: pulling a cruise line's plan coverages is Mark's alone, and a request that names no cruise line or no state pulls nothing
+      // (refusal paths only: nothing is fetched from any other site and nothing is kept).
+      unauthorized(t, await send(`/api/protection-plans/pull`, { cruise_line: "MSC Cruises", state: "NC" }), "POST /api/protection-plans/pull");
+      refused(t, await send(`/api/protection-plans/pull`, { state: "NC" }, true), 400, "a pull that names no cruise line", /name the cruise line/i);
+      refused(t, await send(`/api/protection-plans/pull`, { cruise_line: "MSC Cruises", state: "North Carolina!" }, true), 400, "a pull whose state is not two letters", /two letters/i);
+      refused(t, await send(`/api/protection-plans/pull`, { cruise_line: "No Such Cruise Line", state: "NC" }, true), 409, "a pull for a cruise line with no known source", /no published source/i);
       for (const step of ["price-email", "price-approved", "protection-quote"]) {
         unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}), `POST /api/groups/:id/interests/:iid/${step}`);
         refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}, true), 404, `${step} for a guest who has not sent their choices`, /has not sent|not found/i);

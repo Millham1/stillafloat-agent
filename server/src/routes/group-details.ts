@@ -637,6 +637,28 @@ async function ensureLineCoverage(cruiseLine: string, state: string): Promise<vo
     logger.info({ cruiseLine, state, lines: out.plan.benefits.length }, "group booking: the cruise line's plan coverages were pulled and kept");
   } catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group booking: keeping the cruise line's plan coverages failed"); }
 }
+/**
+ * Pull a cruise line's own plan coverages for a state now, and keep them (Mark 2026-11-13: "do a test by pulling the plans for Norwegian"). The same
+ * pull a booking makes by itself the first time it needs them; this lets Mark (or a check) ask for a cruise line and a state ahead of any booking.
+ * Answers with what was read, or with why nothing could be read. Coverages only: no price.
+ */
+router.post("/protection-plans/pull", requireToken, async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as Row;
+    const cruiseLine = text(body["cruise_line"], 80), state = (typeof body["state"] === "string" ? body["state"].trim() : "").toUpperCase();
+    if (!cruiseLine) return res.status(400).json({ success: false, error: "Name the cruise line." });
+    if (!/^[A-Z]{2}$/.test(state)) return res.status(400).json({ success: false, error: "Give the state of residence as two letters, for example NC." });
+    if (!lineSource(cruiseLine)) return res.status(409).json({ success: false, error: `No published source is known yet for ${cruiseLine}'s own plan. It has to be added before its coverages can be pulled.` });
+    const out = await linePull(cruiseLine, state);
+    if (out.status !== "ready") return res.status(502).json({ success: false, error: `Nothing was kept: ${out.reason}.` });
+    await saveCoverage(db(), { provider: "cruise-line", ...out.plan });
+    lineTried.set(`${cruiseLine.toLowerCase()}|${state}`, Date.now());
+    return res.json({ success: true, kept: true, plan: out.plan });
+  } catch (err) {
+    return fail(req, res, err, "protection plan pull failed");
+  }
+});
+
 async function loadBooking(groupId: string, iid: string) {
   const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
