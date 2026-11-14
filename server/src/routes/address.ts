@@ -18,7 +18,15 @@ import { suggestAddresses } from "../lib/address-suggest";
 const router: IRouter = Router();
 
 /** The test box: it has a public address of its own and it is not the production site. */
-const testBox = () => { const url = process.env["PUBLIC_URL"] ?? ""; return url.length > 0 && !/(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i.test(url); };
+// 2026-11-14: the dev mirror's own name (dev.stillafloatcruising.com) is not the production site; every other name under the domain is.
+const testBox = () => {
+  const url = (process.env["PUBLIC_URL"] ?? "").trim();
+  if (!url) return false;
+  let host = "";
+  try { host = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`).hostname.toLowerCase(); } catch { return false; }
+  if (host === "dev.stillafloatcruising.com") return true;
+  return !(host === "stillafloatcruising.com" || host.endsWith(".stillafloatcruising.com"));
+};
 
 const hits = new Map<string, { count: number; resetAt: number }>();
 const MAX_PER_HOUR = 400;   // the type-ahead asks as the street is typed (a few times per address)   // a person typing an address asks a handful of times; this is generous for them and useless for a scraper
