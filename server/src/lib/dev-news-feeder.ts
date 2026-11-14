@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { readJson, PATHS } from "./persistence";
 import { selectFreshStories, type FreshnessRecord } from "./newsletter-freshness";
+import { isProductionUrl } from "./site-kind";
 
 // dev-news-feeder.ts — keeps the DEV mirror's approved-story pool supplied.
 //
@@ -19,7 +20,6 @@ import { selectFreshStories, type FreshnessRecord } from "./newsletter-freshness
 // stories' pages exist within the same tick, and it refuses to run on a box whose PUBLIC_URL is the
 // production site, so a stray flag on prod can never approve anything.
 
-const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
 /** Approved stories inside the newsletter's window that dev keeps at all times (the letter carries 2–4 quick hits). */
 export const MIN_FRESH = 3;
 // The same window the newsletter draws from (lib/newsletter.ts).
@@ -32,7 +32,7 @@ const LOOK_AHEAD_HOURS = 2;
 export function devNewsFeederEnabled(env: Record<string, string | undefined> = process.env): boolean {
   if (env["DEV_NEWS_FEEDER"] !== "1") return false;
   const url = env["PUBLIC_URL"] ?? "";
-  return url.length > 0 && !PRODUCTION_HOST.test(url);
+  return url.length > 0 && !isProductionUrl(url); // lib/site-kind.ts: the dev mirror's own name is not production
 }
 
 export interface CandidateRecord extends FreshnessRecord {

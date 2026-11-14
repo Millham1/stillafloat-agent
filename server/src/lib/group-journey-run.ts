@@ -25,6 +25,7 @@ import {
 } from "./group-journey";
 import { sha256Hex } from "./group-secure";
 import type { Lang } from "./group-journey-strings";
+import { isProductionUrl } from "./site-kind";
 
 export const MAX_SENDS_PER_TICK = 150;
 export const SIM_PREFIX = "sim:";
@@ -346,13 +347,12 @@ export function simMailAllowed(to: string, allow: string | undefined): boolean {
   return !!allow && allow.trim().length > 0 && mailAllowed(to, allow);
 }
 
-const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
 
 /** The dry-run route exists only on a box that asks for it (GROUP_JOURNEY_SIM=1) and is not the production site, like the dev storm fixture. */
 export function journeySimEnabled(env: Record<string, string | undefined> = process.env): boolean {
   if (env["GROUP_JOURNEY_SIM"] !== "1") return false;
   const url = env["PUBLIC_URL"] ?? "";
-  return url.length > 0 && !PRODUCTION_HOST.test(url);
+  return url.length > 0 && !isProductionUrl(url); // lib/site-kind.ts: the dev mirror's own name is not production
 }
 
 export const SIM_SEQUENCE: MilestoneKind[] = ["confirmation", ...DAY_MILESTONES.map(dayKind)];

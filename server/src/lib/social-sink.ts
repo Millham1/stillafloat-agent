@@ -2,6 +2,7 @@ import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import type { QueuedBatch, SocialPost } from "./social-agent";
 import type { PublishResult } from "./social-publish";
+import { isProductionUrl } from "./site-kind";
 
 // Test-only posting target for the DEV mirror (Mark 2026-10-09: "turn the poster on in dev").
 //
@@ -15,12 +16,11 @@ import type { PublishResult } from "./social-publish";
 
 const SINK_KEY = "social-sink";
 const KEEP = 100;
-const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
 
 export function sinkEnabled(env: Record<string, string | undefined> = process.env): boolean {
   if (env["SOCIAL_POSTER_SINK"] !== "1") return false;
   const url = env["PUBLIC_URL"] ?? "";
-  return url.length > 0 && !PRODUCTION_HOST.test(url);
+  return url.length > 0 && !isProductionUrl(url); // lib/site-kind.ts: the dev mirror's own name is not production
 }
 
 export interface SinkEntry {
