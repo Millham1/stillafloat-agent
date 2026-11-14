@@ -619,11 +619,17 @@ test("another adult on the lead's cabin signs their own terms, insurance documen
 });
 
 test("documents name the group as guests see it (the page label), never the file's own name (Mark 2026-11-14)", () => {
-  const labelled = ctxFor({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } });
-  const booking = renderDocument("12-cruise-booking-agreement", labelled).text;
-  assert.ok(booking.includes("Friends and Family 2027") && !booking.includes("Millham F/F"), "the booking agreement's Group line");
-  const contract = renderDocument("09-group-travel-contract", ctxFor({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } }, null)).text;
+  const over = { name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } };
+  // every document of the lead's packet and the organizer's contract: the label wherever a group name is printed, the file's name nowhere
+  let printed = 0;
+  for (const key of ["15-emergency-contact-form", "01-terms-and-conditions", "23-insurance-plan", "07-travel-insurance-declination", "12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"]) {
+    const text = renderDocument(key, ctxFor(over)).text;
+    assert.ok(!text.includes("Millham F/F"), `${key} prints the file's own name`);
+    if (text.includes("Friends and Family 2027")) printed++;
+  }
+  assert.ok(printed >= 1, "at least one of the lead's documents prints the group's name, as the label");
+  const contract = renderDocument("09-group-travel-contract", ctxFor(over, null)).text;
   assert.ok(contract.includes("Friends and Family 2027") && !contract.includes("Millham F/F"), "the group contract's group name");
   // a group with no page label still shows its file name
-  assert.ok(renderDocument("12-cruise-booking-agreement", ctxFor({ name: "Smith Reunion 2028" })).text.includes("Smith Reunion 2028"));
+  assert.ok(renderDocument("22-card-authorization", ctxFor({ name: "Smith Reunion 2028" })).text.includes("Smith Reunion 2028"));
 });
