@@ -93,6 +93,8 @@ export interface BookingExtraction {
   allotment_reviews: AllotmentReview[];
   cancellation_schedule: CancellationRow[];
   cancellation_note: string | null;
+  /** The group's dining setting as the quote prints it ("Early Dining"), for the booking agreement's dining line (Mark 2026-11-14). */
+  group_dining?: string | null;
   deadlines: Deadline[];
   /** Air, hotel before the cruise and transfers, when the quote prints them (Mark 2026-10-10:
    *  "If the quote holds transfers, air and hotel then the fields prepopulate"). */
@@ -393,6 +395,10 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     ...amenitiesRaw.filter((x) => isDiningSetting(x) || isNoteHeader(x)),
     ...guestRaw.filter(isNoteHeader),
   ].map((x) => x.replace(/\s+/g, " ").trim()))];
+  // Mark 2026-11-14 ("this should be populated"): the dining setting is also kept on its own, so the booking agreement can tick it.
+  // A stored reading has it only in the notes ("Group Dining: Early Dining"), so the notes are read too.
+  const diningValue = (x: string | null | undefined) => /\b(?:group\s+)?dining\s*[:\-–—]\s*([A-Za-z' ]{3,40}?)(?=\s+Group\b|[.;,\n]|$)/i.exec(x ?? "")?.[1]?.trim() || null;
+  const groupDining = str(r["group_dining"]) ?? diningValue(amenitiesRaw.find(isDiningSetting)) ?? diningValue(str(r["notes"]));
   // A group NUMBER is assigned by the line; a quote often prints only the group NAME ("Millham F/F 2027"). Words with
   // spaces are a name, never a number: keep it in the notes for Mark and leave the number blank.
   const groupNumberRaw = str(r["group_number"]);
@@ -490,6 +496,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     allotment_reviews,
     cancellation_schedule,
     cancellation_note: str(r["cancellation_note"]),
+    group_dining: groupDining,
     deadlines,
     warnings: list(r["warnings"]).map(str).filter((x): x is string => !!x),
   };

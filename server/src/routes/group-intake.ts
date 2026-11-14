@@ -251,6 +251,7 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
         cancellation_schedule: extracted.cancellation_schedule,
         cancellation_note: extracted.cancellation_note,
         deadlines: extracted.deadlines,
+        ...(extracted.group_dining ? { dining: extracted.group_dining } : {}),
       },
     };
     // Anything the confirmation form left out but the document said still goes on the file.

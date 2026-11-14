@@ -82,9 +82,9 @@ function advisoryLines(ctx: DocCtx): string {
   return `Advisory levels for this itinerary on {{today}}, from the U.S. Department of State (travel.state.gov): ${list}.${island}`;
 }
 
-/** The cabin's dining on the file, as the booking agreement's box value. */
+/** The cabin's dining on the file, as the booking agreement's box value; a cabin with none takes the group's dining from the cruise line's quote. */
 function diningFromFile(ctx: DocCtx): string | undefined {
-  const d = cleanValue(ctx.cabin?.dining).toLowerCase();
+  const d = (cleanValue(ctx.cabin?.dining) || cleanValue(ctx.group.terms?.dining)).toLowerCase();
   if (!d) return undefined;
   if (/early|first|main/.test(d)) return "early";
   if (/late|second/.test(d)) return "late";

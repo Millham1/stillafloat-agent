@@ -480,6 +480,9 @@ test("normalizeExtraction: 'Cruise Only' is a package type and dining is a group
   assert.match(x.notes ?? "", /Group name on the quote: Millham F\/F 2027\./);
   assert.match(x.notes ?? "", /Group Dining: Early Dining/);
   assert.match(x.notes ?? "", /^Rates include NCF\./);
+  assert.equal(x.group_dining, "Early Dining", "the dining setting is also kept on its own for the booking agreement");
+  assert.equal(normalizeExtraction({ notes: "Group name on the quote: Millham F/F 2027. Group Dining: Early Dining Group total rate $11,850.96, as printed on the quote." }).group_dining, "Early Dining", "a stored reading has it in the notes");
+  assert.equal(normalizeExtraction({ amenities: ["Specialty dining package"], notes: "Deposit due at booking." }).group_dining, null);
   const real = normalizeExtraction({ group_number: "665450", guest_inclusions: ["Premium Extra drinks package"] });
   assert.equal(real.group_number, "665450");
   assert.deepEqual(real.guest_inclusions, ["Premium Extra drinks package"]);

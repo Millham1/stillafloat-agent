@@ -591,3 +591,11 @@ test("an answer that differs from the file is a correction: it is reported, with
   assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
   assert.equal(r.answers["dob"], "1960-05-05", "the signed document keeps exactly what was entered");
 });
+
+test("the booking agreement's dining line takes the group's dining from the cruise line's quote when the cabin has none (Mark 2026-11-14)", () => {
+  const field = (ctx: ReturnType<typeof ctxFor>) => renderDocument("12-cruise-booking-agreement", ctx).fields.find((f) => f.name === "dining")!;
+  const bare = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: { dining: "Early Dining" } }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
+  assert.equal(prefillValue(field(bare), bare), "early");
+  const none = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: {} }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
+  assert.equal(prefillValue(field(none), none) || "", "");
+});
