@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ask, askTyped } from "@/components/confirm";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
+import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Eye, Loader2 } from "lucide-react";
 import { api } from "@/lib/group-api";
 import { authHeaders } from "@/lib/auth-token";
 import { useToast } from "@/hooks/use-toast";
@@ -269,10 +269,28 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     } catch (e) { toast({ variant: "destructive", title: "Not uploaded", description: (e as Error).message }); }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   };
-  const openSigned = async (sid: string) => {
+  // Mark 2026-11-14 ("the paperwork tab only gives you the choice to download. there should be a view option as well"): View reads the
+  // stored PDF and shows it in a new tab as a PDF, whatever the storage says about saving it; Download saves the file under its own name.
+  const viewSigned = async (sid: string) => {
     const w = window.open("", "_blank"); // opened first so the browser does not treat it as a pop-up
-    try { const r = await api<{ url: string }>(`/groups/${groupId}/signatures/${sid}/file`); if (w) w.location.href = r.url; }
-    catch (e) { w?.close(); toast({ variant: "destructive", title: "Could not open it", description: (e as Error).message }); }
+    try {
+      const r = await api<{ url: string }>(`/groups/${groupId}/signatures/${sid}/file`);
+      const got = await fetch(r.url);
+      if (!got.ok) throw new Error("The stored copy could not be read. Try again in a minute.");
+      const page = URL.createObjectURL(new Blob([await got.arrayBuffer()], { type: "application/pdf" }));
+      if (w) w.location.href = page; else window.location.href = page;
+    } catch (e) { w?.close(); toast({ variant: "destructive", title: "Could not open it", description: (e as Error).message }); }
+  };
+  const downloadSigned = async (sid: string, title: string) => {
+    try {
+      const r = await api<{ url: string }>(`/groups/${groupId}/signatures/${sid}/file`);
+      const got = await fetch(r.url);
+      if (!got.ok) throw new Error("The stored copy could not be read. Try again in a minute.");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([await got.arrayBuffer()], { type: "application/pdf" }));
+      a.download = `${title.replace(/[^\w .-]/g, "").trim() || "Signed document"} signed.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { toast({ variant: "destructive", title: "Could not download it", description: (e as Error).message }); }
   };
   const complete = async () => {
     if (!await ask(`${data.guest.name}'s booking is confirmed with: ${data.confirmWith.join("; ")}?`)) return;
@@ -854,7 +872,8 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               {data.signed.docs.length === 0 && <p className="text-sm text-muted-foreground">Nothing signed yet.</p>}
               {data.signed.docs.map((d) => (
                 <p key={d.id} className="text-sm flex items-center gap-2 flex-wrap">{d.title}{d.signer ? ` · ${d.signer}` : ""}
-                  {d.has_pdf && <button className={btn} onClick={() => openSigned(d.id)}><Download className="w-3 h-3" /> Signed copy</button>}</p>
+                  {d.has_pdf && <button className={btn} onClick={() => viewSigned(d.id)}><Eye className="w-3 h-3" /> View</button>}
+                  {d.has_pdf && <button className={btn} onClick={() => downloadSigned(d.id, d.title)}><Download className="w-3 h-3" /> Download</button>}</p>
               ))}
               {data.completedAt ? (
                 <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Booking confirmed with the cruise line and vendors · {new Date(data.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.</p>
