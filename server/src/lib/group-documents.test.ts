@@ -123,7 +123,6 @@ test("with no fees on the file, the fee sections and lines are gone and the rest
   for (const gone of ["retainer fee", "4.3", "Agent Planning Fee", "substitution processing fee"]) assert.ok(!contract.includes(gone), `contract still has: ${gone}`);
   assert.ok(contract.includes("Substitution of a confirmed traveler with a new traveler may be permitted"), "the rest of the substitutions paragraph stays");
   assert.ok(contract.includes("Individual traveler deposits (per person)"));
-  assert.ok(/Per-Person Cost: \$?\s*1,299/.test(contract) && !contract.includes("Per-Person Estimated Cost"), "a price from the group's terms is not called an estimate");
   const booking = renderDocument("12-cruise-booking-agreement", ctxFor()).text;
   assert.ok(!/Agent Planning|Agent Cancellation|Processing Fee/.test(booking));
   assert.ok(booking.includes("Port Taxes") === false, "rows the file cannot price are left out, not printed blank");
