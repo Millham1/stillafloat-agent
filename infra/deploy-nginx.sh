@@ -85,6 +85,41 @@ else
   echo "WARN: $SITE_SRC missing — skipping main vhost"
 fi
 
+# ── Dev mirror: its own name, and HTTPS once its certificate exists (dev box only) ──
+# Mark 2026-11-14: an outside tester types personal details on dev, so dev answers on dev.stillafloatcruising.com over
+# HTTPS. Three repo-owned files (infra/nginx/site.dev-name.conf, site.dev-tls.conf, dev-secure-group-link.conf):
+#   always on dev      conf.d/saf-dev-name.conf   the name over HTTP: the certificate challenge + a redirect to HTTPS
+#   only with a cert   conf.d/saf-dev-tls.conf    HTTPS, handed to the dev site on this box's port 80
+#   only with a cert   snippets/saf-dev-secure-group-link.conf   the group page by number goes to the secure name
+# The certificate itself is box setup (certbot, webroot /var/www/letsencrypt), not part of a deploy. Self-verifying like the
+# blocks above: nginx -t gates the reload, and a failure removes these three files again so the dev site keeps running.
+if [ ! -f "$MAIN_CERT" ]; then
+  DEV_CERT="/etc/letsencrypt/live/dev.stillafloatcruising.com/fullchain.pem"
+  DEV_NAME_DEST="/etc/nginx/conf.d/saf-dev-name.conf"
+  DEV_TLS_DEST="/etc/nginx/conf.d/saf-dev-tls.conf"
+  DEV_LINK_DEST="/etc/nginx/snippets/saf-dev-secure-group-link.conf"
+  mkdir -p /var/www/letsencrypt/.well-known/acme-challenge /etc/nginx/snippets
+  rm -f "$DEV_TLS_DEST" "$DEV_LINK_DEST"
+  cp "$NGINX_DIR/site.dev-name.conf" "$DEV_NAME_DEST"
+  if [ -f "$DEV_CERT" ]; then
+    cp "$NGINX_DIR/site.dev-tls.conf" "$DEV_TLS_DEST"
+    cp "$NGINX_DIR/dev-secure-group-link.conf" "$DEV_LINK_DEST"
+    echo "dev name: HTTP + HTTPS installed (certificate present)"
+  else
+    echo "dev name: HTTP only installed (no certificate at $DEV_CERT yet)"
+  fi
+  if nginx -t; then
+    systemctl reload nginx && echo "dev name RELOADED OK"
+    sleep 1
+    DEV_HOME="$(curl -s -o /dev/null -w '%{http_code}' http://localhost/ || echo 000)"
+    case "$DEV_HOME" in 2*|3*) : ;; *) echo "dev name smoke FAILED (/ => $DEV_HOME) — removing"; rm -f "$DEV_NAME_DEST" "$DEV_TLS_DEST" "$DEV_LINK_DEST"; nginx -t >/dev/null 2>&1 && systemctl reload nginx || echo "WARN: dev name removal left nginx invalid" ;; esac
+  else
+    echo "nginx -t FAILED after the dev name files — removing them"
+    rm -f "$DEV_NAME_DEST" "$DEV_TLS_DEST" "$DEV_LINK_DEST"
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx && echo "dev name files removed" || echo "WARN: dev name removal left nginx invalid"
+  fi
+fi
+
 if [ ! -f "$CERT" ]; then
   echo "No dashboard TLS cert ($CERT) — not the prod dashboard host; skipping."; exit 0
 fi
