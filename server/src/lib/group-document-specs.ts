@@ -497,6 +497,18 @@ export function insuranceDocFor(traveler: Row | null | undefined): (typeof INSUR
   return c === "quote" || c === "line" ? "23-insurance-plan" : "07-travel-insurance-declination";
 }
 
+/** The whole trip's amount for this booking, as the booking agreement's cost table ends: the cabin's total (cruise fare and the line's add-ons),
+ *  each flight, hotel, transfer or package Mark priced, and the travel protection plan chosen on the quote. null with no cabin total. */
+export function fullTripTotal(ctx: DocCtx): number | null {
+  const total = cabinTotal(ctx);
+  if (!total) return null;
+  const trip = ctx.traveler?.form_data?.trip;
+  const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
+  const made = (ctx.traveler?.form_data?.insurance ?? {}) as Record<string, any>;
+  const plan = made["from_quote"] === true && typeof made["amount"] === "number" && made["amount"] > 0 ? (made["amount"] as number) : 0;
+  return Math.round((total + travel.reduce((n, r) => n + r["price"], 0) + plan) * 100) / 100;
+}
+
 const INSURANCE_07: DocSpec = {
   key: "07-travel-insurance-declination",
   title: "Travel insurance declination",
@@ -1260,7 +1272,8 @@ const CARD_22: DocSpec = {
     ...CRUISE_LINES,
     { after: "**Cabin category:**", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
     { after: "**Booking number:**", fill: (c) => bookingReference(c) || "Assigned when the line confirms", label: "Booking number" },
-    { after: "**Total authorized:** $", fill: (c) => (cabinTotal(c) ? amountText(cabinTotal(c)!) : ""), label: "Total authorized" },
+    // Mark 2026-11-13: "the card form should authorize the full $2,754.26": the cruise, the priced travel and the plan chosen on the quote
+    { after: "**Total authorized:** $", fill: (c) => (fullTripTotal(c) ? amountText(fullTripTotal(c)!) : ""), label: "Total authorized" },
     { after: "**Date:**", today: true },
     // Mark 2026-11-03: on the card owner's own link the owner is the one signing, so "the card belongs to" reads "me" there
     { sub: "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below", with: (c) => (c.cardholderSigner ? "☒ me, the cardholder signing this form ☐ someone else" : "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below") },

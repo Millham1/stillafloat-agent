@@ -199,6 +199,9 @@ test("Mark 2026-11-09: the cruise line's extras and each booked flight, hotel an
   assert.ok(withPlan.includes("Travel Protection, as chosen on your quote: Classic Plan (Allianz) | $265"), withPlan.split("\n").filter((l) => l.includes("Protection")).join("\n"));
   assert.ok(withPlan.includes("Estimated Trip Total with travel protection | $3,135.40"));
   assert.ok(!withPlan.includes("as chosen on the paperwork"), "the older per-person line is not printed beside it");
+  // Mark 2026-11-13: the card form authorizes the same full amount (cruise, priced travel and the plan chosen on the quote)
+  const cardText = renderDocument("22-card-authorization", ctxFor({}, chose)).text;
+  assert.ok(cardText.includes("Total authorized: $ 3,135.40"), cardText.split("\n").filter((l) => l.includes("authorized")).join("\n"));
   const none = { ...lead, form_data: { ...lead.form_data, insurance: { choice: "decline", plan: null, from_quote: true, name: "No travel insurance", amount: null } } };
   const declined = renderDocument("12-cruise-booking-agreement", ctxFor({}, none)).text;
   assert.ok(declined.includes("Travel Protection, as chosen on your quote: No travel insurance | Declined") && !declined.includes("with travel protection"));
