@@ -150,7 +150,9 @@ before(async () => {
     return realFetch(input, init);
   }) as typeof fetch;
   marketingRouter = (await import("./group-marketing")).default;
-  detailsRouter = (await import("./group-details")).default;
+  mod = await import("./group-details");
+  detailsRouter = mod.default;
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
 });
 
 after(async () => {
@@ -159,6 +161,8 @@ after(async () => {
 });
 
 let storageCalls: string[] = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mod: any;
 beforeEach(() => {
   storageCalls = [];
   tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [], group_assets: [] };
@@ -1143,15 +1147,30 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
     { key: "p0", name: "MSC Cruise Protection", price: "$99.00 per person", note: "the cruise line's own plan", withTotal: { label: "Trip total with MSC Cruise Protection", value: "$1,623.98" } },
     { key: "p1", name: "OneTrip Prime (Allianz)", price: "$129.50 per person", note: null, withTotal: { label: "Trip total with OneTrip Prime (Allianz)", value: "$1,684.98" } },
   ], "each plan with its price per person and the trip total with it for the party of two");
-  // Mark 2026-11-13 ("that doesnt solve the coverages problem only the price"): the cruise line's own plan carries the Schedule of Benefits of its
-  // plan document when that document has been read for the lead's state; a plan with no coverages read carries none (never a guess)
-  const leadState = /,\s*([A-Z]{2})\s+\d{5}/.exec(String(tables["group_travelers"]![0]!["form_data"]["city_state_zip"] ?? ""))?.[1] ?? null;
-  const own = (offer["plans"] as Row[])[0]!;
-  if (leadState === "NC") {
-    assert.equal((own["covers"] as Row[]).length, 9, "MSC's nine benefit lines");
-    assert.match(String(own["source"]), /GR452/);
-  } else assert.ok(!("covers" in own), `no MSC document read for ${leadState}`);
-  assert.ok(!("covers" in (offer["plans"] as Row[])[1]!), "no Allianz quote with coverages was fetched in this test: none are shown");
+  // Mark 2026-11-13 ("you should be able to pull coverage off the sites as needed, then store them for future use"): nothing is kept yet, so no
+  // plan shows coverages; the cruise line's plan document is pulled in the background, kept in the database, and shows from then on
+  assert.ok(!("covers" in (offer["plans"] as Row[])[0]!) && !("covers" in (offer["plans"] as Row[])[1]!), "nothing kept yet: no coverages shown, never a guess");
+  const lineState = /,\s*([A-Z]{2})\s+\d{5}/.exec(String(tables["group_travelers"]![0]!["form_data"]["city_state_zip"] ?? ""))?.[1] ?? "";
+  assert.match(lineState, /^[A-Z]{2}$/, "the lead's state is on the file");
+  const pulls: string[] = [];
+  mod.setLinePullForTests(async (cruiseLine: string, state: string) => {
+    pulls.push(`${cruiseLine}|${state}`);
+    return { status: "ready", plan: { cruise_line: "MSC Cruises", plan_name: "MSC Cruises Travel Insurance", product_code: "GR452", state, about: "MSC's own plan.", source_en: `From MSC Cruises' policy document GR452 for ${state} residents.`, source_es: "Del documento GR452.", source_url: "https://example.test/cert",
+      benefits: [{ name: "Trip Cancellation", coverage: "100% of Trip Cost", limits: [] }, { name: "Travel Delay", coverage: "$600.00", limits: [{ name: "Daily Limit", value: "$200.00" }, { name: "Per plan", value: "$6,000.00" }] }] } };
+  });
+  await call("GET", booking, { token: true });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(pulls, [`${tables["groups"]![0]!["cruise_line"]}|${lineState}`], "pulled once, for the group's cruise line and the lead's state");
+  assert.deepEqual(tables["protection_plans"]!.map((r) => [r["provider"], r["cruise_line"], r["plan_name"], r["product_code"], r["state"]]), [["cruise-line", "MSC Cruises", "MSC Cruises Travel Insurance", "GR452", lineState]], "kept in the database");
+  assert.deepEqual(tables["protection_plan_benefits"]!.map((r) => [r["position"], r["parent_position"], r["name"], r["value"]]), [[0, null, "Trip Cancellation", "100% of Trip Cost"], [1, null, "Travel Delay", "$600.00"], [2, 1, "Daily Limit", "$200.00"], [3, 1, "Per plan", "$6,000.00"]], "its benefit table, line by line, a limit under its benefit");
+  const kept = ((await call("GET", pricePage)).json["doc"]["protection"]["plans"] as Row[]);
+  assert.deepEqual(kept[0]!["covers"], [{ name: "Trip Cancellation", coverage: "100% of Trip Cost", limits: [] }, { name: "Travel Delay", coverage: "$600.00", limits: [{ name: "Daily Limit", value: "$200.00" }, { name: "Per plan", value: "$6,000.00" }] }], "the cruise line's own plan now shows what it covers, from the database");
+  assert.match(String(kept[0]!["source"]), /GR452/);
+  assert.ok(!("covers" in kept[1]!), "the Allianz plan in this test was never fetched with coverages: none are shown");
+  await call("GET", booking, { token: true });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(pulls.length, 1, "kept: it is not pulled again");
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
   const protMail = String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]);
   assert.ok(!protMail.includes("MSC Cruise Protection") && protMail.includes(">See my quote</a>"), "the plans are on the private page, not in the email");
   const noPick = await call("POST", pricePage, { body: { action: "book" } });

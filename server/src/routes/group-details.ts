@@ -10,7 +10,8 @@ import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../
 import { DOC_SPECS } from "../lib/group-documents";
 import { pipelineStage } from "../lib/group-pipeline";
 import { renderQuotePdf } from "../lib/group-quote-pdf";
-import { linePlanCoverage, stateOf } from "../lib/line-protection";
+import { lineSource, pullLinePlanCoverage, readPolicyPdf, stateOf, type LinePullOutcome } from "../lib/line-protection";
+import { allianzCoverage, lineCoverage, loadCoverages, saveCoverage, type StoredCoverage } from "../lib/protection-store";
 import { resolvePublicDir } from "../lib/public-dir";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -22,7 +23,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planBenefits, planLabel, plansFromText, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
+import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planBenefits, planLabel, plansFromText, type PlanBenefit, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -621,6 +622,21 @@ const allianzRecord = (formData: unknown): AllianzRecord | null => {
 const cents = (n: number) => Math.round(n * 100) / 100;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
+/** The pull of a cruise line's plan document, swappable in tests (no network there). One try an hour for a cruise line and state. */
+let linePull: (cruiseLine: string, state: string) => Promise<LinePullOutcome> = (cruiseLine, state) => pullLinePlanCoverage(cruiseLine, state, { pdfText: readPolicyPdf });
+export function setLinePullForTests(f: ((cruiseLine: string, state: string) => Promise<LinePullOutcome>) | null): void { linePull = f ?? ((cruiseLine, state) => pullLinePlanCoverage(cruiseLine, state, { pdfText: readPolicyPdf })); lineTried.clear(); }
+const lineTried = new Map<string, number>();
+async function ensureLineCoverage(cruiseLine: string, state: string): Promise<void> {
+  const key = `${cruiseLine.toLowerCase()}|${state}`, last = lineTried.get(key) ?? 0;
+  if (Date.now() - last < 3_600_000) return;
+  lineTried.set(key, Date.now());
+  try {
+    const out = await linePull(cruiseLine, state);
+    if (out.status !== "ready") { logger.warn({ cruiseLine, state, reason: out.reason }, "group booking: the cruise line's plan coverages could not be pulled"); return; }
+    await saveCoverage(db(), { provider: "cruise-line", ...out.plan });
+    logger.info({ cruiseLine, state, lines: out.plan.benefits.length }, "group booking: the cruise line's plan coverages were pulled and kept");
+  } catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group booking: keeping the cruise line's plan coverages failed"); }
+}
 async function loadBooking(groupId: string, iid: string) {
   const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
@@ -646,7 +662,14 @@ async function loadBooking(groupId: string, iid: string) {
     ? await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("cabin_id", lead.cabin_id)
     : await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("id", lead.id);
   if (pe) throw new Error(pe.message);
-  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null, party: (party ?? []) as Row[] };
+  // Mark 2026-11-13: what each plan covers is kept in the database and reused (protection_plans). The cruise line's own plan is pulled off its
+  // insurer's site the first time it is needed for a state, in the background; the next read of the booking has it.
+  const state = stateOf((lead.form_data as Record<string, any> | null)?.["city_state_zip"]);
+  let coverages: StoredCoverage[] = [];
+  try { coverages = await loadCoverages(db(), state); }
+  catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group booking: the kept coverages could not be read"); }
+  if (state && lineSource(file?.["cruise_line"]) && !lineCoverage(coverages, lineSource(file?.["cruise_line"])!.cruiseLine)) void ensureLineCoverage(String(file!["cruise_line"]), state);
+  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null, party: (party ?? []) as Row[], coverages };
 }
 
 interface SignedView { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> }
@@ -754,6 +777,7 @@ const clockTime = (hm: string | null | undefined, lang: Lang) => {
  *  for that guest), the add-ons named once, the cruise total; then each piece of travel as its own block, its details on their own lines; then the trip
  *  total. The per-guest matrix shows only while the guests' printed totals still add up to the total cruise price Mark saved; otherwise the cabin and
  *  each cruise extra as plain lines. Nothing here is worked out beyond the totals the booking confirmation already holds. */
+const ALLIANZ_SOURCE = { en: "As listed by Allianz for this trip. The policy itself governs.", es: "Según Allianz para este viaje. La póliza es la que manda." } as const;
 function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
   const v = bookingView(b), W = QUOTE_WORDS[lang];
   const guests = v.guestPrices;
@@ -809,15 +833,19 @@ function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
     const same = insured.length === guests.length && insured.every((g) => g.insurance === insured[0]!.insurance);
     plans.push({ key: "included", name: W.linePlan, price: same ? `${usd(insured[0]!.insurance)} ${W.perPerson}` : insured.map((g) => `${properName(g.name)} ${usd(g.insurance)}`).join(" · "), note: W.inCruise, withTotal: null });
   }
-  // what each Allianz plan covers, from the quote the agent fetched for this trip: matched by the plan's name ("Classic Plan (Allianz)")
+  // what each plan covers, from the database (protection_plans): the cruise line's own plan by the cruise line, an Allianz plan by its name. An
+  // Allianz plan not kept yet falls back to the quote the agent fetched for this trip (it is kept at the next fetch).
   const fetched = allianzRecord(b.lead.form_data)?.plans ?? [];
-  const coverOf = (name: string) => fetched.find((f) => `${f.name} (Allianz)`.toLowerCase() === name.trim().toLowerCase() || f.name.toLowerCase() === name.trim().toLowerCase());
-  // the cruise line's OWN plan: its coverages are its plan document's Schedule of Benefits, when that document has been read for the lead's state
-  const ownPlan = linePlanCoverage(b.file?.["cruise_line"], stateOf((b.lead.form_data as Record<string, any> | null)?.["city_state_zip"]));
-  const ALLIANZ_SOURCE = { en: "As listed by Allianz for this trip. The policy itself governs.", es: "Según Allianz para este viaje. La póliza es la que manda." };
+  const ownPlan = lineCoverage(b.coverages, lineSource(b.file?.["cruise_line"])?.cruiseLine ?? b.file?.["cruise_line"]);
+  const allianzOf = (name: string): { benefits: PlanBenefit[]; about: string | null; source: string } | null => {
+    const kept = allianzCoverage(b.coverages, name);
+    if (kept) return { benefits: kept.benefits, about: kept.about, source: lang === "es" ? kept.source_es : kept.source_en };
+    const f = fetched.find((x) => `${x.name} (Allianz)`.toLowerCase() === name.trim().toLowerCase() || x.name.toLowerCase() === name.trim().toLowerCase());
+    return f?.benefits?.length ? { benefits: f.benefits, about: f.about ?? null, source: ALLIANZ_SOURCE[lang] } : null;
+  };
   v.protection.forEach((p, i) => plans.push({
-    ...(p.line && ownPlan ? { covers: ownPlan.benefits, about: ownPlan.about, source: ownPlan.source[lang] }
-      : coverOf(p.name)?.benefits?.length ? { covers: coverOf(p.name)!.benefits!, ...(coverOf(p.name)!.about ? { about: coverOf(p.name)!.about! } : {}), source: ALLIANZ_SOURCE[lang] } : {}),
+    ...(p.line && ownPlan ? { covers: ownPlan.benefits, ...(ownPlan.about ? { about: ownPlan.about } : {}), source: lang === "es" ? ownPlan.source_es : ownPlan.source_en }
+      : !p.line && allianzOf(p.name) ? { covers: allianzOf(p.name)!.benefits, ...(allianzOf(p.name)!.about ? { about: allianzOf(p.name)!.about! } : {}), source: allianzOf(p.name)!.source } : {}),
     key: `p${i}`, name: p.name, price: p.total !== null ? `${usd(p.total)} ${W.forParty(count)}` : `${usd(p.per_person ?? 0)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
     withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + (p.total ?? (p.per_person ?? 0) * count))) } : null,
   }));
@@ -1276,7 +1304,14 @@ router.post("/groups/:id/interests/:iid/protection-quote", requireToken, async (
     await saveRecord(base);
     res.status(202).json({ success: true, status: "pending" });
     void allianzFetch(input, { chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"] })
-      .then((out) => saveRecord(out.status === "ready" ? { ...base, status: "ready", quoted_at: new Date().toISOString(), plans: out.plans } : { ...base, status: "unavailable", reason: out.reason }))
+      .then(async (out) => {
+        await saveRecord(out.status === "ready" ? { ...base, status: "ready", quoted_at: new Date().toISOString(), plans: out.plans } : { ...base, status: "unavailable", reason: out.reason });
+        // Mark 2026-11-13: every plan's coverages, as Allianz listed them, are kept for the state they were quoted for (reused by any later quote)
+        if (out.status === "ready") for (const p of out.plans) {
+          if (p.benefits?.length) await saveCoverage(db(), { provider: "allianz", cruise_line: null, plan_name: p.name, product_code: null, state: input.state, about: p.about ?? null, source_en: ALLIANZ_SOURCE.en, source_es: ALLIANZ_SOURCE.es, source_url: "https://www.agentmaxonline.com", benefits: p.benefits })
+            .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e), plan: p.name }, "group booking: an Allianz plan's coverages could not be kept"));
+        }
+      })
       .catch((e: unknown) => saveRecord({ ...base, status: "unavailable", reason: e instanceof Error ? e.message.slice(0, 300) : String(e) }).catch(() => undefined));
     return;
   } catch (err) {

@@ -9,6 +9,7 @@ import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
 } from "../lib/booking-extract";
+import { registerPdfReader } from "../lib/line-protection";
 import { applyPackageInclusions, type PackageRow } from "../lib/package-inclusions";
 
 // "Enter a booking" (Mark, 2026-10-02): drop the cruise line's contract or
@@ -24,6 +25,8 @@ import { applyPackageInclusions, type PackageRow } from "../lib/package-inclusio
 //   POST /api/groups/:id/interests/:iid/carrier-quote { filename, data } → the cruise line's quote for ONE guest (Mark 2026-11-05): read the same way,
 //                                       and the booking confirmation (routes/group-details.ts) fills from it
 
+// the booking routes read a cruise line's plan document with this same reader (lib/line-protection.ts)
+registerPdfReader(extractPdfText);
 const router: IRouter = Router();
 const BUCKET = "group-docs";
 
