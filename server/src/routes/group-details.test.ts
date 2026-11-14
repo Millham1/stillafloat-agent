@@ -102,6 +102,7 @@ before(async () => {
         opsBooked.push(json);
         return send(200, { ok: true, event_id: "ev-1", meet_link: "https://meet.google.com/abc-defg-hij", html_link: "https://calendar.google.com/x" });
       }
+      if (url.pathname.startsWith("/storage/v1/")) { storageCalls.push(`${req.method} ${url.pathname}`); return send(200, []); }
       const table = url.pathname.replace(/^\/rest\/v1\//, "");
       log.push({ method: req.method ?? "", table, query: url.search, body: json });
       const rows = (tables[table] ??= []);
@@ -125,6 +126,11 @@ before(async () => {
         for (const r of hit) Object.assign(r, json);
         return wantsRows ? out(hit) : send(204);
       }
+      if (req.method === "DELETE") {
+        const keep = rows.filter((r) => !matches(r, url.searchParams));
+        tables[table] = keep;
+        return send(204);
+      }
       return send(405, {});
     });
   });
@@ -144,7 +150,9 @@ before(async () => {
     return realFetch(input, init);
   }) as typeof fetch;
   marketingRouter = (await import("./group-marketing")).default;
-  detailsRouter = (await import("./group-details")).default;
+  mod = await import("./group-details");
+  detailsRouter = mod.default;
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
 });
 
 after(async () => {
@@ -152,7 +160,11 @@ after(async () => {
   await new Promise<void>((resolve) => stub.close(() => resolve()));
 });
 
+let storageCalls: string[] = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mod: any;
 beforeEach(() => {
+  storageCalls = [];
   tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [], group_assets: [] };
   log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false; assetsFail = false;
   opsMeetings = []; opsUp = true; opsTaken = false; opsBooked = [];
@@ -926,9 +938,9 @@ test("'Send my choices to Mark!' (Mark 2026-11-05): the first press wins; the tr
   const item = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
   assert.equal(item.title, "Re-quote and book · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; (2) upload that quote in the group file: it fills the booking confirmation; (3) validate Flights and enter the suppliers' confirmations; (4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors, and send the FlexPay appointment link.");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; (2) upload that quote in the group file: it fills the booking confirmation; (3) validate Flights and enter the suppliers' confirmations; (4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors.");
   assert.deepEqual(item.buttons, [
-    { label: "Upload the cruise line's quote", href: `/groups/${GROUP_ID}?book=${REPLY_ID}#booking` },
+    { label: "Upload the cruise line's quote", href: `/groups/${GROUP_ID}/booking/${REPLY_ID}` },
     { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
   ]);
   await wait(() => tables["actions"]![0]!["status"] === "done");
@@ -950,6 +962,13 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`, booking = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booking`;
   assert.equal((await call("POST", path)).status, 401, "Mark's token only");
   assert.equal((await call("GET", booking)).status, 401, "Mark's token only");
+  // Mark 2026-11-11 ("i cannot see currently what the status is and what the next step is"): every person of the group with a level, a status and a next step
+  const pipeline = `/groups/${GROUP_ID}/pipeline`;
+  assert.equal((await call("GET", pipeline)).status, 401, "Mark's token only");
+  assert.equal((await call("GET", `/groups/not-a-group/pipeline`, { token: true })).status, 404);
+  const waiting = ((await call("GET", pipeline, { token: true })).json["people"] as Row[]).find((x) => x["id"] === REPLY_ID)!;
+  assert.deepEqual([waiting["level"], waiting["key"], waiting["on"], waiting["has_booking"]], ["quote", "choices-in", "mark", true], "choices in: a quote, and the re-quote is Mark's move");
+  assert.ok(waiting["name"] && !("email" in waiting) && !("phone" in waiting) && !("quote" in waiting), "a name, a status and a next step: no address, no phone, no stored quote");
   const view = await call("GET", booking, { token: true });
   assert.deepEqual([view.status, view.json["ready"], view.json["guest"]["name"]], [200, false, "Mark Millham"]);
   assert.deepEqual(view.json["missing"], ["The flight the guest asked you to quote: add it below"]);
@@ -979,22 +998,257 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual([priced.status, priced.json["ready"]], [200, true]);
   assert.deepEqual(priced.json["extras"], [{ name: "Premium Extra drinks", total: 80 }]);
   assert.deepEqual(priced.json["totals"], { cabin: 1073.58, extras: 80, cruise: 1153.58, travel: 272.4, trip: 1425.98 }, "cabin + extras = the total cruise price; + travel = the trip");
+  // Mark 2026-11-09: a PACKAGE (air and hotel sold as one) has its own fields: the air (carrier, flight numbers, class), the hotel (beds, breakfast)
+  // and ONE quoted price; the line is written from them, so the booking confirmation and the agreement print what he entered
+  const pack = await call("PUT", booking, { token: true, body: { trip: [{ kind: "package", direction: "pre", provider: "Delta", from_place: "RDU", to_place: "MCO", starts_at: "2027-05-08", ends_at: "2027-05-16", confirmation: "PKG77", price: "910.00",
+    pkg: { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", depart_time: "08:15", arrive_time: "10:05", return_depart_time: "17:30", return_arrive_time: "25:99", air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true, junk: "x" } }] } });
+  assert.equal(pack.status, 200);
+  const packLine = (pack.json["trip"] as Array<Record<string, any>>)[0]!;
+  assert.equal(packLine["label"], "Before the cruise: package, air (Delta, Main Cabin, out: flight DL 1234 RDU to MCO 2027-05-08 departs 08:15 arrives 10:05, back: flight DL 5678 MCO to RDU 2027-05-16 departs 17:30) and hotel (Hyatt Regency, Orlando, 2027-05-08 to 2027-05-09, 2 beds, breakfast included)");
+  assert.deepEqual(packLine["pkg"], { flights: "DL 1234", return_flights: "DL 5678", return_from: "MCO", return_to: "RDU", depart_time: "08:15", arrive_time: "10:05", return_depart_time: "17:30", return_arrive_time: null, air_class: "Main Cabin", hotel: "Hyatt Regency", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", beds: "2", breakfast: true });
+  assert.equal(packLine["price"], 910);
+  assert.equal((pack.json["totals"] as Record<string, number>)["travel"], 910);
+  // put the flight back for the lines below
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }] } })).status, 200);
   assert.equal(priced.json["trip"][0]["price"], 272.4);
   const said = (label: string) => (priced.json["fills"] as Array<Record<string, string>>).find((f) => f["label"] === label)?.["value"];
   assert.deepEqual([said("Cruise extra: Premium Extra drinks"), said("Total cruise price (cabin and cruise extras)"), said("Trip total (cruise and travel)")], ["$80.00", "$1,153.58", "$1,425.98"]);
   assert.ok(String(said("Before the cruise: flight") ?? said("Flight") ?? JSON.stringify(priced.json["fills"])).includes("$272.40"), "the travel line shows its booked price");
   assert.deepEqual(tables["group_travelers"]![0]!["form_data"]["trip"]["extras"], [{ name: "Premium Extra drinks", total: 80 }], "the extras sit on the lead's file beside the travel");
   assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the extras keeps the travel just saved");
-  const done = await call("POST", path, { token: true });
+  // Mark 2026-11-09: the guest approves the price BEFORE the paperwork goes out. Mark emails the price ("Book It" / "I need changes"); a change request
+  // comes back to his list in the guest's own words; sending the price again clears it; "Book It" opens the way for the paperwork.
+  const unapproved = await call("POST", path, { token: true });
+  assert.equal(unapproved.status, 409);
+  assert.match(String(unapproved.json["error"]), /has not approved the price/);
+  assert.equal(mails.length, 0);
+  const priceMail = `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-email`;
+  assert.equal((await call("POST", priceMail)).status, 401, "Mark's token only");
+  assert.match(String((await call("POST", priceMail, { token: true })).json["error"]), /link key is not set/, "no link key on the box, no link to send");
+  process.env["GROUP_PII_KEY"] = "ab".repeat(32);
+  try {
+  const firstPrice = await call("POST", priceMail, { token: true });
+  assert.equal(firstPrice.status, 200, JSON.stringify(firstPrice.json));
+  assert.deepEqual([firstPrice.status, firstPrice.json["price"]["sent"], firstPrice.json["price"]["approved_at"]], [200, "sent", null]);
+  assert.equal(mails.length, 1);
+  assert.equal(mails[0]!["subject"], "Your quote from Mark… Friends and Family 2027");
+  const priceHtml = String(mails[0]!["html"]);
+  // Mark 2026-11-12: the email says the quote is ready and links to the guest's private page; the figures and the answers are on the page
+  for (const piece of ["your quote is ready on your private page", ">See my quote</a>"]) assert.ok(priceHtml.includes(piece), `the quote email says ${piece}`);
+  assert.ok(!priceHtml.includes("$1,153.58") && !priceHtml.includes(">Book It</a>"), "no figure and no Book It button in the email");
+  assert.ok(/cornerstone-white\.png/.test(priceHtml) && priceHtml.includes("Seller of Travel: CA #2158353-50"), "Mark 2026-11-10: the quote carries the Cornerstone logo and the Seller of Travel numbers");
+  const link = /\/price\.html\?r=([0-9a-f-]{36})&amp;k=([A-Za-z0-9_-]{43})"/.exec(priceHtml);
+  assert.ok(link, "the button opens the guest's own private quote page");
+  const pricePage = `/price-confirm/${link![1]}/${link![2]}`;
+  assert.equal((await call("GET", `/price-confirm/${link![1]}/${"A".repeat(43)}`)).status, 404, "a wrong key is not found");
+  const shown = await call("GET", pricePage);
+  assert.deepEqual([shown.status, shown.json["state"], shown.json["firstName"]], [200, "open", "Mark"]);
+  assert.deepEqual([shown.json["doc"]["cruiseTotal"], shown.json["doc"]["tripTotal"], shown.json["doc"]["matrix"]], [{ label: "Cruise total", value: "$1,153.58" }, { label: "Trip total (cruise and travel)", value: "$1,425.98" }, null]);
+  assert.deepEqual(shown.json["doc"]["cruise"].map((l: Row) => l["value"]), ["$1,073.58", "$80.00"], "with no per-guest quote on file: the cabin and each cruise extra");
+  assert.equal((await call("POST", pricePage, { body: { action: "changes", text: " " } })).status, 400, "a change request says what to change");
+  const asked = await call("POST", pricePage, { body: { action: "changes", text: "Can we look at an ocean view instead of the balcony?" } });
+  assert.deepEqual([asked.status, asked.json["state"]], [200, "changes"]);
+  const afterAsk = await call("GET", booking, { token: true });
+  assert.deepEqual([afterAsk.json["price"]["changes_open"], afterAsk.json["price"]["changes"][0]["text"], afterAsk.json["price"]["approved_at"]], [true, "Can we look at an ocean view instead of the balcony?", null]);
+  assert.equal((await call("POST", path, { token: true })).status, 409, "a change request is not an approval");
+  // Mark re-prices and sends it again: the request is closed, the price is open again, and the guest books it
+  const secondPrice = await call("POST", priceMail, { token: true });
+  assert.deepEqual([secondPrice.json["price"]["changes_open"], secondPrice.json["price"]["approved_at"], mails.length], [false, null, 2]);
+  // Mark 2026-11-11: "the quote email didn't pick up the transfers to/from hotel/cruise" + "the quote should not show zero lines". A travel line with
+  // no price yet stops the quote and is NAMED (never dropped silently); a line priced at 0 is left off the quote; a priced line is on it.
+  const transfer = { kind: "transfer", direction: "pre", provider: "Limopedia", from_place: "Hotel", to_place: "the cruise port", starts_at: "2027-05-09", confirmation: "6654321", label: "Hotel to the cruise port" };
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: null }] } })).status, 200);
+  for (const stopped of [await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true }), await call("POST", priceMail, { token: true })]) {
+    assert.equal(stopped.status, 409);
+    assert.match(String(stopped.json["error"]), /These travel lines have no quoted price.*Hotel to the cruise port/, "the line with no price is named");
+  }
+  assert.equal(mails.length, 2, "nothing went out");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "0" }] } })).status, 200);
+  const zeroDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual(zeroDoc["travel"].map((t: Row) => t["value"]), ["$272.40"], "a line priced at 0 is not on the quote");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "45" }] } })).status, 200);
+  const paidDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual(paidDoc["travel"].map((t: Row) => [t["title"], t["value"]]), [[paidDoc["travel"][0]["title"], "$272.40"], ["Hotel to the cruise port", "$45.00"]], "a priced transfer is on the quote");
+  assert.equal(paidDoc["tripTotal"]["value"], "$1,470.98");
+  // Mark 2026-11-12 ("the quoted price in this pane is for one person, not the booking"): a line priced per person is kept as quoted and counted
+  // once for everyone on the booking, in the totals, on the quote and in what the paperwork prints.
+  const perPerson = await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }, { ...transfer, price: "45", per: "person" }] } });
+  assert.equal(perPerson.status, 200);
+  const line = (perPerson.json["trip"] as Row[])[1]!;
+  assert.deepEqual([line["per"], line["unit_price"], line["price"]], ["person", 45, 90], "$45 a person, two travelers: $90 for the booking");
+  assert.equal(perPerson.json["totals"]["travel"], 362.4);
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][1]["price"], 90, "the stored line price is the booking's, so the paperwork prints the booking's figure");
+  const perDoc = (await call("GET", pricePage)).json["doc"];
+  assert.deepEqual([perDoc["travel"][1]["value"], perDoc["travel"][1]["details"].at(-1)], ["$90.00", "$45.00 per person × 2 travelers"], "the quote shows the booking's amount and how it adds up");
+  assert.equal(perDoc["tripTotal"]["value"], "$1,515.98");
+  // Mark 2026-11-12 ("I need information at my fingertips"): the booking carries the review of the customer in one block
+  const review = perPerson.json["review"] as Row;
+  assert.deepEqual((review["travelers"] as Row[]).map((t) => [t["name"], t["lead"]]).slice(0, 1), [[(review["travelers"] as Row[])[0]!["name"], true]], "the lead is first");
+  assert.equal((review["travelers"] as Row[]).length, 2, "everyone on the booking");
+  assert.ok(Array.isArray(review["chose"]) && (review["chose"] as Row[]).length > 0 && Array.isArray(review["happened"]) && (review["happened"] as Row[]).some((h) => h["label"] === "Sent their choices"));
+  assert.ok(!JSON.stringify(review).includes("passport"), "no passport data in the review");
+  // Mark 2026-11-12 ("we need to build it into a PDF for download"): the same quote as a PDF, for Mark and behind the guest's own link
+  const pdfMark = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`, { token: true });
+  assert.equal(pdfMark.status, 200);
+  assert.match(String(pdfMark.headers.get("content-type")), /application\/pdf/);
+  assert.ok(pdfMark.text.startsWith("%PDF-") && pdfMark.text.length > 1500, "a real PDF");
+  assert.match(String(pdfMark.headers.get("content-disposition")), /attachment; filename="quote-[a-z-]+\.pdf"/);
+  assert.equal((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`)).status, 401, "Mark's token only");
+  const pdfLink = String((await call("GET", pricePage)).json["pdf"]);
+  assert.match(pdfLink, /^\/api\/price-confirm\/.+\/quote\.pdf$/);
+  const pdfGuest = await call("GET", pdfLink.replace(/^\/api/, ""));
+  assert.ok(pdfGuest.status === 200 && pdfGuest.text.startsWith("%PDF-"), "the guest's own link downloads it");
+  assert.equal((await call("GET", `/price-confirm/${REPLY_ID}/${"A".repeat(43)}/quote.pdf`)).status, 404, "a wrong link gets nothing");
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "272.40" }] } })).status, 200);
+  // Mark 2026-11-10 ("create an insurance section on the quote… add Allianz too"): the plans Mark priced for THIS booking, each per person, sit on the
+  // quote; the guest picks one (or their own policy, or none) with "Book It"; the pick goes to Mark's list and onto the cabin's paperwork files.
+  assert.equal((await call("GET", pricePage)).json["doc"]["protection"], null, "no plan priced: no travel protection on the quote, and Book It asks nothing more");
+  for (const bad of ["x", [{ name: "", per_person: "10" }], [{ name: "OneTrip Prime", per_person: "abc" }], [{ name: "OneTrip Prime", per_person: "0" }]]) assert.equal((await call("PUT", booking, { token: true, body: { protection: bad } })).status, 400, JSON.stringify(bad));
+  const planned = await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } });
+  assert.deepEqual(planned.json["protection"], [{ name: "MSC Cruise Protection", per_person: 99, total: null, line: true }, { name: "OneTrip Prime (Allianz)", per_person: 129.5, total: null, line: false }]);
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the plans keeps the travel");
+  // Mark 2026-11-10: the booking card shows the sailing's quotes from the group file, for him to pick which ones go on this guest's quote
+  assert.ok(Array.isArray(planned.json["protectionOnFile"]), "the quotes on the group file come with the booking");
+  for (const q of planned.json["protectionOnFile"] as Row[]) assert.ok(typeof q["name"] === "string" && typeof q["per_person"] === "number" && q["per_person"] > 0 && typeof q["line"] === "boolean");
+  // Mark 2026-11-10: "once I complete adding the travel costs (cruise, air, hotel, transfers) the agent goes out to Allianz and enters the information
+  // to get the quotes." The card asks; the agent is sent with the WHOLE trip cost, the home state, each traveler's age and the trip's dates; the plans
+  // come back with ONE price for the party, and one of them can go on the quote as that total (never divided per person).
+  const allianzPath = `/groups/${GROUP_ID}/interests/${REPLY_ID}/protection-quote`;
+  assert.equal((await call("POST", allianzPath)).status, 401, "Mark's token only");
+  const { setAllianzFetchForTests } = await import("./group-details");
+  const sentToAllianz: Row[] = [];
+  setAllianzFetchForTests(async (input) => { sentToAllianz.push(input as unknown as Row); return { status: "ready", plans: [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }] }; });
+  try {
+    const askedA = await call("POST", allianzPath, { token: true });
+    assert.deepEqual([askedA.status, askedA.json["status"]], [202, "pending"], JSON.stringify(askedA.json));
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(sentToAllianz.length, 1);
+    assert.equal(sentToAllianz[0]!["total_trip_cost"], 1425.98, "the whole trip: the cruise and the travel together");
+    assert.match(String(sentToAllianz[0]!["state"]), /^[A-Z]{2}$/);
+    assert.ok(Array.isArray(sentToAllianz[0]!["ages"]) && (sentToAllianz[0]!["ages"] as number[]).length === 2 && (sentToAllianz[0]!["ages"] as number[]).every((n) => n > 0 && n < 120), "an age for each traveler on the cabin");
+    const got = (await call("GET", booking, { token: true })).json["allianz"];
+    assert.deepEqual([got["status"], got["plans"], got["travelers"], got["trip_cost"]], ["ready", [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }], 2, 1425.98]);
+    assert.equal((await call("POST", allianzPath, { token: true })).json["already"], true, "the same trip is not quoted twice");
+    assert.equal(sentToAllianz.length, 1);
+    setAllianzFetchForTests(async () => ({ status: "unavailable", reason: "the Allianz sign-in is not on this box yet" }));
+    assert.equal((await call("POST", allianzPath, { token: true, body: { again: true } })).status, 202);
+    await new Promise((r) => setTimeout(r, 20));
+    const down = (await call("GET", booking, { token: true })).json["allianz"];
+    assert.deepEqual([down["status"], down["reason"], down["plans"]], ["unavailable", "the Allianz sign-in is not on this box yet", []], "when Allianz cannot be quoted the card is told why, and no price is made up");
+  } finally { setAllianzFetchForTests(null); }
+  const asTotal = await call("PUT", booking, { token: true, body: { protection: [{ name: "Classic Plan (Allianz)", total: "265", line: false }] } });
+  assert.deepEqual(asTotal.json["protection"], [{ name: "Classic Plan (Allianz)", per_person: null, total: 265, line: false }]);
+  assert.deepEqual((await call("GET", pricePage)).json["doc"]["protection"]["plans"], [{ key: "p0", name: "Classic Plan (Allianz)", price: "$265.00 total for 2 travelers", note: null, withTotal: { label: "Trip total with Classic Plan (Allianz)", value: "$1,690.98" } }], "Allianz's one price for the party shows as that total");
+  assert.equal((await call("PUT", booking, { token: true, body: { protection: [{ name: "MSC Cruise Protection", per_person: "99", line: true }, { name: "OneTrip Prime (Allianz)", per_person: "129.50", line: false }] } })).status, 200);
+  const offer = (await call("GET", pricePage)).json["doc"]["protection"];
+  assert.deepEqual([offer["head"], offer["own"], offer["none"]], ["Travel protection", "I have my own policy", "No insurance for us"]);
+  const bare = (offer["plans"] as Row[]).map(({ covers: _c, about: _a, source: _s, ...rest }) => rest);
+  assert.deepEqual(bare, [
+    { key: "p0", name: "MSC Cruise Protection", price: "$99.00 per person", note: "the cruise line's own plan", withTotal: { label: "Trip total with MSC Cruise Protection", value: "$1,623.98" } },
+    { key: "p1", name: "OneTrip Prime (Allianz)", price: "$129.50 per person", note: null, withTotal: { label: "Trip total with OneTrip Prime (Allianz)", value: "$1,684.98" } },
+  ], "each plan with its price per person and the trip total with it for the party of two");
+  // Mark 2026-11-13 ("you should be able to pull coverage off the sites as needed, then store them for future use"): nothing is kept yet, so no
+  // plan shows coverages; the cruise line's plan document is pulled in the background, kept in the database, and shows from then on
+  assert.ok(!("covers" in (offer["plans"] as Row[])[0]!) && !("covers" in (offer["plans"] as Row[])[1]!), "nothing kept yet: no coverages shown, never a guess");
+  const lineState = /,\s*([A-Z]{2})\s+\d{5}/.exec(String(tables["group_travelers"]![0]!["form_data"]["city_state_zip"] ?? ""))?.[1] ?? "";
+  assert.match(lineState, /^[A-Z]{2}$/, "the lead's state is on the file");
+  const pulls: string[] = [];
+  mod.setLinePullForTests(async (cruiseLine: string, state: string) => {
+    pulls.push(`${cruiseLine}|${state}`);
+    return { status: "ready", plan: { cruise_line: "MSC Cruises", plan_name: "MSC Cruises Travel Insurance", product_code: "GR452", state, about: "MSC's own plan.", source_en: `From MSC Cruises' policy document GR452 for ${state} residents.`, source_es: "Del documento GR452.", source_url: "https://example.test/cert",
+      benefits: [{ name: "Trip Cancellation", coverage: "100% of Trip Cost", limits: [] }, { name: "Travel Delay", coverage: "$600.00", limits: [{ name: "Daily Limit", value: "$200.00" }, { name: "Per plan", value: "$6,000.00" }] }] } };
+  });
+  await call("GET", booking, { token: true });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(pulls, [`${tables["groups"]![0]!["cruise_line"]}|${lineState}`], "pulled once, for the group's cruise line and the lead's state");
+  assert.deepEqual(tables["protection_plans"]!.map((r) => [r["provider"], r["cruise_line"], r["plan_name"], r["product_code"], r["state"]]), [["cruise-line", "MSC Cruises", "MSC Cruises Travel Insurance", "GR452", lineState]], "kept in the database");
+  assert.deepEqual(tables["protection_plan_benefits"]!.map((r) => [r["position"], r["parent_position"], r["name"], r["value"]]), [[0, null, "Trip Cancellation", "100% of Trip Cost"], [1, null, "Travel Delay", "$600.00"], [2, 1, "Daily Limit", "$200.00"], [3, 1, "Per plan", "$6,000.00"]], "its benefit table, line by line, a limit under its benefit");
+  const kept = ((await call("GET", pricePage)).json["doc"]["protection"]["plans"] as Row[]);
+  assert.deepEqual(kept[0]!["covers"], [{ name: "Trip Cancellation", coverage: "100% of Trip Cost", limits: [] }, { name: "Travel Delay", coverage: "$600.00", limits: [{ name: "Daily Limit", value: "$200.00" }, { name: "Per plan", value: "$6,000.00" }] }], "the cruise line's own plan now shows what it covers, from the database");
+  assert.match(String(kept[0]!["source"]), /GR452/);
+  assert.ok(!("covers" in kept[1]!), "the Allianz plan in this test was never fetched with coverages: none are shown");
+  await call("GET", booking, { token: true });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(pulls.length, 1, "kept: it is not pulled again");
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
+  const protMail = String((await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true })).json["html"]);
+  assert.ok(!protMail.includes("MSC Cruise Protection") && protMail.includes(">See my quote</a>"), "the plans are on the private page, not in the email");
+  const noPick = await call("POST", pricePage, { body: { action: "book" } });
+  assert.deepEqual([noPick.status, noPick.json["field"], noPick.json["error"]], [400, "protection", "Choose your travel protection first."], "Book It says what to do first");
+  // Mark 2026-11-12: the guest chooses in the pop-up BEFORE Book It; the choice is kept (the page and the PDF show it) and approves nothing
+  assert.equal((await call("POST", pricePage, { body: { action: "protect", protection: "p9" } })).status, 400, "a plan that is not on the quote is not a choice");
+  const chose = await call("POST", pricePage, { body: { action: "protect", protection: "p0" } });
+  assert.deepEqual([chose.status, chose.json["state"], chose.json["protection"]], [200, "open", "p0"]);
+  const withChoice = (await call("GET", pricePage)).json;
+  assert.deepEqual([withChoice["protection"], withChoice["state"]], ["p0", "open"], "the page shows the choice and the quote is still open");
+  // Mark 2026-11-13 ("that is why the video resides in the db so you do not call youtube"): the insurance video is our own booking video file
+  assert.equal(withChoice["video"], "https://www.stillafloatcruising.com/media/booking/booking-01-travel-insurance-pros-and-cons.mp4");
+  assert.ok(!/youtu/i.test(JSON.stringify(withChoice)), "nothing on the quote page points at YouTube");
+  assert.equal(mails.length, 2, "choosing protection emails nobody");
+  const changed = await call("POST", pricePage, { body: { action: "protect", protection: "p1" } });
+  assert.equal(changed.json["protection"], "p1", "the choice can be changed until Book It");
+  const pdfChosen = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`, { token: true });
+  assert.ok(pdfChosen.status === 200 && pdfChosen.text.startsWith("%PDF-"), "the PDF prints with the choice on it");
+  assert.equal((await call("POST", pricePage, { body: { action: "book", protection: "p9" } })).status, 400, "a plan that is not on the quote is not a pick");
+  const booked = await call("POST", pricePage, { body: { action: "book", protection: "p1" } });
+  assert.deepEqual([booked.status, booked.json["state"]], [200, "approved"]);
+  assert.deepEqual((await call("GET", booking, { token: true })).json["price"]["protection"], { key: "p1", label: "OneTrip Prime (Allianz), $129.50 per person" });
+  // Mark 2026-11-11: "a confirmation email needs to go to the client once they hit 'book it' telling them I have their decision and that the
+  // paperwork will arrive within 24 hours." From Mark alone, with the Cornerstone logo and the Seller of Travel numbers; it names their protection pick.
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(mails.length, 3, "one email to the guest for their Book It");
+  assert.deepEqual([mails[2]!["to"], mails[2]!["subject"]], ["mmillham1@gmail.com", "I have your decision… Friends and Family 2027"]);
+  const decided = String(mails[2]!["html"]);
+  for (const piece of ["I have your decision to book.", "Your paperwork will arrive by email within 24 hours.", "Travel protection you picked: OneTrip Prime (Allianz), $129.50 per person.", "Seller of Travel: CA #2158353-50", "cornerstone-white.png"]) assert.ok(decided.includes(piece), `the Book It email says ${piece}`);
+  assert.ok(!/Mark (and|&amp;|y) /.test(decided), "signed by Mark alone");
+  assert.equal((await call("GET", pricePage)).json["protection"], "p1", "the page shows the pick afterwards");
+  for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["choice"], t["form_data"]["insurance"]["plan"]], ["quote", "OneTrip Prime (Allianz): $129.50 per person"], "the pick is on every traveler of the cabin, in the paperwork's own words");
+  // Mark 2026-11-13: the decision is marked as made on the quote, with the plan's name and its amount for the whole booking, so the paperwork states it
+  for (const t of tables["group_travelers"]!) assert.deepEqual([t["form_data"]["insurance"]["from_quote"], t["form_data"]["insurance"]["name"], t["form_data"]["insurance"]["amount"]], [true, "OneTrip Prime (Allianz)", 259], "$129.50 a person, two travelers: $259 for the booking");
+  assert.equal((await call("POST", pricePage, { body: { action: "book" } })).json["already"], true, "tapped twice, approved once");
+  assert.equal((await call("GET", booking, { token: true })).json["price"]["approved_how"], "guest");
+  const saidYes = ((await call("GET", `/groups/${GROUP_ID}/pipeline`, { token: true })).json["people"] as Row[]).find((x) => x["id"] === REPLY_ID)!;
+  assert.deepEqual([saidYes["level"], saidYes["key"], saidYes["status"], saidYes["on"]], ["booked", "book-it", "Said Book It", "mark"], "after Book It the person is on the Booked level and the next step is Mark's");
+  assert.match(String(saidYes["next"]), /book it with the cruise line.*send the paperwork/i);
+  assert.equal(saidYes["protection"], "OneTrip Prime (Allianz), $129.50 per person", "the protection they picked rides along");
+  // Mark 2026-11-09 ("read the quote, not make assumptions"): when the quote prices each guest apart and those lines are on the file, the guest reads
+  // THOSE lines, guest by guest, as printed: nothing summed across guests. They show only while they still add up to the saved total cruise price.
+  const perGuest = [{ name: "PAT EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }, { name: "ANA EXAMPLE", cruise: 400, packaging: 0, addons: 100, insurance: 0, taxes: 76.79, total: 576.79, items: ["Dining package", "Drink package"] }];
+  assert.equal((await call("PUT", booking, { token: true, body: { guest_prices: "two" } })).status, 400);
+  const withGuests = await call("PUT", booking, { token: true, body: { guest_prices: perGuest } });
+  assert.deepEqual(withGuests.json["guestPrices"], perGuest);
+  const preview = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/price-preview`, { token: true });
+  assert.equal(preview.status, 200);
+  // the guest-by-guest lines are on the guest's private page (the email only links to it, Mark 2026-11-12)
+  const matrix = (await call("GET", pricePage)).json["doc"]["matrix"] as Row;
+  assert.deepEqual(matrix["names"], ["Pat Example", "Ana Example"]);
+  const printed = JSON.stringify(matrix);
+  for (const piece of ["Cruise fare", "Add-ons", "Add-ons for each guest", "Dining package", "Drink package", "$100.00", "$76.79", "Total per guest", "$576.79"]) assert.ok(printed.includes(piece), `the per-guest quote says ${piece}`);
+  assert.ok(!printed.includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
+  assert.equal(mails.length, 3, "a preview sends nothing");
+  const off = await call("PUT", booking, { token: true, body: { guest_prices: [{ ...perGuest[0], total: 500 }, perGuest[1]] } });
+  assert.equal(off.status, 200);
+  const plainDoc = (await call("GET", pricePage)).json["doc"] as Row;
+  assert.ok(plainDoc["matrix"] === null && JSON.stringify(plainDoc["cruise"]).includes("Premium Extra drinks"), "guest lines that no longer add up to the saved total are not shown: the cabin and the extras are");
+  mails.length = 0;
+  // Mark 2026-11-14: sending is the advisor's signing; without the advisor's own name typed, nothing goes out
+  const unsigned = await call("POST", path, { token: true });
+  assert.deepEqual([unsigned.status, unsigned.json["code"]], [400, "advisor-sign"]);
+  assert.equal((await call("POST", path, { token: true, body: { advisor_name: "Someone Else" } })).status, 400);
+  const done = await call("POST", path, { token: true, body: { advisor_name: "mark  millham" } });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
   assert.equal(mails.length, 1);
   assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
   assert.equal(mails[0]!["subject"], "Your travel paperwork for Friends and Family 2027");
+  assert.equal((await call("POST", pricePage, { body: { action: "changes", text: "one more change" } })).status, 409, "once the paperwork is out a change goes through Mark");
   assert.ok(tables["group_travelers"]![0]!["form_token_hash"], "the link exists now");
   assert.deepEqual([replyRow()["status"], replyRow()["quote"]["paperwork"]], ["booked", "sent"]);
   const again = await call("POST", path, { token: true });
   assert.equal(again.json["already"], true);
   assert.equal(mails.length, 1, "pressed twice, sent once");
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+  }
 });
 
 test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking confirmation's own fields; the booking completes only once the paperwork is out and every document is signed", async () => {
@@ -1015,7 +1269,7 @@ test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking c
   assert.deepEqual([view.json["carrier"]["filename"], view.json["carrier"]["status"]], ["msc quote.pdf", "ready"]);
   assert.deepEqual(view.json["carrier"]["read"], {
     booking_number: "MSC-778899", cabin_num: "12045", category: "Balcony Aurea", price_total: 1453.58, booking_total: 1453.58, deposit_amount: 100,
-    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [],
+    addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [], guests: [], option_until: null, option_until_time: null,
   });
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] ?? null, null, "nothing is saved until Mark has checked it and saved");
   const g = await call("GET", `/group-details/${LINK}`);
@@ -1148,6 +1402,49 @@ test("the FlexPay video call: the scheduler opens once the names are in (Mark 20
   }
 });
 
+// Mark 2026-11-09: "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like flexpay. we need to identify the
+// type of meeting in my schedule so i know what im talking about."
+test("the planning call: the same scheduler books a PHONE call from the choice page, before any names; the calendar entry names the type and the number to ring; Mark gets one item, the guest one email", async () => {
+  const KEY_HEX = "ab".repeat(32);
+  process.env["GROUP_PII_KEY"] = KEY_HEX;
+  actionsAccept = true;
+  try {
+    const key = deriveCallKey(REPLY_ID, KEY_HEX), page = `/flexpay-call/${REPLY_ID}/${key}`;
+    const details = await call("GET", `/group-details/${LINK}`);
+    assert.deepEqual([details.json["planCallUrl"], details.json["planCall"]], [`/flexpay-call.html?r=${REPLY_ID}&k=${key}&kind=plan`, null], "the way in is there from the moment the spot is saved");
+    assert.equal((await call("GET", page)).status, 404, "the FlexPay call still waits for the names");
+    const day = ruleSlots(new Date()).sort((a, b) => b.slots.length - a.slots.length)[0]!;
+    const free = day.slots[1]!;
+    replyRow()["phone"] = null;
+    const open = await call("GET", `${page}?kind=plan`);
+    assert.deepEqual([open.status, open.json["kind"], open.json["booked"], open.json["needsPhone"]], [200, "plan", null, true]);
+    // a phone call needs a number to ring
+    const noPhone = await call("POST", page, { body: { kind: "plan", start: free } });
+    assert.deepEqual([noPhone.status, noPhone.json["field"], noPhone.json["error"]], [400, "phone", "Please enter the phone number Mark should call."]);
+    assert.equal(opsBooked.length, 0);
+    const ok = await call("POST", page, { body: { kind: "plan", start: free, phone: "919-555-0142" } });
+    assert.deepEqual([ok.status, ok.json["booked"]["start"], ok.json["booked"]["meetLink"], ok.json["email"]], [200, free, null, "sent"]);
+    assert.deepEqual([opsBooked.length, opsBooked[0]!["title"]], [1, "Trip planning call (phone): Mark Millham (Friends and Family 2027)"]);
+    assert.match(opsBooked[0]!["description"], /PHONE call to plan the trip[\s\S]*Ring: 919-555-0142/);
+    assert.match(opsBooked[0]!["request_id"], /^plan-[0-9a-f-]{36}-\d+$/);
+    assert.deepEqual([replyRow()["quote"]["plan_call"]["start"], replyRow()["phone"], replyRow()["choice"]], [free, "919-555-0142", "call"]);
+    assert.equal(replyRow()["quote"]["flexpay_call"], undefined, "a planning call is not the FlexPay call");
+    assert.equal(mails.length, 1);
+    assert.match(mails[0]!["subject"], /^Your planning call with Mark: /);
+    assert.ok(String(mails[0]!["html"]).includes("It is a phone call: Mark rings you at 919-555-0142.") && !/meet\.google|cornerstone/i.test(String(mails[0]!["html"])));
+    const item = tables["actions"]!.find((x) => x["source_ref"] === `group-call-${REPLY_ID}`)!;
+    assert.match(String(item["title"]), /^Planning call booked · Mark Millham · /);
+    assert.match(String(item["body"]), /PHONE planning call[\s\S]*Ring 919-555-0142/);
+    // once picked: shown, not booked twice, and the choice page gets the time
+    const second = await call("POST", page, { body: { kind: "plan", start: day.slots[3]! } });
+    assert.equal(second.status, 409);
+    assert.equal(opsBooked.length, 1);
+    assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["planCall"], { start: free, whenText: ok.json["booked"]["whenText"] });
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+  }
+});
+
 test("the FlexPay video call on a box that may not email the guest: the time is booked and the email is held", async () => {
   const KEY_HEX = "cd".repeat(32);
   process.env["GROUP_PII_KEY"] = KEY_HEX;
@@ -1166,4 +1463,82 @@ test("the FlexPay video call on a box that may not email the guest: the time is 
     delete process.env["GROUP_PII_KEY"];
     delete process.env["GROUP_FORMS_MAIL_ALLOW"];
   }
+});
+
+test("Mark 2026-11-12: a person can be deleted (the reply, its travelers, its items; the cabin goes back to held), a whole group too; a signed document or a recorded payment is a record and stops both", async () => {
+  namesIn();
+  actionsAccept = true;
+  await quoteStep(ANSWERS);
+  assert.equal((await agree()).json["paperwork"], "booking");
+  const del = `/groups/${GROUP_ID}/interests/${REPLY_ID}/delete`;
+  assert.equal((await call("POST", del)).status, 401, "Mark's token only");
+  assert.equal((await call("POST", `/groups/${GROUP_ID}/interests/00000000-0000-4000-8000-000000000000/delete`, { token: true })).status, 404);
+  const leadId = String(tables["group_interests"]![0]!["traveler_id"]);
+  assert.ok(tables["group_travelers"]!.length === 2 && leadId);
+  // a signed document is a record: the delete is refused in words that say what to do instead
+  tables["group_signatures"] = [{ id: "s-1", group_id: GROUP_ID, traveler_id: leadId, doc_key: "cba" }];
+  const kept = await call("POST", del, { token: true });
+  assert.equal(kept.status, 409);
+  assert.match(String(kept.json["error"]), /1 signed document on file.*cannot be deleted.*Close it as declined instead/);
+  assert.equal((await call("DELETE", `/groups/${GROUP_ID}`, { token: true, body: { confirm: tables["groups"]![0]!["name"] } })).status, 409, "the group too");
+  assert.equal(tables["group_interests"]!.length, 1, "nothing was removed");
+  tables["group_signatures"] = [];
+  tables["group_payments"] = [{ id: "p-1", group_id: GROUP_ID, cabin_id: CABIN_ID, paid_at: "2026-11-01T00:00:00Z" }];
+  assert.match(String((await call("POST", del, { token: true })).json["error"]), /payment is recorded/);
+  tables["group_payments"] = [];
+  // nothing signed, nothing paid: the person goes
+  tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] = "MSC-1";
+  const gone = await call("POST", del, { token: true });
+  assert.equal(gone.status, 200);
+  assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
+  assert.equal(tables["group_interests"]!.length, 0);
+  assert.equal(tables["group_travelers"]!.length, 0);
+  const cabin = tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!;
+  assert.deepEqual([cabin["status"], cabin["booking_number"], cabin["cabin_num"]], ["held", null, null], "the cabin is back in the block");
+  assert.ok(tables["actions"]!.every((a) => a["status"] !== "open" && a["status"] !== "pending" || !String(a["source_ref"]).endsWith(REPLY_ID)), "Mark's items for that person are closed");
+  // a whole group: the name must be typed, then everything of it goes
+  const groupPath = `/groups/${GROUP_ID}`;
+  assert.equal((await call("DELETE", groupPath)).status, 401, "Mark's token only");
+  assert.equal((await call("DELETE", groupPath, { token: true, body: { confirm: "not the name" } })).status, 400, "the group's name must be typed");
+  assert.equal((await call("DELETE", `/groups/00000000-0000-4000-8000-000000000000`, { token: true, body: { confirm: "x" } })).status, 404);
+  const all = await call("DELETE", groupPath, { token: true, body: { confirm: tables["groups"]![0]!["name"] } });
+  assert.equal(all.status, 200);
+  assert.equal(tables["groups"]!.length, 0);
+});
+
+test("2026-11-12: deleting a person whose party has NO cabin takes their companions too (put on the file in the same moment), and nobody else's", async () => {
+  const made = "2026-11-10T01:26:06.000Z";
+  tables["group_interests"]![0]!["traveler_id"] = "t-lead";
+  tables["group_interests"]![0]!["quote_requested_at"] = made;
+  tables["group_travelers"] = [
+    { id: "t-lead", group_id: GROUP_ID, cabin_id: null, is_lead: true, first_name: "Mark", last_name: "Millham", created_at: made },
+    { id: "t-with", group_id: GROUP_ID, cabin_id: null, is_lead: false, first_name: "Ana", last_name: "Example", created_at: "2026-11-10T01:26:06.400Z" },
+    { id: "t-other", group_id: GROUP_ID, cabin_id: null, is_lead: false, first_name: "Someone", last_name: "Else", created_at: "2026-11-09T09:00:00.000Z" },
+  ];
+  const gone = await call("POST", `/groups/${GROUP_ID}/interests/${REPLY_ID}/delete`, { token: true });
+  assert.equal(gone.status, 200);
+  assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
+  assert.deepEqual(tables["group_travelers"]!.map((t) => t["id"]), ["t-other"], "the companion went with the lead; a traveler from another time stayed");
+});
+
+test("Mark 2026-11-13: a cruise line's plan coverages can be pulled ahead of any booking; they are kept; what cannot be read is said and nothing is kept", async () => {
+  const path = "/protection-plans/pull";
+  assert.equal((await call("POST", path, { body: { cruise_line: "Norwegian Cruise Line", state: "NC" } })).status, 401, "Mark's token only");
+  assert.equal((await call("POST", path, { token: true, body: { state: "NC" } })).status, 400);
+  assert.equal((await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "North" } })).status, 400);
+  assert.equal((await call("POST", path, { token: true, body: { cruise_line: "No Such Line", state: "NC" } })).status, 409);
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "the administrator's page gave no NWENCL04 document for NC" }));
+  const no = await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "nc" } });
+  assert.equal(no.status, 502);
+  assert.match(String(no.json["error"]), /Nothing was kept: the administrator's page gave no NWENCL04 document for NC/);
+  assert.equal((tables["protection_plans"] ?? []).length, 0);
+  mod.setLinePullForTests(async (_l: string, state: string) => ({ status: "ready", plan: { cruise_line: "Norwegian Cruise Line", plan_name: "NorwegianCare Travel Protection", product_code: "NWENCL04", state, about: "x", source_en: "From Norwegian's plan document.", source_es: "Del documento.", source_url: "https://example.test", benefits: [{ name: "Trip Delay", coverage: "$1,000", limits: [] }] } }));
+  const yes = await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "nc" } });
+  assert.deepEqual([yes.status, yes.json["kept"], yes.json["plan"]["state"], yes.json["plan"]["benefits"].length], [200, true, "NC", 1]);
+  assert.deepEqual(tables["protection_plans"]!.map((r) => [r["provider"], r["cruise_line"], r["plan_name"], r["state"]]), [["cruise-line", "Norwegian Cruise Line", "NorwegianCare Travel Protection", "NC"]]);
+  // pulled again: the one row is refreshed, never doubled
+  await call("POST", path, { token: true, body: { cruise_line: "Norwegian Cruise Line", state: "NC" } });
+  assert.equal(tables["protection_plans"]!.length, 1);
+  assert.equal(tables["protection_plan_benefits"]!.length, 1);
+  mod.setLinePullForTests(async () => ({ status: "unavailable", reason: "not in this test" }));
 });

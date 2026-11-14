@@ -12,7 +12,7 @@
 //     If it is not, the field is blanked and a plain warning says why. A blank
 //     on the form is honest; a guess is not.
 
-import { normalizeDate, type AddOn, type BookingExtraction, type CabinCategoryLine } from "./booking-extract";
+import { normalizeDate, type AddOn, type BookingExtraction, type CabinCategoryLine, type GuestPrice } from "./booking-extract";
 
 export interface AllotmentReview {
   date: string | null;             // YYYY-MM-DD
@@ -547,6 +547,37 @@ function depositPrinted(text: string, n: number): boolean {
  * not printed in the document, replaces every "N days before sailing" date
  * with the worked-out one, and lists what it changed in `warnings`.
  */
+/** The per-guest price block of a confirmation that prints one ("NAME • Cruise $ … • Packaging item(s) added: $ … • Add Ons $ … • Insurance $ … •
+ *  Taxes (where applicable) $ …", then "Total Booking Price NAME $ …" and the booking's own "Total Booking Price $ …"). Every figure is the printed one;
+ *  the add-on names are the lines printed under each guest's "Additional items:". Nothing is added up, split or guessed. Null when the layout is not there. */
+export function readGuestPrices(text: string): { guests: GuestPrice[]; bookingTotal: number | null } | null {
+  const flat = collapse(text), num = (v: string) => Number(v.replace(/,/g, ""));
+  const M = "\\$ ?([\\d,]+\\.\\d{2})";
+  const totals = [...flat.matchAll(new RegExp(`Total Booking Price ([A-Z][A-Z .'\\-]*?) ${M}`, "g"))].map((m) => ({ name: m[1]!.trim(), total: num(m[2]!) }));
+  const blocks = [...flat.matchAll(new RegExp(`([A-Z][A-Z .'\\-]*?) • Cruise(?: With Discount)? ${M} • Packaging item\\(s\\) added: ${M} • Add Ons ${M} • Insurance ${M} • Taxes \\(where applicable\\) ${M}`, "g"))];
+  if (!blocks.length) return null;
+  // the names and what is printed under each one's "Additional items:"
+  const items = new Map<string, string[]>();
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim());
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^Name and Last Name$/i.test(lines[i]!)) continue;
+    const name = lines[i + 1] ?? "", list: string[] = [];
+    if (/^Additional items:?$/i.test(lines[i + 2] ?? "")) for (let j = i + 3; j < lines.length && lines[j] && !/^(Name and Last Name|PAYMENT DETAILS)$/i.test(lines[j]!); j++) list.push(lines[j]!);
+    if (name) items.set(name.toUpperCase(), list);
+  }
+  const known = [...new Set([...totals.map((t) => t.name), ...items.keys()])].sort((a, b) => b.length - a.length);
+  const guests = blocks.map((m): GuestPrice => {
+    const raw = m[1]!.trim();
+    const name = known.find((k) => raw.toUpperCase().endsWith(k.toUpperCase())) ?? raw.replace(/^PAYMENT DETAILS /i, "");
+    return {
+      name, cruise: num(m[2]!), packaging: num(m[3]!), addons: num(m[4]!), insurance: num(m[5]!), taxes: num(m[6]!),
+      total: totals.find((t) => t.name.toUpperCase() === name.toUpperCase())?.total ?? null, items: items.get(name.toUpperCase()) ?? [],
+    };
+  });
+  const grand = flat.match(new RegExp(`Total Booking Price ${M}`));
+  return { guests, bookingTotal: grand ? num(grand[1]!) : null };
+}
+
 export function verifyExtraction(x: BookingExtraction, text: string): BookingExtraction {
   const flat = collapse(text);
   const warnings = [...x.warnings];
@@ -604,6 +635,16 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
   // A single booking's confirmation (Mark 2026-11-04): the AI box reads the discount and the paid add-ons; the program only checks them.
   // An add-on stays only when its name and price are printed; one the document prints and the read left out is flagged, never filled in here.
   const single = readSingleBooking(text);
+  // A confirmation that prices each guest apart (MSC's confirmation page; Mark 2026-11-09: "it doubled all of the extras which is incorrect. the agent
+  // was supposed to read the quote, not make assumptions"). The AI box answered differently on each read (the whole add-on amount on each name, then
+  // the amount split three ways), so these figures come from the printed lines only: each guest's own Cruise, Add Ons, Taxes and total, as printed,
+  // and the add-ons are one line PER GUEST at that guest's printed amount. No figure is summed, split or carried from one guest to another.
+  const printed = readGuestPrices(text);
+  if (printed) {
+    out.guest_prices = printed.guests;
+    out.addons = printed.guests.filter((g) => g.addons > 0).map((g) => ({ name: `${g.name}: ${g.items.length ? g.items.join(", ") : "Add Ons"}`, price: g.addons, qty: 1, total: g.addons }));
+    if (printed.bookingTotal !== null) out.total_price = printed.bookingTotal;
+  }
   out.addons = (out.addons ?? []).filter((a) => {
     const words = a.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
     const ok = words.some((w) => flat.toLowerCase().includes(w)) && moneyAppears(flat, a.price);
@@ -642,7 +683,12 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     }
     return checked;
   });
-  if ((out.addons.length || discounted) && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
+  if (printed) {
+    // the guests' printed totals are the booking's printed total, and each guest's lines are that guest's total: checked, never corrected
+    for (const g of printed.guests) if (g.total !== null && !eq(g.cruise + g.packaging + g.addons + g.insurance + g.taxes, g.total)) warnings.push(`${g.name}: the printed lines add up to ${round2(g.cruise + g.packaging + g.addons + g.insurance + g.taxes)}, but the guest's Total Booking Price prints ${g.total}. Check it against the PDF.`);
+    const sum = round2(printed.guests.reduce((n, g) => n + (g.total ?? 0), 0));
+    if (out.total_price !== null && printed.guests.every((g) => g.total !== null) && !eq(sum, out.total_price)) warnings.push(`The guests' totals add up to ${sum}, but the Total Booking Price prints ${out.total_price}. Check it against the PDF.`);
+  } else if ((out.addons.length || discounted) && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
     const addonSum = round2(out.addons.reduce((n, a) => n + a.total, 0)), cab = out.cabin_categories[0]!.price_per_person!;
     if (!eq(cab + addonSum, out.total_price)) warnings.push(`The cabin ${cab} plus the add-ons ${addonSum} is ${round2(cab + addonSum)}, but the total booking amount was read as ${out.total_price}. Check it against the PDF.`);
   }
@@ -702,6 +748,18 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     dateField("recall_date", "The date unsold cabins go back");
   }
 
+  // An OPTIONED booking prints when the hold ends ("Option valid until 6pm EST on: November 12, 2026"): that is the deposit's deadline, never the final
+  // payment (Mark 2026-11-10: "the confirmation shows a deposit date of 11/12"; the reader had filed it as the final payment and then warned about it).
+  const option = flat.match(/Option valid until\s*([^:]{0,30}?)\s*on\s*:?\s*([A-Za-z]+\.? \d{1,2},? \d{4}|\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  const optionDate = option ? normalizeDate(option[2]!) : null;
+  if (optionDate) {
+    out.option_until = optionDate;
+    out.option_until_time = option![1]!.trim() || null;
+    if (out.final_payment_due === optionDate) out.final_payment_due = null;
+    if (!out.deposit_due) out.deposit_due = optionDate;
+  }
+  // "0 days before sailing" is not a final payment rule: a read of 0 is no rule at all
+  if (out.final_payment_days_before === 0) out.final_payment_days_before = null;
   const days = found.finalPaymentDays ?? out.final_payment_days_before;
   if (found.finalPaymentDays !== null && out.final_payment_days_before !== null && found.finalPaymentDays !== out.final_payment_days_before) {
     warnings.push(`Final payment: the document says ${found.finalPaymentDays} days before sailing; the reader said ${out.final_payment_days_before}. ${found.finalPaymentDays} was used.`);

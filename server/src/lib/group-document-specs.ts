@@ -26,7 +26,7 @@
 
 import {
   amountText, bookingReference, cabinTotal, cleanValue, depositPerPerson, destinationText, fee, finalPaymentDays,
-  fmtLong, fmtMoney, fullName, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
+  fmtLong, fmtMoney, fullName, isAdultOn, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
   type Answers, type Block, type DocCtx, type DocSpec, type EntryRequirement, type FieldSpec, type Option, type Row, type VaccineLine,
 } from "./group-document-kit";
 import { displayName } from "./group-marketing";
@@ -82,10 +82,11 @@ function advisoryLines(ctx: DocCtx): string {
   return `Advisory levels for this itinerary on {{today}}, from the U.S. Department of State (travel.state.gov): ${list}.${island}`;
 }
 
-/** The cabin's dining on the file, as the booking agreement's box value. */
+/** The cabin's dining on the file, as the booking agreement's box value; a cabin with none takes the group's dining from the cruise line's quote. */
 function diningFromFile(ctx: DocCtx): string | undefined {
-  const d = cleanValue(ctx.cabin?.dining).toLowerCase();
-  if (!d) return undefined;
+  const d = (cleanValue(ctx.cabin?.dining) || cleanValue(ctx.group.terms?.dining)).toLowerCase();
+  // Mark 2026-11-14: "if it is blank, the no preference should be selected"
+  if (!d) return "none";
   if (/early|first|main/.test(d)) return "early";
   if (/late|second/.test(d)) return "late";
   if (/any|my ?time|flex|open/.test(d)) return "anytime";
@@ -212,6 +213,9 @@ const mateFields = (i: number): FieldSpec[] => {
   const citizenship = (c: DocCtx) => cleanValue(m(c)?.citizenship) || undefined;
   const country = (c: DocCtx) => cleanValue(m(c)?.passport_country) || undefined;
   const expiry = (c: DocCtx) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined);
+  // Mark 2026-11-14 ("it's missing the issue date"): kept on their own file, where the lead's own issue date is kept (form_data.passport.issue_date)
+  const issue = (c: DocCtx) => { const v = m(c)?.form_data?.passport?.issue_date; return typeof v === "string" ? v.slice(0, 10) : undefined; };
+  const email = (c: DocCtx) => cleanValue(m(c)?.email).toLowerCase() || undefined;
   return [
     text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: name, fileValue: name }),
     { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: dob, fileValue: dob },
@@ -219,7 +223,11 @@ const mateFields = (i: number): FieldSpec[] => {
     text(`m${i}_citizenship`, `${n}: citizenship`, { required: true, prefill: (c) => citizenship(c) || "United States", fileValue: citizenship }),
     { name: `m${i}_passport_number`, label: `${n}: passport number`, kind: "passport" },
     text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: country, fileValue: country }),
+    { name: `m${i}_passport_issue`, label: `${n}: passport issue date`, kind: "date", date: "past", prefill: issue, fileValue: issue },
     { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: expiry, fileValue: expiry },
+    // Mark 2026-11-14 ("the cornerstone document requires the second adult traveler to sign"): another adult on the cabin signs their own
+    // terms, insurance document and waiver on a link of their own, emailed to the address the lead gives here
+    { name: `m${i}_email`, label: `${n}: email address. We send them their own link to sign their documents`, kind: "email", required: (a) => isAdultOn(a[`m${i}_dob`]), prefill: email, fileValue: email },
   ];
 };
 const MATE_FIELDS_15 = MATE_SLOTS.flatMap(mateFields);
@@ -233,7 +241,9 @@ const mateBlocks15 = (blocks: Block[], ctx: DocCtx): Block[] => {
     extra.push({ t: "p", text: `**Full Legal Name:** {{in:m${i}_legal_name}}` }, { t: "p", text: `**Date of Birth:** {{in:m${i}_dob}}` });
     extra.push({ t: "p", text: `**Gender:** ${GENDER.map((o) => `{{ch:m${i}_gender:${o.value}}} ${o.label}`).join(" ")}` });
     extra.push({ t: "p", text: `**Citizenship:** {{in:m${i}_citizenship}}` });
-    extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Expiration Date:** {{in:m${i}_passport_expiry}}` });
+    extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Issue Date:** {{in:m${i}_passport_issue}} **Expiration Date:** {{in:m${i}_passport_expiry}}` });
+    // only an adult signs for themselves: a minor's block has no email line
+    if (isAdultOn(mateOf(ctx, i)?.dob, ctx.group.sail_date)) extra.push({ t: "p", text: `**Email:** {{in:m${i}_email}}` });
   }
   if (!extra.length) return blocks;
   const at = blocks.findIndex((b) => b.t === "h" && /loyalty/i.test(b.text));
@@ -260,14 +270,24 @@ const MATE_DERIVE_15: NonNullable<DocSpec["mateDerive"]> = (a, ctx) => MATE_SLOT
   if (typeof a[`m${i}_citizenship`] === "string") patch["citizenship"] = a[`m${i}_citizenship`];
   if (typeof a[`m${i}_passport_country`] === "string") patch["passport_country"] = a[`m${i}_passport_country`];
   if (typeof a[`m${i}_passport_expiry`] === "string") patch["passport_expiry"] = a[`m${i}_passport_expiry`];
+  if (!cleanValue(m.email) && typeof a[`m${i}_email`] === "string" && a[`m${i}_email`]) patch["email"] = String(a[`m${i}_email`]).trim().toLowerCase();
+  if (typeof a[`m${i}_passport_issue`] === "string") {
+    const fd = (m.form_data && typeof m.form_data === "object" ? m.form_data : {}) as Record<string, any>;
+    patch["form_data"] = { ...fd, passport: { ...(fd["passport"] ?? {}), issue_date: a[`m${i}_passport_issue`] } };
+  }
   return [{ index: i, patch }];
 });
+
+// Mark 2026-11-14 ("this question is answered earlier and should be pre-populated"): the citizenship given on the details page answers
+// "U.S. citizen?" here; the guest can still change it.
+const US_NAMES = /^(united states( of america)?|usa?|u\.s\.(a\.)?)$/i;
+const usCitizenFromFile = (c: DocCtx): string | undefined => { const v = cleanValue(c.traveler?.citizenship); return v ? (US_NAMES.test(v) ? "yes" : "no") : undefined; };
 
 const FIELDS_15: FieldSpec[] = [
   text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
-  { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen", prefill: usCitizenFromFile },
   text("citizenship", "Citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
   text("address", "Home address", { required: true, form: "address" }),
   text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
@@ -306,7 +326,7 @@ const DERIVE_15: NonNullable<DocSpec["derive"]> = (a, ctx) => {
   const patch: Row = {};
   const phone = typeof a["ec1_cell_phone"] === "string" ? a["ec1_cell_phone"] : undefined;
   if (phone) patch["emergency_phone"] = phone;
-  if (a["us_citizen"] === "yes" && typeof a["citizenship"] !== "string") patch["citizenship"] = "United States";
+  if (a["us_citizen"] === "yes") patch["citizenship"] = "United States"; // "Yes" wins over a country left typed in the hidden line below it
   // The file's name columns are Mark's to edit: fill them from the form only when they are empty.
   const t = ctx.traveler;
   const legal = typeof a["legal_name"] === "string" ? a["legal_name"] : "";
@@ -327,6 +347,8 @@ const FORM_15: DocSpec = {
   rules: RULES_15,
   fields: FIELDS_15,
   edits: EDITS_15,
+  // "Yes" to U.S. citizen: the form reads "United States", whatever was left typed in the line under "No"
+  complete: (a) => (a["us_citizen"] === "yes" ? { ...a, citizenship: "United States" } : a),
   derive: DERIVE_15,
   mateDerive: MATE_DERIVE_15,
 };
@@ -495,6 +517,18 @@ function premiumsOffered(c: DocCtx): string {
 export function insuranceDocFor(traveler: Row | null | undefined): (typeof INSURANCE_DOCUMENTS)[number] {
   const c = traveler?.form_data?.insurance?.choice;
   return c === "quote" || c === "line" ? "23-insurance-plan" : "07-travel-insurance-declination";
+}
+
+/** The whole trip's amount for this booking, as the booking agreement's cost table ends: the cabin's total (cruise fare and the line's add-ons),
+ *  each flight, hotel, transfer or package Mark priced, and the travel protection plan chosen on the quote. null with no cabin total. */
+export function fullTripTotal(ctx: DocCtx): number | null {
+  const total = cabinTotal(ctx);
+  if (!total) return null;
+  const trip = ctx.traveler?.form_data?.trip;
+  const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
+  const made = (ctx.traveler?.form_data?.insurance ?? {}) as Record<string, any>;
+  const plan = made["from_quote"] === true && typeof made["amount"] === "number" && made["amount"] > 0 ? (made["amount"] as number) : 0;
+  return Math.round((total + travel.reduce((n, r) => n + r["price"], 0) + plan) * 100) / 100;
 }
 
 const INSURANCE_07: DocSpec = {
@@ -812,11 +846,21 @@ const tripOf = (c: DocCtx): { chosen: Array<Record<string, any>>; needs: Record<
 };
 const hasTrip = (c: DocCtx) => !!c.traveler?.form_data?.trip;
 const stayDates = (r: Record<string, any>) => [fmtLong(r["starts_at"]), fmtLong(r["ends_at"])].filter(Boolean).join(" to ");
+// Mark 2026-11-14 ("the pre hotel / air and transfers didn't roll into the booking agreement"): air and a hotel booked as ONE package
+// (one price, kind "package", the parts under pkg) fill the hotel and air lines the same as a hotel or a flight booked on its own.
+const pkgHotel = (r: Record<string, any>) => r["kind"] === "package" && !!cleanValue(r["pkg"]?.["hotel"]);
+const pkgAir = (r: Record<string, any>) => r["kind"] === "package" && !!(cleanValue(r["pkg"]?.["flights"]) || cleanValue(r["pkg"]?.["return_flights"]));
 const hotelBlock = (title: "Pre-Cruise Hotel" | "Post-Cruise Hotel", post: boolean) => (c: DocCtx, was: string): string => {
   if (!hasTrip(c)) return was;
   const { chosen, needs } = tripOf(c);
   const h = chosen.find((r) => r["kind"] === "hotel" && (r["direction"] === "post") === post);
-  const asked = needs["hotel"] === true && !chosen.some((r) => r["kind"] === "hotel");
+  const p = h ? undefined : chosen.find((r) => pkgHotel(r) && (r["direction"] === "post") === post);
+  if (p) {
+    const k = p["pkg"] as Record<string, any>;
+    const dates = [fmtLong(k["check_in"]), fmtLong(k["check_out"])].filter(Boolean).join(" to ");
+    return `**${title}:** ☒ Yes — Destination: ${cleanValue(k["hotel_city"]) || "As quoted"}\n\nHotel: ${cleanValue(k["hotel"])} Dates: ${dates || "To be confirmed with Mark"} ☐ No`;
+  }
+  const asked = needs["hotel"] === true && !chosen.some((r) => r["kind"] === "hotel" || pkgHotel(r));
   if (!h && !asked) return was.replace(/☐ No$/, "☒ No").replace(/☐ Yes/, "☐ Yes");
   if (!h) return `**${title}:** ☒ Yes — Destination: To be confirmed with Mark\n\nHotel: To be confirmed with Mark Dates: To be confirmed with Mark ☐ No`;
   return `**${title}:** ☒ Yes — Destination: ${cleanValue(h["from_place"]) || cleanValue(h["to_place"]) || "As quoted"}\n\nHotel: ${cleanValue(h["provider"]) || "To be confirmed with Mark"} Dates: ${stayDates(h) || "To be confirmed with Mark"} ☐ No`;
@@ -829,7 +873,7 @@ const TRIP_RULES: DocSpec["rules"] = [
     with: (c, was) => {
       if (!hasTrip(c)) return was;
       const { chosen, needs } = tripOf(c);
-      const fl = chosen.filter((r) => r["kind"] === "flight");
+      const fl = chosen.filter((r) => r["kind"] === "flight" || pkgAir(r));
       if (!fl.length && needs["flight"] !== true) return was.replace("☐ Client handling independently", "☒ Client handling independently");
       const out = fl.find((r) => r["direction"] !== "post") ?? fl[0];
       return `**Air Travel:** ☐ Included through cruise line ☒ Agent to book independently\n\n☐ Client handling independently Departure Airport: ${cleanValue(out?.["from_place"]) || "To be confirmed with Mark"}\n\nDestination Airport: ${cleanValue(out?.["to_place"]) || "To be confirmed with Mark"}`;
@@ -840,9 +884,13 @@ const TRIP_RULES: DocSpec["rules"] = [
     with: (c, was) => {
       if (!hasTrip(c)) return was;
       const { chosen, needs } = tripOf(c);
-      return chosen.some((r) => r["kind"] === "transfer") || needs["transfer"] === true
-        ? "**Cruise Line Transfer:** ☒ Yes ☐ No ☐ Independent Transfer Arranged"
-        : "**Cruise Line Transfer:** ☐ Yes ☒ No ☐ Independent Transfer Arranged";
+      const tr = chosen.filter((r) => r["kind"] === "transfer");
+      if (!tr.length) return needs["transfer"] === true ? "**Cruise Line Transfer:** ☒ Yes ☐ No ☐ Independent Transfer Arranged" : "**Cruise Line Transfer:** ☐ Yes ☒ No ☐ Independent Transfer Arranged";
+      // a transfer the cruise line runs ticks "Yes"; one booked with another company is an independent transfer; each is listed with its day
+      const line = (cleanValue(displayName(c.group.cruise_line)) || "").toLowerCase().split(" ")[0] ?? "";
+      const own = !!line && tr.every((r) => (cleanValue(r["provider"]) || "").toLowerCase().includes(line));
+      const list = tr.map((r) => [cleanValue(r["label"]) || "Transfer", fmtLong(r["starts_at"])].filter(Boolean).join(", ")).join("; ");
+      return `**Cruise Line Transfer:** ${own ? "☒" : "☐"} Yes ☐ No ${own ? "☐" : "☒"} Independent Transfer Arranged: ${list}`;
     },
   },
 ];
@@ -923,19 +971,32 @@ const BOOKING_12: DocSpec = {
       const extras: Array<Record<string, any>> = Array.isArray(trip?.extras) ? trip.extras : [];
       for (const x of extras) if (typeof x?.["total"] === "number" && x["total"] > 0) rows.push([`${cleanValue(x["name"]) || "Cruise extra"} (cruise line add-on, in the total below)`, fmtMoney(x["total"])]);
       // Mark 2026-10-31: the protection chosen on the page, at the price the page showed; not added into the cabin's total below
+      // Mark 2026-11-13: a plan chosen on the quote is part of the final quote here: its amount for the booking goes after the travel, with the
+      // trip total including it (below). A choice made the older way, on the paperwork page itself, keeps its per-person line.
+      const made = (ctx.traveler?.form_data?.insurance ?? {}) as Record<string, any>;
+      const onQuote = made["from_quote"] === true;
+      const planAmount = onQuote && typeof made["amount"] === "number" && made["amount"] > 0 ? (made["amount"] as number) : null;
       const premium = chosenPremium(ctx);
-      if (premium) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
+      if (premium && !onQuote) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
       const f = fee(ctx, "planning_fee") ?? fee(ctx, "service_fee");
       if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
       const total = cabinTotal(ctx);
-      if (total) rows.push(["**Estimated Total (this cabin)**", `**${fmtMoney(total)}**`]);
+      if (total) rows.push(["**Total (this cabin)**", `**${fmtMoney(total)}**`]);
       // the flights, hotels and transfers Mark booked, each at its booked price, and the trip's total with them
       const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
       for (const r of travel) rows.push([cleanValue(r["label"]) || "Travel", fmtMoney(r["price"])]);
-      if (travel.length && total) rows.push(["**Estimated Trip Total (cruise and travel)**", `**${fmtMoney(Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100)}**`]);
+      const tripSum = total ? Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100 : 0;
+      if (travel.length && total) rows.push(["**Trip Total (cruise and travel)**", `**${fmtMoney(tripSum)}**`]);
+      if (onQuote) {
+        const what = cleanValue(made["name"]) || (insuranceChoice(ctx) === "own" ? "My own policy" : insuranceChoice(ctx) === "decline" ? "No travel insurance" : "Travel protection");
+        rows.push([`Travel Protection, as chosen on your quote: ${what}`, planAmount ? fmtMoney(planAmount) : insuranceChoice(ctx) === "own" ? "Own policy" : insuranceChoice(ctx) === "decline" ? "Declined" : premium]);
+        if (planAmount && total) rows.push(["**Trip Total with travel protection**", `**${fmtMoney(Math.round((tripSum + planAmount) * 100) / 100)}**`]);
+      }
       if (!rows.length) return [{ t: "p", text: "*The amounts for this cabin are shown on your cruise line booking confirmation.*" }];
       return [{ ...t, rows }];
     }),
+    // Mark 2026-11-14 ("these prices are not estimates"): the amounts are the final quote the guest approved, so the heading says so
+    (blocks, ctx) => (cabinTotal(ctx) ? blocks.map((b) => (b.t === "p" && b.text.includes("5.1 Estimated Cruise Cost") ? { ...b, text: b.text.replace("5.1 Estimated Cruise Cost", "5.1 Cruise Cost") } : b)) : blocks),
     (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Payment" && t.header[2] === "Due Date", (t) => {
       const deposit = depositPerPerson(ctx);
       const depositDue = fmtLong(ctx.group.deposit_due) || (ctx.group.terms?.deposit_timing === "at_booking" ? "At booking" : "—");
@@ -1133,7 +1194,7 @@ const FIELDS_20: FieldSpec[] = [
   text("legal_name", "Full legal name, exactly as on your passport or ID", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
-  { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen", prefill: usCitizenFromFile },
   text("citizenship", "Your country of citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
   text("address", "Home address", { required: true, form: "address" }),
   text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
@@ -1249,7 +1310,8 @@ const CARD_22: DocSpec = {
     ...CRUISE_LINES,
     { after: "**Cabin category:**", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
     { after: "**Booking number:**", fill: (c) => bookingReference(c) || "Assigned when the line confirms", label: "Booking number" },
-    { after: "**Total authorized:** $", fill: (c) => (cabinTotal(c) ? amountText(cabinTotal(c)!) : ""), label: "Total authorized" },
+    // Mark 2026-11-13: "the card form should authorize the full $2,754.26": the cruise, the priced travel and the plan chosen on the quote
+    { after: "**Total authorized:** $", fill: (c) => (fullTripTotal(c) ? amountText(fullTripTotal(c)!) : ""), label: "Total authorized" },
     { after: "**Date:**", today: true },
     // Mark 2026-11-03: on the card owner's own link the owner is the one signing, so "the card belongs to" reads "me" there
     { sub: "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below", with: (c) => (c.cardholderSigner ? "☒ me, the cardholder signing this form ☐ someone else" : "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below") },

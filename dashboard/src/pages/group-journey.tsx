@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ask } from "@/components/confirm";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +103,7 @@ function ChangeNotice({ api, groupId, travelers, data, onSent }: { api: ApiFn; g
   };
   const send = async () => {
     const n = preview?.will_send;
-    if (!window.confirm(`Send this notice${n !== undefined ? ` to ${n} traveler${n === 1 ? "" : "s"}` : ""} now? It also appears on each traveler's cruise page.`)) return;
+    if (!await ask(`Send this notice${n !== undefined ? ` to ${n} traveler${n === 1 ? "" : "s"}` : ""} now? It also appears on each traveler's cruise page.`)) return;
     setBusy(true);
     try {
       const r = await api<{ sent: number; failed: number; already_sent: number }>(`/groups/${groupId}/journey/change-notice`, "POST", body());

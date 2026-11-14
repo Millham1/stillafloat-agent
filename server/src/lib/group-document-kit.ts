@@ -343,6 +343,16 @@ export interface FieldSpec {
   ask?: "lead" | "cardholder";
 }
 
+/** Mark 2026-11-14 ("the cornerstone document requires the second adult traveler to sign"): an adult signs their own documents.
+ *  18 or older on the sailing date (today, with no sailing date). With no date of birth on the file a traveler counts as an adult. */
+export function isAdultOn(dob: unknown, sailDate?: unknown): boolean {
+  const d = typeof dob === "string" ? dob.slice(0, 10) : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return true;
+  const on = typeof sailDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(sailDate) ? sailDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const years = Number(on.slice(0, 4)) - Number(d.slice(0, 4)) - (on.slice(5) < d.slice(5) ? 1 : 0);
+  return years >= 18;
+}
+
 // ── Template edits ────────────────────────────────────────────────────────────
 export type Rule =
   /** Replace literal text (first occurrence at or after the cursor). */

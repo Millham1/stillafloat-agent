@@ -73,6 +73,11 @@ test("answers are checked against the options; a kind with no offer must be answ
   assert.deepEqual(v.ok && v.answers, { cabin: "BB", flexpay: false, drinks: false, insurance: "decline", travel: ["f1", "h1"], needs: {} }, "a travel item ticked twice counts once; needs not asked are not kept");
   assert.deepEqual(validateQuoteAnswers({ ...good, cabin: "IB" }, o, "en"), { ok: false, error: "Pick a cabin, please.", field: "cabin" }, "a released category is not offered");
   assert.deepEqual(validateQuoteAnswers({ ...good, insurance: "line" }, o, "en"), { ok: false, error: "Pick one of the insurance choices, please.", field: "insurance" });
+  // Mark 2026-11-10: the page no longer asks about insurance (it goes on the quote): no answer is accepted and kept empty
+  const { insurance: _asked, ...noIns } = good as Record<string, unknown>;
+  const quiet = validateQuoteAnswers(noIns, o, "en");
+  assert.equal(quiet.ok && quiet.answers.insurance, "", "no insurance answer is fine");
+  assert.equal(insuranceSeedOf(o, { ...(quiet.ok ? quiet.answers : (undefined as never)) }, "MSC Cruise Protection: $99 per person"), null, "and nothing is pre-chosen for the paperwork");
   const bare = quoteOptions({ group: group({ inclusions: ["drink package"] }), cabins: cabins(), travel: [] }, "en");
   assert.deepEqual(validateQuoteAnswers({ cabin: "BB", flexpay: true, insurance: "own", needs: { flight: false, hotel: true } }, bare, "en"), { ok: false, error: "Yes or no on the transfers, please.", field: "need-transfer" });
   const ok = validateQuoteAnswers({ cabin: "BB", flexpay: true, drinks: true, insurance: "own", needs: { flight: false, hotel: true, transfer: false } }, bare, "en");

@@ -10,7 +10,7 @@
 <meta name="referrer" content="no-referrer">
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/details-page.css?v=20261108a">
+<link rel="stylesheet" href="/css/details-page.css?v=20261109c">
 <link rel="stylesheet" href="/css/trip-photos.css?v=20261026">
 </head>
 <body>
@@ -67,6 +67,7 @@
     <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
     <p class="credits" id="d-credits" hidden></p>
     <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+    <p class="sot">Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620</p>
   </div>
 
 </div>
@@ -86,12 +87,11 @@
     q_cabin:'¿Qué cabina?',
     q_flex:'¿Quiere solicitar FlexPay?', flex_note:'FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera. Si dice sí, elija la hora de una videollamada breve con Mark para completar juntos la solicitud; fija su propio calendario de pagos y no cambia nada en esta cotización.', flex_yes:'Agendemos una cita breve con Mark para solicitarlo.', flex_no:'No, gracias',
     q_drinks:'¿Agregar un paquete de bebidas?', drinks_note:'No está incluido en esta tarifa. Mark lo cotiza para su grupo.', drinks_yes:'Sí, cotícenlo', drinks_no:'No, gracias', drinks_inc:'Bebidas: su tarifa incluye un paquete.',
-    q_ins:'¿Seguro de viaje?', ins_note:'Los precios pueden cambiar hasta que se finalicen.',
     q_travel:'Ida y vuelta', travel_note:'Elija lo que quiera agregar. Mark le cotiza vuelos, hotel y traslados con su cotización final.',
     q_need_flight:'¿Necesita vuelos?', q_need_hotel:'¿Necesita hotel la noche anterior?', q_need_transfer:'¿Necesita traslados?', need_yes:'Sí, Mark, cotícelo', need_no:'No, gracias',
     fp_title:'Su videollamada de FlexPay', fp_pick:'Elija la hora de su videollamada de FlexPay con Mark.', fp_open:'Abrir el calendario', fp_booked:'Su videollamada de FlexPay: {when}.',
-    agree:'¡Enviar mis decisiones a Mark!', agreeing:'Enviando…', agree_note:'Mark cotiza sus decisiones con la naviera y luego le envía por correo su confirmación de reserva con el precio final para que la revise y firme. Todavía no se reserva ni se cobra nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
-    agreed_h:'¡Sus documentos van en camino a {email}!… {category}, {party}. Traen su precio final: revíselos y firme.', agreed_h_mark:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él le envía sus documentos después.', agreed_h_booking:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él las está cotizando con la naviera; sus documentos, con su precio final, le llegan por correo.',
+    agree:'¡Enviar mis decisiones a Mark!', agreeing:'Enviando…', agree_note:'Mark cotiza sus decisiones con la naviera y luego le envía por correo su confirmación de reserva con el precio final para que la revise y firme. Todavía no se reserva ni se cobra nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.', agree_miss:'Falta responder antes de enviarlo a Mark:',
+    agreed_h:'¡Sus documentos van en camino a {email}!… {category}, {party}. Traen su precio final: revíselos y firme.', agreed_h_mark:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él le envía sus documentos después.', agreed_h_booking:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él está confirmando el precio de todo; su cotización le llega por correo.',
     party_one:'para una persona', party_n:'grupo de {n}',
     change:'¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al {phone}.',
     err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
@@ -105,12 +105,11 @@
     q_cabin:'Which cabin?',
     q_flex:'Would you like to apply for FlexPay?', flex_note:'FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and pick the time of a brief video call with Mark to complete the application together; it sets its own payment schedule, and nothing on this quote changes.', flex_yes:"Let's schedule a brief appointment with Mark to apply.", flex_no:'No thanks',
     q_drinks:'Add a drink package?', drinks_note:'Not included in this fare. Mark prices one for your party.', drinks_yes:'Yes, price one for us', drinks_no:'No thanks', drinks_inc:'Drinks: a package is included in your fare.',
-    q_ins:'Travel insurance?', ins_note:'Pricing subject to change until finalized.',
     q_travel:'Getting there and back', travel_note:'Pick what you want added. Mark prices flights, hotel and transfers with your final quote.',
     q_need_flight:'Do you need flights?', q_need_hotel:'Do you need a hotel the night before?', q_need_transfer:'Do you need transfers?', need_yes:'Yes, Mark, quote it', need_no:'No thanks',
     fp_title:'Your FlexPay video call', fp_pick:'Pick the time for your FlexPay video call with Mark.', fp_open:'Open the scheduler', fp_booked:'Your FlexPay video call: {when}.',
-    agree:'Send my choices to Mark!', agreeing:'Sending…', agree_note:'Mark prices your choices with the cruise line, then emails your booking confirmation with the final price for you to check and sign. Nothing is booked or charged yet.', agree_wait:'Answer every question above and the button lights up.',
-    agreed_h:'Your paperwork is on its way to {email}!… {category}, {party}. It carries your final price: check it and sign.', agreed_h_mark:'Your choices are with Mark!… {category}, {party}. He sends your paperwork next.', agreed_h_booking:'Your choices are with Mark!… {category}, {party}. He is pricing them with the cruise line; your paperwork, with your final price, follows by email.',
+    agree:'Send my choices to Mark!', agreeing:'Sending…', agree_note:'Mark prices your choices with the cruise line, then emails your booking confirmation with the final price for you to check and sign. Nothing is booked or charged yet.', agree_wait:'Answer every question above and the button lights up.', agree_miss:'Still to answer before this can go to Mark:',
+    agreed_h:'Your paperwork is on its way to {email}!… {category}, {party}. It carries your final price: check it and sign.', agreed_h_mark:'Your choices are with Mark!… {category}, {party}. He sends your paperwork next.', agreed_h_booking:'Your choices are with Mark!… {category}, {party}. He is confirming the pricing for everything; your quote follows by email.',
     party_one:'party of one', party_n:'party of {n}',
     change:'Need to change a name, a birthday or your mind? Call or text Mark at {phone}.',
     err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
@@ -181,30 +180,38 @@
 
   // ── The quote step ──
   function qaComplete(){
-    if(!qo || !qa.cabin || qa.flexpay === null || !qa.insurance) return false;
+    if(!qo || !qa.cabin || qa.flexpay === null) return false;
     if(qo.drinks === 'ask' && qa.drinks === null) return false;
     for(var i = 0; i < qo.needs.length; i++){ if(typeof qa.needs[qo.needs[i]] !== 'boolean') return false; }
     return true;
+  }
+  // Mark 2026-11-09: the page says WHICH questions still stop it from going through ("I got tripped up by not selecting a choice for FlexPay").
+  function qaMissing(){
+    var m = []; if(!qo) return m;
+    if(!qa.cabin) m.push({ id: 'q-cabin', label: T.q_cabin });
+    if(qa.flexpay === null) m.push({ id: 'q-flexpay', label: T.q_flex });
+    if(qo.drinks === 'ask' && qa.drinks === null) m.push({ id: 'q-drinks', label: T.q_drinks });
+    qo.needs.forEach(function(k){ if(typeof qa.needs[k] !== 'boolean') m.push({ id: 'q-need-' + k, label: T['q_need_' + k] }); });
+    return m;
   }
   function optBtn(group, val, text, on){
     return '<button type="button" class="opt' + (on ? ' on' : '') + '" data-g="' + esc(group) + '" data-v="' + esc(val) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(text) + '</button>';
   }
   function yesNo(group, val, yes, no){ return '<div class="opts">' + optBtn(group, 'yes', yes, val === true) + optBtn(group, 'no', no, val === false) + '</div>'; }
   function renderQuoteQuestions(){
-    var h = '<p class="q">' + esc(T.q_cabin) + '</p><div class="opts">';
+    var h = '<p class="q" id="q-cabin">' + esc(T.q_cabin) + '</p><div class="opts">';
     qo.cabins.forEach(function(c){ h += optBtn('cabin', c.key, c.label, qa.cabin === c.key); });
     h += '</div>';
-    h += '<p class="q">' + esc(T.q_flex) + '</p><p class="small">' + esc(T.flex_note) + '</p>' + yesNo('flexpay', qa.flexpay, T.flex_yes, T.flex_no);
+    h += '<p class="q" id="q-flexpay">' + esc(T.q_flex) + '</p><p class="small">' + esc(T.flex_note) + '</p>' + yesNo('flexpay', qa.flexpay, T.flex_yes, T.flex_no);
     // Mark 2026-11-08: a yes means the guest picks the time in OUR scheduler (the pop-up); the time they picked, or the way back into it, sits under the pills
     if(qa.flexpay === true && data.flexpayCallUrl){
       h += fpBooked ? '<p class="small" id="d-fp-line">' + esc(fill(T.fp_booked, { when: fpBooked })) + '</p>'
                     : '<p class="small" id="d-fp-line">' + esc(T.fp_pick) + ' <button type="button" class="linkbtn" data-fp="open">' + esc(T.fp_open) + '</button></p>';
     }
-    if(qo.drinks === 'ask') h += '<p class="q">' + esc(T.q_drinks) + '</p><p class="small">' + esc(T.drinks_note) + '</p>' + yesNo('drinks', qa.drinks, T.drinks_yes, T.drinks_no);
+    if(qo.drinks === 'ask') h += '<p class="q" id="q-drinks">' + esc(T.q_drinks) + '</p><p class="small">' + esc(T.drinks_note) + '</p>' + yesNo('drinks', qa.drinks, T.drinks_yes, T.drinks_no);
     else h += '<p class="q">' + esc(T.drinks_inc) + '</p>';
-    h += '<p class="q">' + esc(T.q_ins) + '</p><div class="opts">';
-    qo.insurance.forEach(function(o){ h += optBtn('insurance', o.key, o.label, qa.insurance === o.key); });
-    h += '</div><p class="small">' + esc(T.ins_note) + '</p>';
+    // Mark 2026-11-10: insurance is NOT asked here any more ("delete this section for now and create an insurance section on the quote"):
+    // it is priced on Mark's quote, from the cruise line's own figures, and chosen there.
     if(qo.travel.length){
       h += '<p class="q">' + esc(T.q_travel) + '</p><p class="small">' + esc(T.travel_note) + '</p>';
       qo.travel.forEach(function(t){
@@ -212,14 +219,16 @@
         h += '<button type="button" class="tickrow' + (on ? ' on' : '') + '" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '" data-g="travel" data-v="' + esc(t.key) + '"><span class="bx"></span><span>' + esc(t.text) + '</span></button>';
       });
     }
-    qo.needs.forEach(function(k){ h += '<p class="q">' + esc(T['q_need_' + k]) + '</p>' + yesNo('need-' + k, typeof qa.needs[k] === 'boolean' ? qa.needs[k] : null, T.need_yes, T.need_no); });
+    qo.needs.forEach(function(k){ h += '<p class="q" id="q-need-' + esc(k) + '">' + esc(T['q_need_' + k]) + '</p>' + yesNo('need-' + k, typeof qa.needs[k] === 'boolean' ? qa.needs[k] : null, T.need_yes, T.need_no); });
     $('d-qq').innerHTML = h;
   }
   function syncAgree(){
     var ready = qaComplete() && quote && quoteFor === JSON.stringify(qa) && !agreeing;
     $('d-agree').setAttribute('aria-disabled', ready ? 'false' : 'true');
     $('d-agree').textContent = agreeing ? T.agreeing : T.agree;
-    $('d-agree-note').textContent = ready ? T.agree_note : T.agree_wait;
+    var miss = qaMissing();
+    $('d-agree-note').textContent = ready ? T.agree_note : (miss.length ? T.agree_miss + ' ' + miss.map(function(x){ return x.label; }).join(' · ') : T.agree_wait);
+    $('d-agree-note').className = 'small center' + (!ready && miss.length ? ' need' : '');
   }
   function askQuote(){
     if(!qaComplete()) return;
@@ -293,7 +302,13 @@
     renderQuoteQuestions(); refreshQuote();
   });
   $('d-agree').addEventListener('click', function(){
-    if(agreeing || $('d-agree').getAttribute('aria-disabled') === 'true') return;
+    if(!agreeing && $('d-agree').getAttribute('aria-disabled') === 'true'){
+      // a tap on the dim button goes to the first question still open
+      var open = qaMissing()[0], at = open && document.getElementById(open.id);
+      if(at){ at.className = 'q need'; if(at.scrollIntoView) at.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      return;
+    }
+    if(agreeing) return;
     agreeing = true; syncAgree(); msg('');
     api('/request', { lang: ES ? 'es' : 'en' }).then(function(x){
       agreeing = false;

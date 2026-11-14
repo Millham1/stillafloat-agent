@@ -30,6 +30,8 @@ export interface SignedCopyInput {
   audit?: AuditInfo;
   /** The template has an agent signature that is recorded later (the group contract). */
   agentCountersignPending?: boolean;
+  /** Mark 2026-11-14: the advisor signed when the paperwork was sent, before the client saw it. */
+  advisor?: { name: string; signedAt: string } | null;
   logo?: Buffer | null;
   compress?: boolean;
 }
@@ -174,6 +176,7 @@ export async function renderSignedPdf(input: SignedCopyInput): Promise<Buffer> {
       para(`**Document version:** ${input.docVersion}`, { gap: 0.2 });
       para(`**SHA-256 of the document text agreed to:** ${input.contentSha256}`, { gap: 0.2, size: 8.5 });
       if (input.signatureId) para(`**Signature record:** ${input.signatureId}`, { gap: 0.2, size: 8.5 });
+      if (input.advisor?.name) para(`**Advisor's signature (${input.businessName}):** /s/ ${input.advisor.name}, signed electronically ${fmtUtc(input.advisor.signedAt)}, before the documents were sent to the client.`, { gap: 0.2 });
       if (input.agentCountersignPending) para(`**Agent countersignature (${input.businessName}):** not yet recorded.`, { gap: 0.2 });
 
       // Mark 2026-10-25: the evidence page, what an e-signature service prints as its "certificate of completion".

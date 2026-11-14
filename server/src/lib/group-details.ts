@@ -465,11 +465,17 @@ interface MailBase {
   publicSite: string;
 }
 
-/** The yellow, card-on-navy frame of both emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line. `body` is already escaped html. */
-function mailFrame(i: MailBase, title: string, body: string, footer: string): string {
+/** The yellow, card-on-navy frame of the group emails (the approved designs): logo, label, title, the paragraphs, the signature, the footer line.
+ * Mark 2026-11-09: no Cornerstone logo on these emails (it stays on the pages, with the Seller of Travel numbers under it). `body` is already escaped html. */
+/** The Seller of Travel registrations: printed under the Cornerstone logo wherever it shows (Mark 2026-11-09). */
+export const SELLER_OF_TRAVEL = "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620";
+function mailFrame(i: MailBase, title: string, body: string, footer: string, o: { sign?: string; cornerstone?: boolean } = {}): string {
   const logo = `${site(i.publicSite)}${BUSINESS.logoPath}`;
-  const cornerstone = `${site(i.publicSite)}/assets/images/cornerstone-white.png`;
-  const sign = i.hostNames.trim() || "Mark";
+  const sign = o.sign ?? (i.hostNames.trim() || "Mark");
+  // Mark 2026-11-10: a QUOTE is Mark's own business letter: it carries the Cornerstone logo with the Seller of Travel numbers under it. The group's
+  // friendly emails (a call is set, a time is picked) carry neither (Mark 2026-11-09).
+  const cornerstone = o.cornerstone ? `<tr><td align="right" style="padding-top:12px"><img src="${esc(`${site(i.publicSite)}/assets/images/cornerstone-white.png`)}" alt="Cornerstone" width="56" style="display:inline-block;width:56px;height:auto"></td></tr>
+  <tr><td align="right" style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.4;color:#c9d3e8">${esc(SELLER_OF_TRAVEL)}</td></tr>` : "";
   return `<div style="margin:0;padding:0;background:#07183f">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#07183f"><tr><td align="center" style="padding:22px 16px 10px">
   <img src="${esc(logo)}" alt="Still Afloat" width="150" style="display:block;width:150px;height:auto"></td></tr>
@@ -483,47 +489,158 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string): st
 <tr><td align="center" style="padding:0 16px 26px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px"><tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#c9d3e8">${esc(BUSINESS.legalName)}<br>${esc(footer)}</td>
-    <td align="right" valign="bottom" style="padding-left:12px"><img src="${esc(cornerstone)}" alt="" width="44" style="display:block;width:44px;height:auto"></td>
-  </tr></table></td></tr></table></div>`;
+  </tr>${cornerstone}</table></td></tr></table></div>`;
 }
 
 const para = (html: string) => `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;color:#07183f">${html}</p>`;
 
-// ── FlexPay: the appointment link (Mark 2026-11-05) ───────────────────────────
-// "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Sent by Mark from the booking card once the
-// signed paperwork is back and the booking is confirmed. The wording is a first draft for Mark to read.
+// ── The price, for the guest to approve (Mark 2026-11-09) ─────────────────────
+// "we need to send an email to confirm the pricing before we send the paperwork. the email should have cta's one 'Book It' and one 'I need changes'".
+// Mark sends it from the booking card once his re-quote is entered. Both buttons open the guest's own price page: "Book It" tells Mark to go ahead (the
+// paperwork follows from him), "I need changes" opens a box for what they want changed. The wording is a first draft for Mark to read.
 
-export interface FlexpayInput extends MailBase { groupLabel: string; appointmentUrl: string }
-const FLEXPAY = {
+/** The quote as the guest reads it (Mark 2026-11-10: "this email is a mess. it's hard to read and confusing"). ONE matrix for the cruise (a column
+ *  per guest, a row per printed line: fare, add-ons, taxes, total), the add-ons named once under it, then each piece of travel as its own block with
+ *  its details on separate lines, then the trip total. Every figure is one Mark saved; nothing is worked out in the email. */
+export interface QuoteDoc {
+  heads: { cruise: string; travel: string };
+  /** the cabin as booked, beside the cruise heading */
+  cabin: string | null;
+  /** a column per guest; null when the quote does not price the guests apart */
+  matrix: null | { names: string[]; rows: Array<{ label: string; values: string[]; strong?: boolean }>; addons: Array<{ title: string; items: string[] }> };
+  /** the cruise in plain lines when there is no matrix */
+  cruise: Array<{ label: string; value: string }>;
+  cruiseTotal: { label: string; value: string } | null;
+  travel: Array<{ title: string; value: string; details: string[] }>;
+  tripTotal: { label: string; value: string } | null;
+  /** travel protection Mark priced for this booking (Mark 2026-11-10); the guest picks one on the quote page. null when none is offered. */
+  protection?: null | { head: string; lede: string; plans: Array<{ key: string; name: string; price: string; note: string | null; withTotal: { label: string; value: string } | null;
+    /** what the plan covers, as Allianz's site lists it for this trip (Mark 2026-11-13); absent when it was not read */
+    covers?: Array<{ name: string; coverage: string; limits: Array<{ name: string; value: string }> }>; about?: string;
+    /** whose list the coverages are, said under the table */
+    source?: string }>; own: string; none: string };
+}
+/** Mark 2026-11-12: "the email tells them the quote is ready and provide a link to the secured page." The email carries no figure and no Book It
+ *  button: the quote, the travel protection choice, the PDF and the two answers are all on the guest's own private page (pageUrl). */
+export interface PriceInput extends MailBase { pageUrl: string }
+const PRICE = {
   en: {
-    subject: (label: string) => `One short call and FlexPay is set… ${label}`,
-    title: "One short call and FlexPay is set!",
+    subject: (label: string) => `Your quote from Mark… ${label}`,
+    title: "Your quote is ready!",
     hi: (first: string) => `Hi ${first},`,
-    p1: "Your paperwork is signed and your booking is confirmed. Nicely done!",
-    p2: "You asked for FlexPay, so the last step is a short video call with Mark to complete the FlexPay application together. Pick the time that suits you.",
-    open: "Pick my time",
+    p1: "I priced your choices with the cruise line, and your quote is ready on your private page.",
+    open: "See my quote",
+    p2: "On that page you can choose your travel protection, download the whole quote as a PDF, and tap Book It or I need changes.",
+    note: "The page is yours alone: please do not forward this email. Opening it charges nothing and books nothing.",
     close: "Cruise smarter, laugh more… see you at the muster drill!",
-    footer: (label: string) => `You are receiving this because you asked for FlexPay on your ${label} booking. Not you? Reply and we will take you off the list.`,
+    footer: (label: string) => `You are receiving this because you sent your choices for your ${label} booking. Not you? Reply and we will take you off the list.`,
   },
   es: {
-    subject: (label: string) => `Una llamada corta y FlexPay queda listo… ${label}`,
-    title: "¡Una llamada corta y FlexPay queda listo!",
+    subject: (label: string) => `Su cotización de Mark… ${label}`,
+    title: "¡Su cotización está lista!",
     hi: (first: string) => `Hola ${first}:`,
-    p1: "Sus documentos están firmados y su reservación está confirmada. ¡Bien hecho!",
-    p2: "Usted pidió FlexPay, así que el último paso es una videollamada corta con Mark para completar juntos la solicitud de FlexPay. Elija la hora que le convenga.",
-    open: "Elegir mi hora",
+    p1: "Coticé sus decisiones con la naviera, y su cotización está lista en su página privada.",
+    open: "Ver mi cotización",
+    p2: "En esa página puede elegir su protección de viaje, descargar la cotización completa en PDF y tocar Reservar o Necesito cambios.",
+    note: "La página es solo suya: por favor no reenvíe este correo. Abrirla no cobra ni reserva nada.",
     close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
-    footer: (label: string) => `Recibió este correo porque pidió FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+    footer: (label: string) => `Recibió este correo porque envió sus decisiones para su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
   },
 } as const;
 
-export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; text: string } {
-  const T = FLEXPAY[i.lang];
-  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
-  const text = [T.hi(first), T.p1, T.p2, `${T.open}: ${i.appointmentUrl}`, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
-  const button = `<a href="${esc(i.appointmentUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
-  const body = [para(esc(T.hi(first))), para(esc(T.p1)), para(esc(T.p2)), para(button), para(esc(T.close))].join("\n    ");
-  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+const Q_FONT = "font-family:Arial,Helvetica,sans-serif;color:#07183f";
+/** The quote's own block of the email: section bars, the per-guest matrix, the travel blocks, the totals. */
+function quoteHtml(d: QuoteDoc): string {
+  const bar = (text: string, extra = "") => `<tr><td colspan="9" style="padding:10px 12px;background:#07183f;color:#ffca4f;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase">${esc(text)}${extra ? `<span style="color:#f7fbff;font-weight:normal;letter-spacing:0;text-transform:none"> · ${esc(extra)}</span>` : ""}</td></tr>`;
+  const total = (t: { label: string; value: string }, big = false) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 ${big ? 18 : 22}px;background:${big ? "#f5c33b" : "#e9f0fa"};border-radius:10px"><tr>
+      <td style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 20 : 18}px;font-weight:bold">${esc(t.label)}</td>
+      <td align="right" style="padding:${big ? 14 : 11}px 12px;${Q_FONT};font-size:${big ? 22 : 18}px;font-weight:bold;white-space:nowrap">${esc(t.value)}</td></tr></table>`;
+  const cell = `padding:9px 12px;border-bottom:1px solid #d5dfee;${Q_FONT};font-size:18px;line-height:1.35`;
+  const parts: string[] = [];
+  let cruise = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.cruise, d.cabin ?? "")}`;
+  if (d.matrix) {
+    cruise += `<tr><td style="${cell}"></td>${d.matrix.names.map((n) => `<td align="right" style="${cell};font-weight:bold">${esc(n)}</td>`).join("")}</tr>`;
+    cruise += d.matrix.rows.map((r) => `<tr><td style="${cell}${r.strong ? ";font-weight:bold" : ""}">${esc(r.label)}</td>${r.values.map((v) => `<td align="right" style="${cell};white-space:nowrap${r.strong ? ";font-weight:bold" : ""}">${esc(v)}</td>`).join("")}</tr>`).join("");
+  } else {
+    cruise += d.cruise.map((l) => `<tr><td style="${cell}">${esc(l.label)}</td><td align="right" style="${cell};white-space:nowrap">${esc(l.value)}</td></tr>`).join("");
+  }
+  parts.push(cruise + "</table>");
+  for (const a of d.matrix?.addons ?? []) {
+    parts.push(`<p style="margin:0 0 4px;${Q_FONT};font-size:18px;font-weight:bold">${esc(a.title)}</p><ul style="margin:0 0 12px;padding-left:22px;${Q_FONT};font-size:18px;line-height:1.5">${a.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`);
+  }
+  if (d.cruiseTotal) parts.push(total(d.cruiseTotal));
+  if (d.travel.length) {
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.heads.travel)}` + d.travel.map((t) =>
+      `<tr><td style="${cell}"><b>${esc(t.title)}</b>${t.details.map((x) => `<br><span style="font-size:18px">${esc(x)}</span>`).join("")}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(t.value)}</td></tr>`).join("") + "</table>");
+  }
+  if (d.tripTotal) parts.push(total(d.tripTotal, true));
+  if (d.protection) {
+    parts.push(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #d5dfee;border-radius:10px;border-collapse:separate;overflow:hidden">${bar(d.protection.head)}` + d.protection.plans.map((p) =>
+      `<tr><td style="${cell}"><b>${esc(p.name)}</b>${p.note ? `<br><span style="font-size:18px">${esc(p.note)}</span>` : ""}</td><td align="right" valign="top" style="${cell};white-space:nowrap;font-weight:bold">${esc(p.price)}</td></tr>`).join("")
+      + `<tr><td colspan="2" style="${cell}">${esc(d.protection.own)}</td></tr><tr><td colspan="2" style="${cell};border-bottom:0">${esc(d.protection.none)}</td></tr></table>`
+      + `<p style="margin:0 0 18px;${Q_FONT};font-size:18px;line-height:1.45">${esc(d.protection.lede)}</p>`);
+  }
+  return parts.join("\n    ");
+}
+function quoteText(d: QuoteDoc): string {
+  const out: string[] = [[d.heads.cruise.toUpperCase(), d.cabin].filter(Boolean).join(" · ")];
+  if (d.matrix) for (const [gi, name] of d.matrix.names.entries()) out.push(`${name}: ${d.matrix.rows.map((r) => `${r.label} ${r.values[gi] ?? ""}`).join(", ")}`);
+  else for (const l of d.cruise) out.push(`${l.label}: ${l.value}`);
+  for (const a of d.matrix?.addons ?? []) out.push(`${a.title}: ${a.items.join("; ")}`);
+  if (d.cruiseTotal) out.push(`${d.cruiseTotal.label}: ${d.cruiseTotal.value}`);
+  if (d.travel.length) out.push("", d.heads.travel.toUpperCase());
+  for (const t of d.travel) out.push(`${t.title}: ${t.value}`, ...t.details.map((x) => `  ${x}`));
+  if (d.tripTotal) out.push("", `${d.tripTotal.label}: ${d.tripTotal.value}`);
+  if (d.protection) out.push("", d.protection.head.toUpperCase(), ...d.protection.plans.map((p) => `${p.name}: ${p.price}${p.note ? ` (${p.note})` : ""}`), d.protection.own, d.protection.none, d.protection.lede);
+  return out.join("\n");
+}
+
+export function priceEmail(i: PriceInput): { subject: string; html: string; text: string } {
+  const T = PRICE[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim();
+  const sign = "Mark";   // Mark 2026-11-10: "this is a quote from me, not Mark and Ceci"
+  const text = [T.hi(first), T.p1, `${T.open}: ${i.pageUrl}`, T.p2, T.note, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
+  const pill = "display:inline-block;font-weight:bold;border-radius:999px;padding:14px 28px;text-decoration:none;font-size:20px;font-family:Arial,Helvetica,sans-serif";
+  const button = `<a href="${esc(i.pageUrl)}" style="${pill};background:#f5c33b;color:#07183f;border:2px solid #f5c33b">${esc(T.open)}</a>`;
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), para(button), para(esc(T.p2)), para(esc(T.note)), para(esc(T.close))].join("\n    ");
+  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label), { sign, cornerstone: true }), text };
+}
+
+// ── "Book It" received (Mark 2026-11-11) ──────────────────────────────────────
+// "a confirmation email needs to go to the client once they hit 'book it' telling them I have their decision and that the paperwork will arrive
+// within 24 hours." From Mark alone, with the Cornerstone logo and the Seller of Travel numbers (a business letter, like the quote). It names the
+// travel protection they picked when the quote offered one. The wording is a first draft for Mark to read.
+export interface DecisionInput extends MailBase { groupLabel: string; protection: string | null }
+const DECISION = {
+  en: {
+    subject: (label: string) => `I have your decision… ${label}`,
+    title: "I have your decision!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: "Thank you! I have your decision to book.",
+    protect: (pick: string) => `Travel protection you picked: ${pick}.`,
+    p2: "Your paperwork will arrive by email within 24 hours.",
+    p3: (phone: string) => `Questions before then? Call or text me at ${phone}.`,
+    close: "Cruise smarter, laugh more… see you at the muster drill!",
+    footer: (label: string) => `You are receiving this because you tapped Book It on your ${label} quote. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (label: string) => `Ya tengo su decisión… ${label}`,
+    title: "¡Ya tengo su decisión!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: "¡Gracias! Ya tengo su decisión de reservar.",
+    protect: (pick: string) => `Protección de viaje que eligió: ${pick}.`,
+    p2: "Sus documentos le llegarán por correo dentro de 24 horas.",
+    p3: (phone: string) => `¿Preguntas antes de eso? Llámeme o escríbame al ${phone}.`,
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
+    footer: (label: string) => `Recibió este correo porque tocó Reservar en su cotización de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+export function decisionEmail(i: DecisionInput): { subject: string; html: string; text: string } {
+  const T = DECISION[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = "Mark";
+  const parts = [T.hi(first), T.p1, ...(i.protection ? [T.protect(i.protection)] : []), T.p2, T.p3(BUSINESS.phone), T.close];
+  const text = [...parts, sign, `${BUSINESS.legalName}\n${T.footer(label)}\n${SELLER_OF_TRAVEL}`].join("\n\n") + "\n";
+  return { subject: T.subject(label), html: mailFrame(i, T.title, parts.map((x) => para(esc(x))).join("\n    "), T.footer(label), { sign, cornerstone: true }), text };
 }
 
 // ── FlexPay: the time is picked (Mark 2026-11-05) ─────────────────────────────
@@ -556,6 +673,40 @@ const CALL_BOOKED = {
     footer: (label: string) => `Recibió este correo porque eligió una hora para su llamada de FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
   },
 } as const;
+
+// ── The planning call: the time is picked (Mark 2026-11-09) ───────────────────
+// "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like flexpay." The guest picked the time on our
+// own scheduler: this is the one email that confirms it. A phone call: Mark rings the number they gave. The wording is a first draft for Mark to read.
+export interface PlanBookedInput extends MailBase { groupLabel: string; whenText: string; phone: string | null }
+const PLAN_BOOKED = {
+  en: {
+    subject: (when: string) => `Your planning call with Mark: ${when}`,
+    title: "Your call with Mark is set!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: (when: string) => `You and Mark are set for ${when}. Plan on about half an hour.`,
+    p2: (phone: string | null) => (phone ? `It is a phone call: Mark rings you at ${phone}.` : "It is a phone call: Mark rings you at the number you gave."),
+    p3: (phone: string) => `Need a different time? Call or text Mark at ${phone}.`,
+    close: "Cruise smarter, laugh more… talk soon!",
+    footer: (label: string) => `You are receiving this because you picked a time for a planning call on our ${label} page. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (when: string) => `Su llamada de planeación con Mark: ${when}`,
+    title: "¡Su llamada con Mark está lista!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: (when: string) => `Usted y Mark quedaron para el ${when}. Reserve una media hora.`,
+    p2: (phone: string | null) => (phone ? `Es una llamada telefónica: Mark le llama al ${phone}.` : "Es una llamada telefónica: Mark le llama al número que nos dio."),
+    p3: (phone: string) => `¿Necesita otra hora? Llame o escriba a Mark al ${phone}.`,
+    close: "Navegue con inteligencia, ría más… ¡hablamos pronto!",
+    footer: (label: string) => `Recibió este correo porque eligió una hora para una llamada de planeación en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+export function planBookedEmail(i: PlanBookedInput): { subject: string; html: string; text: string } {
+  const T = PLAN_BOOKED[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
+  const parts = [T.hi(first), T.p1(i.whenText), T.p2(i.phone), T.p3(BUSINESS.phone), T.close];
+  const text = [...parts, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  return { subject: T.subject(i.whenText), html: mailFrame(i, T.title, parts.map((x) => para(esc(x))).join("\n    "), T.footer(label)), text };
+}
 
 export function callBookedEmail(i: CallBookedInput): { subject: string; html: string; text: string } {
   const T = CALL_BOOKED[i.lang];

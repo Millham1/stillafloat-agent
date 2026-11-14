@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your price | Still Afloat Cruising</title>
+<!-- A guest's private link from Mark's price email (Mark 2026-11-09): never indexed, and the address (which carries the link) is never sent on to another site.
+     The price Mark quoted, then two buttons: "Book It" (Mark goes ahead; the paperwork follows from him) and "I need changes" (a box for what they want
+     changed, in their own words). Nothing here books, charges or signs anything. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/details-page.css?v=20261109c">
+<link rel="stylesheet" href="/css/price-page.css?v=20261113d">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <div class="d-banner"><div class="d-lockup"><div class="plaque"><span id="p-plaque">Your price</span></div></div></div>
+
+  <main>
+    <section class="panel" id="p-panel">
+      <p class="label" id="p-label"></p>
+      <h1 id="p-h1"></h1>
+      <p id="p-state"></p>
+
+      <!-- The price: one row a line, the totals in bold. -->
+      <div id="p-price" hidden>
+        <p id="p-lede"></p>
+        <div class="p-lines" id="p-lines"></div>
+        <p class="p-note" id="p-note"></p>
+      </div>
+
+      <!-- Still open: the two buttons. -->
+      <div id="p-ask" hidden>
+        <button type="button" class="btn" id="p-book"></button>
+        <button type="button" class="btn alt" id="p-changes"></button>
+        <p class="err center" id="p-err" hidden></p>
+      </div>
+
+      <!-- Answered: one line saying what happens next. -->
+      <p class="p-done" id="p-done" hidden></p>
+      <p class="small" id="p-after" hidden></p>
+      <!-- Mark 2026-11-12: the same quote as a PDF to download and keep. -->
+      <p class="center"><a id="p-pdf" hidden style="color:#07183f;font-weight:700;font-size:18px"></a></p>
+    </section>
+  </main>
+
+  <!-- "I need changes": what the guest wants changed, in their own words. -->
+  <div class="fp-modal" id="p-modal" hidden role="dialog" aria-modal="true" aria-labelledby="p-modal-title">
+    <div class="p-box">
+      <div class="fp-bar"><span id="p-modal-title"></span><button type="button" class="fp-close" id="p-modal-close" aria-label="Close">&#10005;</button></div>
+      <div class="p-body">
+        <p id="p-modal-p"></p>
+        <textarea id="p-text" maxlength="2000"></textarea>
+        <p class="err" id="p-modal-err" hidden></p>
+        <button type="button" class="btn" id="p-send"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Travel protection (Mark 2026-11-12): the insurance video, the plans priced for this trip (or my own policy, or none), a tick box each, Select. -->
+  <div class="fp-modal" id="pr-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pr-title">
+    <div class="p-box pr-box">
+      <div class="fp-bar"><span id="pr-title"></span><button type="button" class="fp-close" id="pr-close" aria-label="Close">&#10005;</button></div>
+      <div class="p-body">
+        <div id="pr-video"></div>
+        <p id="pr-pick"></p>
+        <div class="pr-opts" id="pr-opts"></div>
+        <p class="err" id="pr-err" hidden></p>
+        <button type="button" class="btn" id="pr-select"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+    <p class="sot">Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620</p>
+  </div>
+
+</div>
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var T = ES ? {
+    title:'Su precio', plaque:'Su precio', loading:'Un momento…',
+    bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    h1:'¡Su cotización, {first}!', lede:'Mark cotizó sus decisiones con la naviera. Esta es su cotización:',
+    note:'Estos son los precios cotizados hoy; pueden cambiar hasta que se haga la reservación. Tocar Reservar no cobra nada.',
+    book:'Reservar', booking:'Un momento…', changes:'Necesito cambios',
+    m_title:'¿Qué desea cambiar?', m_p:'Cuéntenos con sus palabras qué quiere cambiar. Mark lo cotiza de nuevo y le envía el precio nuevo.', send:'Enviar a Mark', sending:'Enviando…',
+    m_short:'Díganos qué desea cambiar.',
+    done_book:'¡Listo! Mark hace la reservación y sus documentos le llegan por correo.',
+    done_changes:'¡Recibido! Mark lo cotiza de nuevo y le envía el precio nuevo por correo.',
+    done_paper:'Sus documentos ya van en camino a su correo.',
+    after:'¿Preguntas? Llame o escriba a Mark al ' + PHONE + '.',
+    pdf:'Descargar esta cotización en PDF',
+    fail:'No se pudo enviar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
+    pr_need:'Elija primero su protección de viaje.', pr_yours:'Su protección de viaje: {pick}.',
+    c_booking:'Número de reserva', c_status:'Estado', c_none:'Aún sin asignar', st_open:'Cotización lista: esperando su respuesta', st_approved:'Usted pidió reservar', st_changes:'Cambios solicitados', st_paperwork:'Reservado: documentos enviados', c_held:'Cabina apartada hasta el {when}',
+    h_trip:'Detalles del viaje', h_booking:'Detalles de la reserva', h_travel:'Cómo llegar', h_prot:'Protección de viaje', h_pay:'Detalles de pago',
+    k_ship:'Barco', k_from:'Salida', k_back:'Regreso', k_nights:'Duración', nights:'{n} noches', k_room:'Cabina', k_deck:'cubierta', k_items:'Adicionales', t_day:'Día', t_date:'Fecha', t_port:'Puerto', t_arr:'Llegada', t_dep:'Salida',
+    pr_cov:'Ver qué cubre', pr_cov_hide:'Ocultar', pr_cov_th1:'Beneficio', pr_cov_th2:'Cobertura', pr_cov_src:'Según Allianz para este viaje. La póliza es la que manda.',
+    pr_ask:'Elija su protección de viaje antes de reservar.', pr_none_yet:'Aún sin elegir',
+    pr_btn:'Elegir mi protección de viaje', pr_change:'Cambiar', pr_title:'Protección de viaje', pr_video:'Vea este video sobre el seguro', pr_pick:'Marque una opción:', pr_select:'Seleccionar', pr_one:'Marque una de las opciones, por favor.', pr_saving:'Un momento…'
+  } : {
+    title:'Your price', plaque:'Your price', loading:'One moment…',
+    bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
+    h1:'Your quote, {first}!', lede:'Mark priced your choices with the cruise line. Here is your quote:',
+    note:'These are the prices quoted today; they can change until the booking is made. Tapping Book It charges nothing.',
+    book:'Book It', booking:'One moment…', changes:'I need changes',
+    m_title:'What would you like changed?', m_p:'Tell us in your own words what you want changed. Mark re-prices it and emails you the new price.', send:'Send to Mark', sending:'Sending…',
+    m_short:'Please tell us what you would like changed.',
+    done_book:"You're set! Mark books it and your paperwork follows by email.",
+    done_changes:'Got it! Mark re-prices it and emails you the new price.',
+    done_paper:'Your paperwork is already on its way to your email.',
+    after:'Questions? Call or text Mark at ' + PHONE + '.',
+    pdf:'Download this quote as a PDF',
+    fail:'That did not go through. Try again, or call or text Mark at ' + PHONE + '.',
+    pr_need:'Choose your travel protection first.', pr_yours:'Your travel protection: {pick}.',
+    c_booking:'Booking number', c_status:'Status', c_none:'Not assigned yet', st_open:'Quote ready: waiting for your answer', st_approved:'You said Book It', st_changes:'Changes requested', st_paperwork:'Booked: paperwork sent', c_held:'Cabin held until {when}',
+    h_trip:'Trip details', h_booking:'Booking details', h_travel:'Getting there', h_prot:'Travel protection', h_pay:'Payment details',
+    k_ship:'Ship', k_from:'Departure', k_back:'Return', k_nights:'Duration', nights:'{n} nights', k_room:'Stateroom', k_deck:'deck', k_items:'Additional items', t_day:'Day', t_date:'Date', t_port:'Port', t_arr:'Arrival', t_dep:'Departure',
+    pr_cov:'See what it covers', pr_cov_hide:'Hide', pr_cov_th1:'Benefit', pr_cov_th2:'Coverage', pr_cov_src:'As listed by Allianz for this trip. The policy itself governs.',
+    pr_ask:'Choose your travel protection before you book.', pr_none_yet:'Not chosen yet',
+    pr_btn:'Choose my travel protection', pr_change:'Change', pr_title:'Travel protection', pr_video:'Watch this insurance video', pr_pick:'Tick one choice:', pr_select:'Select', pr_one:'Tick one of the choices, please.', pr_saving:'One moment…'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
+  function show(id, on){ var e = $(id); if(e) e.hidden = on === false; }
+
+  document.title = T.title + ' | Still Afloat Cruising';
+  $('p-plaque').textContent = T.plaque;
+  var state = $('p-state');
+  state.textContent = T.loading;
+
+  var qs = new URLSearchParams(location.search);
+  var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim(), want = qs.get('do');
+  if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
+  var API = '/api/price-confirm/' + reply + '/' + key;
+  var busy = false;
+  var prot = null, pick = '', curState = '', video = '';   // the travel protection on offer (Mark 2026-11-10) and the one the guest picked
+
+  function draw(d){
+    state.textContent = '';
+    $('p-label').textContent = d.label || '';
+    $('p-h1').textContent = T.h1.replace('{first}', d.firstName || '');
+    $('p-lede').textContent = T.lede;
+    prot = (d.doc || {}).protection || null; pick = d.protection || ''; video = d.video || '';
+    $('p-lines').innerHTML = sheetHtml(d.doc || {}, d.sheet || {}, d.state);
+    $('p-note').textContent = T.note;
+    if(d.pdf){ var pdf = $('p-pdf'); pdf.href = d.pdf; pdf.textContent = T.pdf; pdf.hidden = false; }
+    show('p-price');
+    drawState(d.state);
+  }
+  // The quote laid out like the cruise line's own confirmation page (Mark 2026-11-12: "it is clean, easy to understand and the info is at my
+  // fingertips"): the booking number and the status on top; then the trip, the booking (who is in the cabin, with what), getting there, travel
+  // protection; and ALL the money in one place at the end, in one right-hand column that ends in one total.
+  function kv(k, v){ return v ? '<p class="c-kv"><span>' + esc(k) + ':</span> <b>' + esc(v) + '</b></p>' : ''; }
+  function money(label, value, cls){ return '<div class="c-pay' + (cls ? ' ' + cls : '') + '"><span>' + esc(label) + '</span><span>' + esc(value) + '</span></div>'; }
+  function sheetHtml(q, sh, st){
+    var h = '', heads = q.heads || {}, trip = sh.trip || {}, cabin = sh.cabin || {};
+    h += '<div class="c-top"><div><span>' + esc(T.c_booking) + '</span><b>' + esc(sh.bookingNumber || T.c_none) + '</b></div>'
+       + '<div><span>' + esc(T.c_status) + '</span><b id="c-status">' + esc(T['st_' + st] || '') + '</b>' + (sh.optionUntil && sh.optionUntil.day >= new Date().toISOString().slice(0, 10) ? '<em>' + esc(T.c_held.replace('{when}', sh.optionUntil.text)) + '</em>' : '') + '</div></div>';
+    if(q.protection) h += '<div class="c-choose" id="p-prot"></div>';
+    // the trip
+    h += '<h2 class="c-h">' + esc(T.h_trip) + '</h2>' + kv(T.k_ship, [trip.ship, trip.line].filter(Boolean).join(' · ')) + kv(T.k_from, [trip.from, trip.departs].filter(Boolean).join(', '))
+       + kv(T.k_back, trip.returns) + kv(T.k_nights, trip.nights ? T.nights.replace('{n}', trip.nights) : '');
+    if((trip.stops || []).length){
+      h += '<div class="q-scroll"><table class="c-itin"><thead><tr><th>' + esc(T.t_day) + '</th><th>' + esc(T.t_date) + '</th><th>' + esc(T.t_port) + '</th><th>' + esc(T.t_arr) + '</th><th>' + esc(T.t_dep) + '</th></tr></thead><tbody>';
+      trip.stops.forEach(function(x){ h += '<tr><td>' + esc(x.weekday) + '</td><td>' + esc(x.date) + '</td><td>' + esc(x.port) + '</td><td>' + esc(x.arrive || '-') + '</td><td>' + esc(x.depart || '-') + '</td></tr>'; });
+      h += '</tbody></table></div>';
+    }
+    // the booking: the cabin, then each traveler with what they have
+    h += '<h2 class="c-h">' + esc(T.h_booking) + '</h2>' + kv(T.k_room, [cabin.number, cabin.type || q.cabin, cabin.deck ? T.k_deck + ' ' + cabin.deck : ''].filter(Boolean).join(' · '));
+    (sh.travelers || []).forEach(function(t){
+      h += '<div class="c-person"><b>' + esc(t.name) + '</b>' + ((t.items || []).length ? '<div><span>' + esc(T.k_items) + ':</span>' + t.items.map(function(i){ return '<b>' + esc(i) + '</b>'; }).join('') + '</div>' : '') + '</div>';
+    });
+    // getting there: what and when (its price is with the rest of the money, below)
+    if((q.travel || []).length){
+      h += '<h2 class="c-h">' + esc(heads.travel || T.h_travel) + '</h2>';
+      q.travel.forEach(function(t){ h += '<div class="c-person"><b>' + esc(t.title) + '</b><div>' + t.details.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('') + '</div></div>'; });
+    }
+    // all the money, in one column
+    h += '<h2 class="c-h">' + esc(T.h_pay) + '</h2>';
+    if(q.matrix){
+      q.matrix.names.forEach(function(n, i){
+        h += '<div class="c-payer"><b>' + esc(n) + '</b><div>';
+        q.matrix.rows.forEach(function(r){ if(!r.strong) h += money(r.label, r.values[i]); });
+        h += '</div></div>';
+        q.matrix.rows.forEach(function(r){ if(r.strong) h += money(r.label + ' · ' + n, r.values[i], 'sub'); });
+      });
+    } else {
+      (q.cruise || []).forEach(function(l){ h += money(l.label, l.value); });
+    }
+    if(q.cruiseTotal) h += money(q.cruiseTotal.label, q.cruiseTotal.value, 'sub');
+    (q.travel || []).forEach(function(t){ h += money(t.title, t.value); });
+    if(q.tripTotal) h += money(q.tripTotal.label, q.tripTotal.value, 'total');
+    if(q.protection) h += '<div id="p-prot-pay"></div>';
+    return h;
+  }
+  // Travel protection (Mark 2026-11-10): each plan Mark priced, its price per person, then "my own policy" and "no insurance". While the quote is
+  // open each is a pill and one must be picked before Book It goes through; the plan picked shows its own trip total. Afterwards the pick is one line.
+  function protLabel(k){
+    if(!prot) return '';
+    if(k === 'own') return prot.own; if(k === 'none') return prot.none;
+    for(var i = 0; i < prot.plans.length; i++) if(prot.plans[i].key === k) return prot.plans[i].name + ' · ' + prot.plans[i].price;
+    return '';
+  }
+  function drawProt(open){
+    var box = $('p-prot'), pay = $('p-prot-pay'); if(!box || !prot) return;
+    var chosen = null; prot.plans.forEach(function(p){ if(p.key === pick) chosen = p; });
+    var name = chosen ? chosen.name : (pick ? protLabel(pick) : '');
+    var h = '<div class="c-choose-in"><div><span>' + esc(prot.head || T.h_prot) + '</span><b>' + esc(pick ? name : T.pr_none_yet) + '</b>' + (chosen ? '<em>' + esc(chosen.price) + '</em>' : (!pick && open ? '<em>' + esc(T.pr_ask) + '</em>' : '')) + '</div>';
+    // Mark 2026-11-12: the choice is made in a pop-up (the video, the plans, a tick box each); once made it shows here and in the money below
+    if(open) h += '<button type="button" class="btn' + (pick ? ' alt' : '') + ' c-choose-btn" data-prot-open="1">' + esc(pick ? T.pr_change : T.pr_btn) + '</button>';
+    box.innerHTML = h + '</div>';
+    if(pay) pay.innerHTML = chosen ? money(chosen.name, chosen.price) + (chosen.withTotal ? money(chosen.withTotal.label, chosen.withTotal.value, 'total') : '') : (pick ? money(prot.head || T.h_prot, name) : '');
+  }
+  function drawState(s){
+    var open = s === 'open';
+    var st = $('c-status'); if(st) st.textContent = T['st_' + s] || '';
+    curState = s; drawProt(open);
+    show('p-ask', open);
+    $('p-book').textContent = busy ? T.booking : T.book;
+    $('p-changes').textContent = T.changes;
+    var done = $('p-done');
+    done.textContent = s === 'approved' ? T.done_book : s === 'changes' ? T.done_changes : s === 'paperwork' ? T.done_paper : '';
+    done.hidden = open;
+    $('p-after').textContent = T.after; show('p-after', !open);
+  }
+  function post(body){
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+    });
+  }
+  function openModal(){
+    $('p-modal-title').textContent = T.m_title; $('p-modal-p').textContent = T.m_p; $('p-send').textContent = T.send;
+    show('p-modal-err', false); show('p-modal'); $('p-text').focus();
+  }
+  function closeModal(){ show('p-modal', false); }
+
+  // "Book It": one tap on this page (the email's button opens the page; nothing is approved by a link being opened)
+  $('p-book').addEventListener('click', function(){
+    if(busy) return;
+    // a button that cannot go ahead says what to do first (Mark 2026-11-10)
+    if(prot && !pick){ var need = $('p-err'); need.textContent = T.pr_need; need.hidden = false; openProt(); return; }
+    busy = true; show('p-err', false); drawState('open');
+    post({ action: 'book', protection: pick, website: '' }).then(function(x){
+      busy = false;
+      if(x.body && x.body.success){ drawState(x.body.state || 'approved'); return; }
+      var err = $('p-err'); err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false; drawState('open');
+    }).catch(function(){ busy = false; var err = $('p-err'); err.textContent = T.fail; err.hidden = false; drawState('open'); });
+  });
+  // The travel protection pop-up: the video first, then one tick box per choice (only one stays ticked), then Select. The choice is kept on the
+  // booking (it approves nothing), shows in the quote above with its trip total, and is on the PDF.
+  function openProt(){
+    if(!prot || curState !== 'open') return;
+    $('pr-title').textContent = T.pr_title; $('pr-pick').textContent = T.pr_pick; $('pr-select').textContent = T.pr_select; show('pr-err', false);
+    // Mark 2026-11-13: "it is a choice to view the video, not automatically starting", and it is OUR OWN video file on our own server ("so you do
+    // not call youtube"): a button; when the guest presses it, the page's own player is put in and starts. Nothing is asked of any other site.
+    $('pr-video').innerHTML = video ? '<button type="button" class="btn alt pr-play" id="pr-play">&#9654; ' + esc(T.pr_video) + '</button>' : '';
+    var play = $('pr-play');
+    if(play) play.addEventListener('click', function(){
+      $('pr-video').innerHTML = '<video class="pr-film" controls playsinline preload="metadata" src="' + esc(video) + '"></video>';
+      var film = $('pr-video').querySelector('video'); if(film && film.play){ var pr = film.play(); if(pr && pr.catch) pr.catch(function(){}); }
+    });
+    var rows = prot.plans.map(function(p){ return [p.key, p.name, p.price + (p.note ? ' · ' + p.note : ''), p.withTotal ? p.withTotal.label + ': ' + p.withTotal.value : '', p]; });
+    rows.push(['own', prot.own, '', '', null], ['none', prot.none, '', '', null]);
+    // Mark 2026-11-13: "there also should be a choice to view the coverages": under a plan, a button opens its benefit table as Allianz lists it
+    $('pr-opts').innerHTML = rows.map(function(r){
+      var p = r[4], cov = '';
+      if(p && (p.covers || []).length){
+        cov = '<button type="button" class="q-link pr-cov-btn" data-cov="' + esc(r[0]) + '">' + esc(T.pr_cov) + '</button><div class="pr-cov" id="pr-cov-' + esc(r[0]) + '" hidden>' +
+          (p.about ? '<p>' + esc(p.about) + '</p>' : '') + '<table><thead><tr><th>' + esc(T.pr_cov_th1) + '</th><th>' + esc(T.pr_cov_th2) + '</th></tr></thead><tbody>' +
+          p.covers.map(function(c){ return '<tr><td><b>' + esc(c.name) + '</b>' + (c.limits || []).map(function(l){ return '<span>' + esc(l.name) + ': ' + esc(l.value) + '</span>'; }).join('') + '</td><td>' + esc(c.coverage) + '</td></tr>'; }).join('') +
+          '</tbody></table><p class="pr-cov-src">' + esc(p.source || T.pr_cov_src) + '</p></div>';
+      }
+      return '<div class="pr-row"><label class="pr-opt"><input type="checkbox" data-prot="' + esc(r[0]) + '"' + (pick === r[0] ? ' checked' : '') + '><span><b>' + esc(r[1]) + '</b>' + (r[2] ? '<em>' + esc(r[2]) + '</em>' : '') + (r[3] ? '<em>' + esc(r[3]) + '</em>' : '') + '</span></label>' + cov + '</div>';
+    }).join('');
+    show('pr-modal');
+  }
+  function closeProt(){ show('pr-modal', false); $('pr-video').innerHTML = ''; }
+  $('pr-opts').addEventListener('change', function(e){
+    var boxes = this.querySelectorAll('input[type=checkbox]');
+    for(var i = 0; i < boxes.length; i++) if(boxes[i] !== e.target) boxes[i].checked = false;
+    show('pr-err', false);
+  });
+  $('pr-opts').addEventListener('click', function(e){
+    var b = e.target && e.target.getAttribute && e.target.getAttribute('data-cov') ? e.target : null; if(!b) return;
+    var box = $('pr-cov-' + b.getAttribute('data-cov')); if(!box) return;
+    box.hidden = !box.hidden; b.textContent = box.hidden ? T.pr_cov : T.pr_cov_hide;
+  });
+  $('pr-close').addEventListener('click', closeProt);
+  $('pr-select').addEventListener('click', function(){
+    if(busy) return;
+    var on = $('pr-opts').querySelector('input[type=checkbox]:checked'), err = $('pr-err');
+    if(!on){ err.textContent = T.pr_one; err.hidden = false; return; }
+    busy = true; $('pr-select').textContent = T.pr_saving;
+    post({ action: 'protect', protection: on.getAttribute('data-prot'), website: '' }).then(function(x){
+      busy = false; $('pr-select').textContent = T.pr_select;
+      if(x.body && x.body.success){ pick = x.body.protection || on.getAttribute('data-prot'); closeProt(); show('p-err', false); drawProt(curState === 'open'); return; }
+      err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false;
+    }).catch(function(){ busy = false; $('pr-select').textContent = T.pr_select; err.textContent = T.fail; err.hidden = false; });
+  });
+  $('p-lines').addEventListener('click', function(e){
+    var el = e && e.target; while(el && el !== this && !(el.getAttribute && el.getAttribute('data-prot-open'))) el = el.parentNode;
+    if(!el || el === this || curState !== 'open' || busy) return;
+    openProt();
+  });
+  $('p-changes').addEventListener('click', openModal);
+  $('p-modal-close').addEventListener('click', closeModal);
+  $('p-send').addEventListener('click', function(){
+    if(busy) return;
+    var said = $('p-text').value.trim(), err = $('p-modal-err');
+    if(said.length < 3){ err.textContent = T.m_short; err.hidden = false; return; }
+    busy = true; err.hidden = true; $('p-send').textContent = T.sending;
+    post({ action: 'changes', text: said, website: '' }).then(function(x){
+      busy = false; $('p-send').textContent = T.send;
+      if(x.body && x.body.success){ closeModal(); drawState(x.body.state || 'changes'); return; }
+      err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false;
+    }).catch(function(){ busy = false; $('p-send').textContent = T.send; err.textContent = T.fail; err.hidden = false; });
+  });
+
+  fetch(API, { headers: { 'Accept': 'application/json' } }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+  }).then(function(x){
+    if(!x.body || !x.body.success){ state.textContent = T.bad; return; }
+    draw(x.body);
+    if(want === 'changes' && x.body.state === 'open') openModal();
+  }).catch(function(){ state.textContent = T.bad; });
+})();
+</script>
+</body>
+</html>

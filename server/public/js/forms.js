@@ -27,6 +27,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
   // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
   // holds a ZIP (or a city and state), the post office's whole address is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
+  // the same words the server sends for a link that is not on file (an older email's link, or a mistyped one)
+  var DEAD_LINK = 'This link no longer works. If we sent you more than one email, please use the link in the newest one. If that one does not work either, call or text Mark at 919-346-6127 and he will send a new link.';
   var ADDR = {
     tidied: "We tidied it to the post office's spelling:", right: 'Right?', yes: 'Yes', no: "No, I'll fix it",
     nf: "We couldn't find that one… check the street and ZIP.", na: "We couldn't check that address right now, so we'll take it as typed.",
@@ -117,7 +119,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     function typed() { if (look.off || keyNow() === look.key) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
     street.addEventListener('input', typed); csz.addEventListener('input', typed);
-    if (tidy(street.value) && tidy(csz.value)) typed();
+    // Mark 2026-11-13 ("i dont like this message about not checking the address. We already verified it earlier in the process"): an address that
+    // came from the file was checked on the details page, so it is not checked again here. Only an address typed or changed on this page is.
   }
 
   function firstName() { return (packet && packet.traveler && packet.traveler.first_name) || ''; }
@@ -155,7 +158,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   };
   // a line of help under a section heading
   var INTRO = {
-    passport_number: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
+    passport_number: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early. Without a passport, the only other document the cruise line accepts is an original or certified birth certificate, shown with a government photo ID.',
     ec1_name: 'One person who is not traveling with you.',
     insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
     cardholder: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
@@ -225,7 +228,23 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'],
     ['WI', 'Wisconsin'], ['WY', 'Wyoming'], ['AS', 'American Samoa'], ['GU', 'Guam'], ['MP', 'Northern Mariana Islands'], ['PR', 'Puerto Rico'], ['VI', 'U.S. Virgin Islands'],
     ['AA', 'Armed Forces Americas'], ['AE', 'Armed Forces Europe'], ['AP', 'Armed Forces Pacific']];
-  var PICK = { passport_country: COUNTRIES, ec1_relationship: RELATIONS, dl_state: STATES };
+  var PICK = { ec1_relationship: RELATIONS, dl_state: STATES };
+  // Mark 2026-11-14 ("the country lookup is not working … pre-populated with an option to change it by typing over, which pulls up the
+  // country lookup"): every country line (citizenship and passport country, the lead's and each other traveler's) is one box, filled in
+  // from the file; typing over it pulls up the matching countries. What is typed is settled to the list's own spelling ("peru" → "Peru").
+  function isCountry(name) { return /(^|_)(passport_country|citizenship)$/.test(name); }
+  var COUNTRY_ALIAS = { us: 'United States', usa: 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States', 'united states of america': 'United States', america: 'United States', uk: 'United Kingdom', 'great britain': 'United Kingdom', england: 'United Kingdom' };
+  function plainText(x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+  /** the list's own spelling of what was typed: an exact name, a well-known short form, or the only country that starts with it; '' when none */
+  function countryOf(v) {
+    var t = plainText(v); if (!t) return '';
+    if (COUNTRY_ALIAS[t]) return COUNTRY_ALIAS[t];
+    var exact = COUNTRIES.filter(function (c) { return plainText(c) === t; });
+    if (exact.length) return exact[0];
+    var starts = COUNTRIES.filter(function (c) { return plainText(c).indexOf(t) === 0; });
+    return starts.length === 1 ? starts[0] : '';
+  }
+  function settleCountry(el) { var c = countryOf(el.value); if (c && c !== el.value) { el.value = c; el.dispatchEvent(new Event('input', { bubbles: true })); } }
   function isCsz(name) { return /city_state_zip$/.test(name); }
   function wholeCsz(v) { return /,\s*[A-Z]{2}\s+\d{5}$/.test(String(v || '')); }
   function opts(list, v, blank) {
@@ -358,6 +377,10 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><select class="w-in" id="' + id + '" data-field="' + esc(f.name) + '">' +
         opts(PICK[f.name], typeof v === 'string' ? v : '', 'Choose one') + '</select></div>';
     }
+    if (isCountry(f.name)) {
+      var cv = typeof v === 'string' ? (countryOf(v) || v) : '';
+      return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><input class="w-in" type="text" id="' + id + '" data-field="' + esc(f.name) + '" data-country list="w-countries" maxlength="60" autocomplete="off" placeholder="Start typing a country" value="' + esc(cv) + '"></div>';
+    }
     if (isCsz(f.name)) {
       var c = splitCsz(typeof v === 'string' ? v : ''), home = f.name === 'city_state_zip', nm = esc(f.name);
       return '<fieldset class="w-field' + req + '" data-q="' + nm + '"><legend>' + lab + '</legend><div class="w-csz">' +
@@ -432,6 +455,15 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
   function insuranceBody(s) {
     var ins = packet.insurance || {};
+    // Mark 2026-11-13: "the only place the insurance option is is in the quote email. if they have made their choice then it is done and only the
+    // decision is needed in the paperwork." A choice made on the quote is stated here, never asked again: no video, no prices, no options. The
+    // choice stays on the page as a hidden answer so the lines that depend on it (an own policy's company and number) still show.
+    if (ins.decided) {
+      return '<p class="lead">Your travel protection decision, as you chose it on your quote:</p><p class="w-decision"><b>' + esc(ins.decided.label) + '</b></p>' +
+        '<p class="hint">To change it, call or text Mark before you sign.</p>' +
+        '<input type="hidden" data-field="insurance_plan" value="' + esc(ins.decided.plan || '') + '">' +
+        '<div class="w-decided">' + fieldsHtml(s.fields || []) + '</div>';
+    }
     var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
     if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
     var chosen = (ins.choice && ins.choice.plan) || (fields.insurance_plan && fields.insurance_plan.f.value) || '';
@@ -463,6 +495,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var quoteTimer = null;
   function pollQuote() {
     clearTimeout(quoteTimer);
+    if (packet.insurance && packet.insurance.decided) return;   // decided on the quote: there is no price to fetch here
     var box = $('w-quote'); if (!box) return;
     api('/insurance').then(function (r) {
       var j = r.json || {}; if (r.status !== 200 || !j.success) return;
@@ -475,6 +508,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // the quote starts in the background as soon as the information page is submitted (Mark 2026-10-29)
   function requestQuote() {
     if (packet.kind !== 'traveler' || !steps.some(function (s) { return s.id === 'insurance'; })) return;
+    if (packet.insurance && packet.insurance.decided) return;   // decided on the quote: Allianz is not asked again from here
     api('/insurance/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(function () {});
   }
 
@@ -520,6 +554,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return '<section class="w-step" data-step="' + i + '" hidden>' + forDoc + head + stepBody(s, named) + '</section>';
     }).join('');
     cszWire(host); telWire(host);
+    if (!$('w-countries')) { var dl = document.createElement('datalist'); dl.id = 'w-countries'; dl.innerHTML = COUNTRIES.map(function (c) { return '<option value="' + esc(c) + '"></option>'; }).join(''); document.body.appendChild(dl); }
     addressCheck(host);
     followUps();
     if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
@@ -593,7 +628,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
   function showPage(host, i) {
     var cs = pagesOf(host); if (!host || !cs.length) return;
-    i = Math.max(0, Math.min(i, cs.length - 1)); host.pageAt = i;
+    i = Math.max(0, Math.min(i, cs.length - 1)); host.pageAt = i; host.pageSeen = Math.max(host.pageSeen || 0, i);
     for (var k = 0; k < cs.length; k++) cs[k].hidden = k !== i;
     var el = host.closest('.w-step'), tag = el && el.querySelector('.w-pageof'), spot = el && el.querySelector('.w-spot');
     if (tag) tag.textContent = 'Page ' + (i + 1) + ' of ' + cs.length;
@@ -603,7 +638,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function lastPage(host) { var cs = pagesOf(host); return !cs.length || (host.pageAt || 0) >= cs.length - 1; }
   function nextLabel() {
     var s = steps[at]; if (!s) return;
-    if (s.id !== 'doc') { $('fm-next').textContent = { check: 'Finish', welcome: "Let's go!" }[s.id] || 'Continue'; return; }
+    if (s.id !== 'doc') { $('fm-next').textContent = { check: 'Finish', welcome: "Let's go!" }[s.id] || (resumeStep() > at ? 'Save and return to signing' : 'Continue'); return; }
     var host = stepEl(at).querySelector('.w-pdf');
     $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Next page';
   }
@@ -721,12 +756,26 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     showPdf(el.querySelector('.w-pdf'), key, el.querySelector('.w-paper'));
   }
 
+  // Mark 2026-11-14 ("when an error is found and corrected, the button should save it and return to the final signature, rather than
+  // running through all of the completed pages"): going back from a document to fix an answer remembers that document and the page
+  // reached on it; the button on the answers' screen then reads "Save and return to signing" and lands there, with the fix on the form.
+  var resume = null;
+  function resumeStep() { if (!resume) return -1; var d = docByKey(resume.key); return d && d.status !== 'signed' ? stepIndex({ id: 'doc', key: resume.key }) : -1; }
+  /** on from an answers' screen: back to the document being signed when the guest came from one, else the next screen */
+  function onward(from) {
+    var i = resumeStep();
+    if (i < 0 || i <= from) { resume = null; return goStep(from + 1); }
+    var page = resume.page; resume = null;
+    goStep(i);
+    var h = stepEl(i).querySelector('.w-pdf'); if (h) { h.pageAt = page; showPage(h, page); }
+  }
   function stepIndex(s) { for (var k = 0; k < steps.length; k++) if (steps[k].id === s.id && (s.id !== 'doc' || steps[k].key === s.key)) return k; return -1; }
   function goStep(i, quiet) {
     // a document already signed is never shown again as a step: skipped in the direction of travel
     var dir = i >= at ? 1 : -1;
     while (i > 0 && i < steps.length - 1 && steps[i].id === 'doc' && (docByKey(steps[i].key) || {}).status === 'signed') i += dir;
     i = Math.max(0, Math.min(i, steps.length - 1));
+    if (i < at && steps[at] && steps[at].id === 'doc' && steps[i].id !== 'doc') { var from = stepEl(at).querySelector('.w-pdf'); resume = { key: steps[at].key, page: (from && from.pageSeen) || 0 }; }
     at = i;
     if (steps[i].id === 'doc') {
       var h = stepEl(i).querySelector('.w-pdf'); if (h) h.pageAt = 0;
@@ -770,6 +819,14 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = NEEDS[n] ? NEEDS[n].say : f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi' || PICK[n]) ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
       else if (isCsz(n) && !wholeCsz(v)) { out[n] = 'Please fill in the city, state and ZIP.'; names.push(f.label); }
     }
+    // a country line, required or not, holds a country from the list (asked only where the line is in view)
+    var cs = el.querySelectorAll('[data-country]');
+    for (var c = 0; c < cs.length; c++) {
+      var cn = cs[c].getAttribute('data-field'), hid = cs[c].closest('[hidden]');
+      if (out[cn] || !cs[c].value.trim() || (hid !== null && hid !== el)) continue;
+      settleCountry(cs[c]);
+      if (COUNTRIES.indexOf(cs[c].value) < 0) { out[cn] = 'Please choose a country from the list.'; names.push(fields[cn] ? fields[cn].f.label : cn); }
+    }
     return { fields: out, names: names };
   }
 
@@ -801,7 +858,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     // documents that follow may change with the answer (the card authorization leaves for the card's owner; the plan or the declination)
     if (s.id === 'details' && packet.card && fields.cardholder) return keep('/card', { cardholder: value('cardholder'), card_name: value('card_name'), card_email: value('card_email') });
     if (s.id === 'insurance') return keep('/insurance/choice', { insurance_choice: value('insurance_choice'), insurance_plan: value('insurance_plan'), ins_provider: value('ins_provider'), ins_policy: value('ins_policy') });
-    goStep(at + 1);
+    if (s.id === 'welcome') return goStep(at + 1);
+    onward(at);
   }
   function keep(path, body) {
     busy = true; $('fm-next').disabled = true;
@@ -811,8 +869,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         busy = false; $('fm-next').disabled = false;
         var j = r.json || {};
         // the screens may have been rebuilt (signed documents drop out of the list): find this screen again, then move on from it
-        if (r.status === 200 && j.success && j.packet) { var cur = steps[at]; adopt(j.packet); var i = stepIndex(cur); goStep((i >= 0 ? i : at) + 1); return; }
-        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+        if (r.status === 200 && j.success && j.packet) { var cur = steps[at]; adopt(j.packet); var i = stepIndex(cur); onward(i >= 0 ? i : at); return; }
+        if (r.status === 404) { setState(j.error || DEAD_LINK); show('fm-wiz', false); return; }
         if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
         showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
         fieldErrors(j.fields);
@@ -861,7 +919,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }
       if (r.status === 409 && j.code === 'document-changed') return reload('This document was just updated, so please read it again before you sign.');
       if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
-      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+      if (r.status === 404) { setState(j.error || DEAD_LINK); show('fm-wiz', false); return; }
       // a refused answer: go to the screen that asks it
       var bad = Object.keys(j.fields || {}), s2 = bad.length ? stepOf(bad[0]) : -1;
       if (s2 >= 0) goStep(s2);
@@ -873,7 +931,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   function reload(msg) {
     return api('').then(function (r) {
-      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-wiz', false); return; }
+      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || DEAD_LINK); show('fm-wiz', false); return; }
       packet = r.json; render();
       if (msg) showErr(msg);
     });
@@ -986,6 +1044,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     clearTimeout(nameTimer); nameTimer = setTimeout(function () { showDocPdf(at); }, 900);
   });
   $('fm-steps').addEventListener('change', unmark);
+  $('fm-steps').addEventListener('change', function (e) { if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-country')) settleCountry(e.target); });
   document.addEventListener('click', function (e) {
     var r = e.target.closest && e.target.closest('[data-read]');
     if (r) readDoc(r.getAttribute('data-read'));

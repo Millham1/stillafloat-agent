@@ -8,14 +8,22 @@ import { BUSINESS, callKeyMatches, deriveCallKey, hashLinkToken, hubKey, looksLi
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../lib/group-forms";
 import { DOC_SPECS } from "../lib/group-documents";
+import { pipelineStage } from "../lib/group-pipeline";
+import { renderQuotePdf } from "../lib/group-quote-pdf";
+import { lineSource, pullLinePlanCoverage, readPolicyPdf, stateOf, type LinePullOutcome } from "../lib/line-protection";
+import { allianzCoverage, lineCoverage, loadCoverages, saveCoverage, type StoredCoverage } from "../lib/protection-store";
+import { resolvePublicDir } from "../lib/public-dir";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, callerPhone, detailsFacts, detailsTokenFresh, firstWord, flexpayEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  SELLER_OF_TRAVEL, WHEN_WORD, callBookedEmail, callEmail, decisionEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
+import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planBenefits, planLabel, plansFromText, type PlanBenefit, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -164,7 +172,7 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
     // opens once the names are in, shows the fares and the figures from the group file).
     const stored = storedQuote(reply.quote);
     // the guest gets their answers and figures back, never the cabin row it was filed on
-    const quote = stored ? (({ cabin_id: _cabin, carrier_intake_id: _read, flexpay_link: _fp, flexpay_call: _call, ...rest }) => rest)(stored as Quote & { carrier_intake_id?: string; flexpay_link?: string; flexpay_call?: unknown }) : null;
+    const quote = stored ? (({ cabin_id: _cabin, carrier_intake_id: _read, flexpay_link: _fp, flexpay_call: _call, plan_call: _plan, price: _price, ...rest }) => rest)(stored as Quote & { carrier_intake_id?: string; flexpay_link?: string; flexpay_call?: unknown; plan_call?: unknown; price?: unknown }) : null;
     return res.json({
       success: true,
       label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl, credits,
@@ -178,6 +186,8 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
       depositPerPersonText: f.depositPerPersonText,
       phoneLine: typeof blurb === "string" && blurb.trim() ? blurb.trim() : null, businessPhone: callerPhone(blurb), lang,
       // Mark 2026-11-08: a FlexPay yes opens OUR scheduler in a pop-up on the quote page (Mark schedules nothing): the way in, and the time once it is set
+      // Mark 2026-11-09: "Walk me through it, Mark!" opens the same scheduler for a PHONE planning call: the way in, and the time once it is set
+      planCallUrl: planCallPath(reply, lang), planCall: ((c) => (c ? { start: c.start, whenText: callWhenText(c.start, lang) } : null))(storedCall(reply.quote, "plan")),
       flexpayCallUrl: flexpayCallPath(reply, lang), flexpayCall: ((c) => (c ? { start: c.start, whenText: callWhenText(c.start, lang) } : null))(storedCall(reply.quote)),   // the time only, never the video link
     });
   } catch (err) {
@@ -378,9 +388,10 @@ router.post("/group-details/:token/quote", async (req: Request, res: Response) =
     // Mark 2026-11-08: the time they already picked in the scheduler pop-up stays with the re-priced answers
     const before = (reply.quote ?? null) as Row | null;
     if (before?.["flexpay_call"]) quote["flexpay_call"] = before["flexpay_call"];
+    if (before?.["plan_call"]) quote["plan_call"] = before["plan_call"];
     const { error } = await db().from("group_interests").update({ quote, updated_at: new Date().toISOString() }).eq("id", reply.id).is("quote_requested_at", null);
     if (error) throw new Error(error.message);
-    const { flexpay_call: _call, ...shown } = quote;   // the call row (with the video link) stays on the reply, never in the answer
+    const { flexpay_call: _call, plan_call: _plan, ...shown } = quote;   // the call row (with the video link) stays on the reply, never in the answer
     return res.json({ success: true, quote: shown });
   } catch (err) {
     return fail(req, res, err, "group details quote failed");
@@ -485,11 +496,11 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
     const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(agreed, quoteOptions({ group, cabins, travel }, "en"))}. Travelers are on the file (${where}). `
       + `The price the guest saw is the starting price: nothing is agreed and the paperwork link is NOT sent yet. Do this: (1) re-quote these choices in the cruise line's system; `
       + `(2) upload that quote in the group file: it fills the booking confirmation; (3) validate ${toCheck.length ? toCheck.join("; ") : "the flights, hotel and transfers, if they asked for any"} and enter the suppliers' confirmations; `
-      + `(4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors${agreed.answers.flexpay ? ", and send the FlexPay appointment link" : ""}.`;
+      + `(4) check what the paperwork will say and send it. The guest signs it and it comes back to you; then confirm the booking with the cruise line and the vendors.`;
     void createAction({
       type: "lead", source_ref: `group-quote-${reply.id}`, title, body, priority: "lead",
       buttons: [
-        { label: "Upload the cruise line's quote", href: `/groups/${group.id}?book=${reply.id}#booking` },
+        { label: "Upload the cruise line's quote", href: `/groups/${group.id}/booking/${reply.id}` },
         { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/booked` },
       ],
     }).then(async (made) => {
@@ -509,7 +520,7 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
 // it, adds the suppliers' confirmations and any change, sees what the paperwork will now say, and sends it. Signed and back, he closes the booking. The cabin lives on group_cabins (booking number, cabin number, deck, prices);
 // the flights, hotels and transfers on the lead's file (form_data.trip.chosen), which the Cruise Booking Agreement already prints.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TRIP_KINDS = ["flight", "hotel", "transfer"] as const;
+const TRIP_KINDS = ["flight", "hotel", "transfer", "package"] as const;
 const text = (v: unknown, max = 200): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const money = (v: unknown): number | null | undefined => {
   if (v === null || v === "") return null;
@@ -518,17 +529,63 @@ const money = (v: unknown): number | null | undefined => {
 };
 const isoOrNull = (v: unknown): string | null => { const t = text(v, 40); return t && !Number.isNaN(Date.parse(t)) ? t : null; };
 
-interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** what Mark booked it for, the whole line (Mark 2026-11-09) */ price: number | null }
+/** What a package line says about its air and its hotel. */
+interface PackageDetail { flights: string | null; return_flights: string | null; return_from: string | null; return_to: string | null; /** departure and arrival times of each leg, "HH:MM" */ depart_time: string | null; arrive_time: string | null; return_depart_time: string | null; return_arrive_time: string | null; air_class: string | null; hotel: string | null; hotel_city: string | null; check_in: string | null; check_out: string | null; beds: "1" | "2" | null; breakfast: boolean | null }
+const packageDetail = (v: unknown): PackageDetail | null => {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  const dayOf = (x: unknown) => { const t = text(x, 40); return t && /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null; };
+  const timeOf = (x: unknown) => { const t = text(x, 10); return t && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null; };
+  return {
+    flights: text(r["flights"], 120), return_flights: text(r["return_flights"], 120), return_from: text(r["return_from"], 120), return_to: text(r["return_to"], 120),
+    depart_time: timeOf(r["depart_time"]), arrive_time: timeOf(r["arrive_time"]), return_depart_time: timeOf(r["return_depart_time"]), return_arrive_time: timeOf(r["return_arrive_time"]), air_class: text(r["air_class"], 60), hotel: text(r["hotel"], 120), hotel_city: text(r["hotel_city"], 120),
+    check_in: dayOf(r["check_in"]), check_out: dayOf(r["check_out"]), beds: r["beds"] === "1" || r["beds"] === "2" ? r["beds"] : null,
+    breakfast: typeof r["breakfast"] === "boolean" ? r["breakfast"] : null,
+  };
+};
+/** A package in one line, as the booking confirmation and the agreement print it: the air, then the hotel, each with what Mark entered. */
+export function packageLabel(r: { direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; pkg?: PackageDetail | null }): string {
+  const d = (x: string | null) => (x ? x.slice(0, 10) : "");
+  const k = r.pkg;
+  const out = [k?.flights ? `flight ${k.flights}` : "", [r.from_place, r.to_place].filter(Boolean).join(" to "), d(r.starts_at), k?.depart_time ? `departs ${k.depart_time}` : "", k?.arrive_time ? `arrives ${k.arrive_time}` : ""].filter(Boolean).join(" ");
+  const back = [k?.return_flights ? `flight ${k.return_flights}` : "", [k?.return_from, k?.return_to].filter(Boolean).join(" to "), d(r.ends_at), k?.return_depart_time ? `departs ${k.return_depart_time}` : "", k?.return_arrive_time ? `arrives ${k.return_arrive_time}` : ""].filter(Boolean).join(" ");
+  const air = [r.provider, k?.air_class, out ? `out: ${out}` : "", back ? `back: ${back}` : ""].filter(Boolean).join(", ");
+  const hotel = [k?.hotel, k?.hotel_city, [d(k?.check_in ?? null), d(k?.check_out ?? null)].filter(Boolean).join(" to "), k?.beds === "1" ? "1 bed" : k?.beds === "2" ? "2 beds" : "", k?.breakfast === true ? "breakfast included" : k?.breakfast === false ? "no breakfast" : ""].filter(Boolean).join(", ");
+  const parts = [air ? `air (${air})` : "", hotel ? `hotel (${hotel})` : ""].filter(Boolean).join(" and ");
+  return `${r.direction === "post" ? "After" : "Before"} the cruise: package${parts ? `, ${parts}` : ""}`;
+}
+interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** the quoted price of the whole line FOR THE BOOKING (Mark 2026-11-09): what the totals, the quote and the paperwork add up */ price: number | null;
+  /** Mark 2026-11-12 ("the quoted price in this pane is for one person, not the booking"): a vendor quotes most travel per person. A line says which it
+   *  is: "person" keeps the price as quoted (unit_price) and `price` is that times everyone on the booking; "booking" is one figure for everybody. */
+  per?: "person" | "booking"; unit_price?: number | null; /** A package (air and hotel sold as one, Mark 2026-11-09): the air and the hotel in their own fields; the line's price is the package price. */ pkg?: PackageDetail | null }
 const tripEntries = (formData: unknown): TripEntry[] => {
   const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
   const list = t && typeof t === "object" ? (t as Record<string, unknown>)["chosen"] : null;
   if (!Array.isArray(list)) return [];
-  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r) => ({
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r): TripEntry => ({
     kind: String(r["kind"] ?? ""), direction: text(r["direction"], 10), provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
     starts_at: text(r["starts_at"], 40), ends_at: text(r["ends_at"], 40), label: text(r["label"]) ?? String(r["kind"] ?? ""), confirmation: text(r["confirmation"]),
     price: typeof r["price"] === "number" && Number.isFinite(r["price"]) ? r["price"] : null,
-  }));
+    per: r["per"] === "person" ? "person" : "booking", unit_price: r["per"] === "person" && typeof r["unit_price"] === "number" && Number.isFinite(r["unit_price"]) ? r["unit_price"] : null,
+    ...(String(r["kind"] ?? "") === "package" ? { pkg: packageDetail(r["pkg"]) } : {}),
+  })).map((e) => (e.kind === "package" ? { ...e, label: packageLabel(e) } : e));   // a package's line is always written from its fields
 };
+/** Each guest's price lines as the cruise line's quote prints them (Mark 2026-11-09: "read the quote, not make assumptions"): kept beside the travel. */
+interface GuestPriceRow { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] }
+const guestPriceRows = (v: unknown): GuestPriceRow[] => {
+  if (!Array.isArray(v)) return [];
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? cents(x) : null);
+  const rows: GuestPriceRow[] = [];
+  for (const r of v.slice(0, 8)) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>, name = text(o["name"], 120), cruise = n(o["cruise"]), taxes = n(o["taxes"]);
+    if (!name || cruise === null || taxes === null) continue;
+    rows.push({ name, cruise, packaging: n(o["packaging"]) ?? 0, addons: n(o["addons"]) ?? 0, insurance: n(o["insurance"]) ?? 0, taxes, total: n(o["total"]),
+      items: (Array.isArray(o["items"]) ? o["items"] : []).map((i) => text(i, 160)).filter((i): i is string => !!i).slice(0, 12) });
+  }
+  return rows;
+};
+const storedGuestPrices = (formData: unknown): GuestPriceRow[] => guestPriceRows(((formData as Record<string, any> | null)?.["trip"] ?? {})["guest_prices"]);
 /** The cruise line's own paid extras on this booking (a dining package, a drink package): read off the uploaded quote, checked by Mark (Mark 2026-11-09). */
 interface CruiseExtra { name: string; total: number }
 const cruiseExtras = (formData: unknown): CruiseExtra[] => {
@@ -538,14 +595,75 @@ const cruiseExtras = (formData: unknown): CruiseExtra[] => {
   return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r["total"] === "number" && Number.isFinite(r["total"]))
     .map((r) => ({ name: text(r["name"], 120) ?? "Cruise extra", total: r["total"] as number }));
 };
+/** Travel protection as Mark priced it for THIS booking (Mark 2026-11-10: "create an insurance section on the quote… add Allianz too"): each plan
+ *  with its price per person, typed on the booking card and kept on the lead's file (form_data.trip.protection). The guest picks one on the quote page. */
+/** A plan is priced EITHER per person (the cruise line's plan, a plan typed by hand) OR as one total for the whole party (the way Allianz's site prices
+ *  a trip: one figure for everyone, never divided). */
+interface ProtectionPlan { name: string; per_person: number | null; total: number | null; line: boolean }
+const posNum = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v > 0 ? cents(v) : null);
+const protectionPlans = (formData: unknown): ProtectionPlan[] => {
+  const list = ((formData as Record<string, any> | null)?.["trip"] ?? {})["protection"];
+  if (!Array.isArray(list)) return [];
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && (posNum(r["per_person"]) !== null || posNum(r["total"]) !== null) && !!text(r["name"], 120))
+    .slice(0, 12).map((r) => ({ name: text(r["name"], 120)!, per_person: posNum(r["total"]) !== null ? null : posNum(r["per_person"]), total: posNum(r["total"]), line: r["line"] === true }));
+};
+/** Where the Allianz quote for this booking stands (lead's file, trip.allianz): asked from the booking card once the costs are in. */
+interface AllianzRecord { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: TripPlan[]; reason: string | null; input: TripQuoteInput | null }
+const allianzRecord = (formData: unknown): AllianzRecord | null => {
+  const a = ((formData as Record<string, any> | null)?.["trip"] ?? {})["allianz"];
+  if (!a || typeof a !== "object" || !["pending", "ready", "unavailable"].includes(a["status"])) return null;
+  const plans = (Array.isArray(a["plans"]) ? a["plans"] : []).filter((p: unknown): p is Row => !!p && typeof p === "object").map((p: Row): TripPlan => {
+    // the plan's benefit table and description, as read off Allianz's screen with the price (Mark 2026-11-13: the guest can view the coverages)
+    const benefits = planBenefits(p["benefits"]), about = text(p["about"], 1200);
+    return { name: text(p["name"], 120) ?? "", total: posNum(p["total"]) ?? 0, ...(benefits.length ? { benefits } : {}), ...(about ? { about } : {}) };
+  }).filter((p: TripPlan) => p.name && p.total > 0);
+  return { status: a["status"], requested_at: String(a["requested_at"] ?? ""), quoted_at: text(a["quoted_at"], 40), plans, reason: text(a["reason"], 400), input: a["input"] && typeof a["input"] === "object" ? (a["input"] as TripQuoteInput) : null };
+};
 const cents = (n: number) => Math.round(n * 100) / 100;
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
+/** The pull of a cruise line's plan document, swappable in tests (no network there). One try an hour for a cruise line and state. */
+let linePull: (cruiseLine: string, state: string) => Promise<LinePullOutcome> = (cruiseLine, state) => pullLinePlanCoverage(cruiseLine, state, { pdfText: readPolicyPdf });
+export function setLinePullForTests(f: ((cruiseLine: string, state: string) => Promise<LinePullOutcome>) | null): void { linePull = f ?? ((cruiseLine, state) => pullLinePlanCoverage(cruiseLine, state, { pdfText: readPolicyPdf })); lineTried.clear(); }
+const lineTried = new Map<string, number>();
+async function ensureLineCoverage(cruiseLine: string, state: string): Promise<void> {
+  const key = `${cruiseLine.toLowerCase()}|${state}`, last = lineTried.get(key) ?? 0;
+  if (Date.now() - last < 3_600_000) return;
+  lineTried.set(key, Date.now());
+  try {
+    const out = await linePull(cruiseLine, state);
+    if (out.status !== "ready") { logger.warn({ cruiseLine, state, reason: out.reason }, "group booking: the cruise line's plan coverages could not be pulled"); return; }
+    await saveCoverage(db(), { provider: "cruise-line", ...out.plan });
+    logger.info({ cruiseLine, state, lines: out.plan.benefits.length }, "group booking: the cruise line's plan coverages were pulled and kept");
+  } catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group booking: keeping the cruise line's plan coverages failed"); }
+}
+/**
+ * Pull a cruise line's own plan coverages for a state now, and keep them (Mark 2026-11-13: "do a test by pulling the plans for Norwegian"). The same
+ * pull a booking makes by itself the first time it needs them; this lets Mark (or a check) ask for a cruise line and a state ahead of any booking.
+ * Answers with what was read, or with why nothing could be read. Coverages only: no price.
+ */
+router.post("/protection-plans/pull", requireToken, async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as Row;
+    const cruiseLine = text(body["cruise_line"], 80), state = (typeof body["state"] === "string" ? body["state"].trim() : "").toUpperCase();
+    if (!cruiseLine) return res.status(400).json({ success: false, error: "Name the cruise line." });
+    if (!/^[A-Z]{2}$/.test(state)) return res.status(400).json({ success: false, error: "Give the state of residence as two letters, for example NC." });
+    if (!lineSource(cruiseLine)) return res.status(409).json({ success: false, error: `No published source is known yet for ${cruiseLine}'s own plan. It has to be added before its coverages can be pulled.` });
+    const out = await linePull(cruiseLine, state);
+    if (out.status !== "ready") return res.status(502).json({ success: false, error: `Nothing was kept: ${out.reason}.` });
+    await saveCoverage(db(), { provider: "cruise-line", ...out.plan });
+    lineTried.set(`${cruiseLine.toLowerCase()}|${state}`, Date.now());
+    return res.json({ success: true, kept: true, plan: out.plan });
+  } catch (err) {
+    return fail(req, res, err, "protection plan pull failed");
+  }
+});
+
 async function loadBooking(groupId: string, iid: string) {
-  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email").eq("id", iid).eq("group_id", groupId).maybeSingle();
+  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!reply || !reply.quote_requested_at || !reply.traveler_id) return null;
-  const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
+  const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, phone, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
   if (le) throw new Error(le.message);
   if (!lead) return null;
   const { data: cabin, error: ce } = lead.cabin_id ? await db().from("group_cabins").select("id, cabin_num, deck, category, status, booking_number, price_total, deposit_amount").eq("id", lead.cabin_id).maybeSingle() : { data: null, error: null };
@@ -558,12 +676,28 @@ async function loadBooking(groupId: string, iid: string) {
   // once the paperwork is out: what this party has signed
   let signed: SignedView | null = null;
   if (quote?.paperwork && quote.paperwork !== "booking") signed = await signedFor(groupId, lead);
-  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed };
+  // the sailing's protection quotes on the group file (the cruise line's plan and the Allianz plans, as Mark typed them there)
+  const { data: file, error: fe } = await db().from("groups").select("line_protection, insurance_plans, sail_date, return_date, cruise_line, ship_name, embark_port, nights, itinerary").eq("id", groupId).maybeSingle();
+  if (fe) throw new Error(fe.message);
+  // everyone on this booking (the lead and whoever shares the lead's cabin), for Mark's review of the customer
+  const { data: party, error: pe } = lead.cabin_id
+    ? await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("cabin_id", lead.cabin_id)
+    : await db().from("group_travelers").select("id, first_name, last_name, dob, is_lead").eq("id", lead.id);
+  if (pe) throw new Error(pe.message);
+  // Mark 2026-11-13: what each plan covers is kept in the database and reused (protection_plans). The cruise line's own plan is pulled off its
+  // insurer's site the first time it is needed for a state, in the background; the next read of the booking has it.
+  const state = stateOf((lead.form_data as Record<string, any> | null)?.["city_state_zip"]);
+  let coverages: StoredCoverage[] = [];
+  try { coverages = await loadCoverages(db(), state); }
+  catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group booking: the kept coverages could not be read"); }
+  if (state && lineSource(file?.["cruise_line"]) && !lineCoverage(coverages, lineSource(file?.["cruise_line"])!.cruiseLine)) void ensureLineCoverage(String(file!["cruise_line"]), state);
+  return { reply, lead, cabin, quote, carrier: (carrier ?? null) as Row | null, signed, file: (file ?? null) as Row | null, party: (party ?? []) as Row[], coverages };
 }
 
 interface SignedView { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> }
 /** The documents the guest's party must sign and the ones that are back: the lead and everyone on the lead's cabin. */
-async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
+interface SignSets { group: Row; cabins: Row[]; travelers: Row[]; signatures: Row[] }
+async function loadSignSets(groupId: string): Promise<SignSets> {
   const [g, c, t, sg] = await Promise.all([
     db().from("groups").select("*").eq("id", groupId).maybeSingle(),
     db().from("group_cabins").select("*").eq("group_id", groupId),
@@ -571,10 +705,13 @@ async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
     db().from("group_signatures").select("id, traveler_id, doc_key, signer_role, signer_name, signed_at, pdf_path").eq("group_id", groupId),
   ]);
   for (const r of [g, c, t, sg]) if (r.error) throw new Error(r.error.message);
-  const party = ((t.data ?? []) as Row[]).filter((x) => x["id"] === lead["id"] || (lead["cabin_id"] && x["cabin_id"] === lead["cabin_id"]));
+  return { group: (g.data ?? {}) as Row, cabins: (c.data ?? []) as Row[], travelers: (t.data ?? []) as Row[], signatures: (sg.data ?? []) as Row[] };
+}
+function signedFrom(sets: SignSets, lead: Row): SignedView {
+  const party = sets.travelers.filter((x) => x["id"] === lead["id"] || (lead["cabin_id"] && x["cabin_id"] === lead["cabin_id"]));
   const ids = new Set(party.map((x) => String(x["id"])));
-  const signatures = ((sg.data ?? []) as Row[]).filter((x) => ids.has(String(x["traveler_id"] ?? "")));
-  const status = packetStatuses({ group: (g.data ?? {}) as Row, cabins: (c.data ?? []) as Row[], travelers: party, signatures }).travelers;
+  const signatures = sets.signatures.filter((x) => ids.has(String(x["traveler_id"] ?? "")));
+  const status = packetStatuses({ group: sets.group, cabins: sets.cabins, travelers: party, signatures }).travelers;
   const each = Object.values(status);
   return {
     required: each.reduce((n, x) => n + x.required.length, 0), signed: each.reduce((n, x) => n + x.signed.length, 0),
@@ -582,6 +719,7 @@ async function signedFor(groupId: string, lead: Row): Promise<SignedView> {
     docs: signatures.map((x) => ({ id: String(x["id"]), title: DOC_SPECS[String(x["doc_key"])]?.title ?? String(x["doc_key"]), signer: text(x["signer_name"]), has_pdf: !!x["pdf_path"] })),
   };
 }
+const signedFor = async (groupId: string, lead: Row): Promise<SignedView> => signedFrom(await loadSignSets(groupId), lead);
 
 /** What the reader found on the cruise line's quote, in the booking confirmation's own fields. Mark checks every line before he saves it. */
 function carrierView(intake: Row | null) {
@@ -603,11 +741,220 @@ function carrierView(intake: Row | null) {
       addons: (Array.isArray(x["addons"]) ? x["addons"] : []).filter((a: unknown): a is Record<string, unknown> => !!a && typeof a === "object")
         .map((a: Record<string, unknown>) => ({ name: text(a["name"]) ?? "Add-on", total: num(a["total"]) ?? 0, includes: list(a["includes"]) })),
       inclusions: list(x["guest_inclusions"]), warnings: list(x["warnings"]),
+      // each guest's lines as the quote prints them, when it prices the guests apart
+      guests: guestPriceRows(x["guest_prices"]),
+      // an optioned booking: the day (and hour) the hold ends unless the deposit is paid
+      option_until: text(x["option_until"], 10), option_until_time: text(x["option_until_time"], 30),
     } : null,
   };
 }
 
 type BookingFile = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
+
+// ── The price, approved by the guest before the paperwork goes out (Mark 2026-11-09) ──
+// Kept on the reply's quote under "price": when Mark emailed it, when it was approved and by whom (the guest's "Book It", or Mark for a yes he got
+// another way), and what the guest asked to change. Sending the price again clears the approval and closes the open change request.
+interface PriceState { sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean;
+  /** the travel protection the guest picked on the quote page with their "Book It" (null: not asked, or not answered yet) */
+  protection: { key: string; label: string } | null }
+function storedPrice(quote: unknown): PriceState {
+  const o = quote && typeof quote === "object" ? (quote as Row)["price"] : null;
+  const p = o && typeof o === "object" ? (o as Row) : {};
+  const changes = (Array.isArray(p["changes"]) ? p["changes"] : []).filter((c: unknown): c is Row => !!c && typeof c === "object")
+    .map((c: Row) => ({ at: String(c["at"] ?? ""), text: text(c["text"], 2000) ?? "" })).filter((c: { text: string }) => c.text);
+  return {
+    sent: text(p["sent"], 20), sent_at: text(p["sent_at"], 40), approved_at: text(p["approved_at"], 40),
+    approved_how: p["approved_how"] === "guest" || p["approved_how"] === "mark" ? p["approved_how"] : null, changes, changes_open: p["changes_open"] === true && changes.length > 0,
+    protection: ((o: unknown) => (o && typeof o === "object" && text((o as Row)["key"], 20) && text((o as Row)["label"], 200) ? { key: text((o as Row)["key"], 20)!, label: text((o as Row)["label"], 200)! } : null))(p["protection"]),
+  };
+}
+const QUOTE_WORDS = {
+  en: { cruise: "Your cruise", travel: "Getting there", fare: "Cruise fare", packaging: "Packaging items", addons: "Add-ons", insurance: "Insurance", taxes: "Taxes", guest: "Total per guest",
+    cruiseTotal: "Cruise total", tripTotal: "Trip total (cruise and travel)", addonsAll: "Add-ons for each guest", addonsFor: (n: string) => `Add-ons for ${n}`, cabin: "Cabin",
+    each: (price: string, n: number) => `${price} per person × ${n} travelers`,
+    pkg: (post: boolean) => `Air and hotel package, ${post ? "after" : "before"} the cruise`, flights: "Flights", going: "Going", back: "Coming back", hotel: "Hotel", bed1: "1 bed", bed2: "2 beds",
+    breakfast: "breakfast included", noBreakfast: "no breakfast", departs: "departs", arrives: "arrives", to: "to", flight: "flight",
+    protect: "Travel protection", protectLede: "Priced for your trip. Pick one on your quote page before you tap Book It.", perPerson: "per person", linePlan: "The cruise line's protection plan",
+    forParty: (n: number) => (n === 1 ? "total for 1 traveler" : `total for ${n} travelers`), inCruise: "already in your cruise total above", lineOwn: "the cruise line's own plan", own: "I have my own policy", none: "No insurance for us", tripWith: (n: string) => `Trip total with ${n}` },
+  es: { cruise: "Su crucero", travel: "Cómo llegar", fare: "Tarifa del crucero", packaging: "Paquetes", addons: "Complementos", insurance: "Seguro", taxes: "Impuestos", guest: "Total por pasajero",
+    cruiseTotal: "Total del crucero", tripTotal: "Total del viaje (crucero y traslados)", addonsAll: "Complementos de cada pasajero", addonsFor: (n: string) => `Complementos de ${n}`, cabin: "Cabina",
+    each: (price: string, n: number) => `${price} por persona × ${n} pasajeros`,
+    pkg: (post: boolean) => `Paquete de vuelo y hotel, ${post ? "después" : "antes"} del crucero`, flights: "Vuelos", going: "Ida", back: "Regreso", hotel: "Hotel", bed1: "1 cama", bed2: "2 camas",
+    breakfast: "desayuno incluido", noBreakfast: "sin desayuno", departs: "sale", arrives: "llega", to: "a", flight: "vuelo",
+    protect: "Protección de viaje", protectLede: "Cotizada para su viaje. Elija una en la página de su cotización antes de tocar Reservar.", perPerson: "por persona", linePlan: "El plan de protección de la naviera",
+    forParty: (n: number) => (n === 1 ? "total para 1 pasajero" : `total para ${n} pasajeros`), inCruise: "ya está en el total de su crucero, arriba", lineOwn: "el plan propio de la naviera", own: "Tengo mi propia póliza", none: "Sin seguro para nosotros", tripWith: (n: string) => `Total del viaje con ${n}` },
+} as const;
+/** "MARK MILLHAM" as a quote prints it → "Mark Millham" for reading. */
+const properName = (n: string) => n.toLowerCase().replace(/(^|[\s'-])([a-záéíóúñ])/g, (_m, a: string, b: string) => a + b.toUpperCase());
+const longDay = (ymd: string | null | undefined, lang: Lang) => (ymd && /^\d{4}-\d{2}-\d{2}/.test(ymd)
+  ? new Date(`${ymd.slice(0, 10)}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "");
+const clockTime = (hm: string | null | undefined, lang: Lang) => {
+  const m = hm ? /^(\d{2}):(\d{2})$/.exec(hm) : null;
+  if (!m) return "";
+  if (lang === "es") return `${m[1]}:${m[2]}`;
+  const h = Number(m[1]);
+  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+};
+/** The quote as the guest reads it (Mark 2026-11-10): the cruise as ONE matrix (a column per guest, each cell the figure the cruise line's quote prints
+ *  for that guest), the add-ons named once, the cruise total; then each piece of travel as its own block, its details on their own lines; then the trip
+ *  total. The per-guest matrix shows only while the guests' printed totals still add up to the total cruise price Mark saved; otherwise the cabin and
+ *  each cruise extra as plain lines. Nothing here is worked out beyond the totals the booking confirmation already holds. */
+const ALLIANZ_SOURCE = { en: "As listed by Allianz for this trip. The policy itself governs.", es: "Según Allianz para este viaje. La póliza es la que manda." } as const;
+function quoteDoc(b: BookingFile, lang: Lang): QuoteDoc {
+  const v = bookingView(b), W = QUOTE_WORDS[lang];
+  const guests = v.guestPrices;
+  const asPrinted = guests.length > 0 && v.totals.cruise !== null && guests.every((g) => g.total !== null) && Math.abs(guests.reduce((n, g) => n + (g.total as number), 0) - v.totals.cruise) < 0.005;
+  let matrix: QuoteDoc["matrix"] = null;
+  const cruise: QuoteDoc["cruise"] = [];
+  if (asPrinted) {
+    const row = (label: string, pick: (g: (typeof guests)[number]) => number, strong = false) => ({ label, values: guests.map((g) => usd(pick(g))), ...(strong ? { strong } : {}) });
+    const rows = [row(W.fare, (g) => g.cruise)];
+    if (guests.some((g) => g.packaging > 0)) rows.push(row(W.packaging, (g) => g.packaging));
+    if (guests.some((g) => g.addons > 0)) rows.push(row(W.addons, (g) => g.addons));
+    if (guests.some((g) => g.insurance > 0)) rows.push(row(W.insurance, (g) => g.insurance));
+    rows.push(row(W.taxes, (g) => g.taxes), row(W.guest, (g) => g.total as number, true));
+    const withItems = guests.filter((g) => g.addons > 0 && g.items.length > 0);
+    const same = withItems.length === guests.length && withItems.every((g) => g.items.join("|") === withItems[0]!.items.join("|"));
+    const addons = same ? [{ title: W.addonsAll, items: withItems[0]!.items }] : withItems.map((g) => ({ title: W.addonsFor(properName(g.name)), items: g.items }));
+    matrix = { names: guests.map((g) => properName(g.name)), rows, addons };
+  } else {
+    if (v.totals.cabin !== null) cruise.push({ label: [W.cabin, text(b.cabin?.["category"])].filter(Boolean).join(": "), value: usd(v.totals.cabin) });
+    for (const x of v.extras) cruise.push({ label: x.name, value: usd(x.total) });
+  }
+  const count = guests.length || b.quote?.party || 0;
+  const travel: QuoteDoc["travel"] = [];
+  // Mark 2026-11-11: "the quote email didn't pick up the transfers to/from hotel/cruise" and "the quote should not show zero lines". A travel line
+  // with a price is on the quote; a line priced at 0 is left off; a line with NO price yet is named to Mark before the quote can go (unpricedTravel),
+  // never dropped silently.
+  for (const r of v.trip) {
+    if (r.price === null || r.price === 0) continue;
+    const post = r.direction === "post", k = r.pkg ?? null;
+    const amount = usd(r.price);
+    const each = r.per === "person" && typeof r.unit_price === "number" && count > 1 ? W.each(usd(r.unit_price), count) : "";
+    if (r.kind === "package") {
+      const leg = (word: string, no: string | null | undefined, from: string | null | undefined, to: string | null | undefined, day: string | null, dep: string | null | undefined, arr: string | null | undefined) => {
+        const bits = [no ? `${W.flight} ${no}` : "", [from, to].filter(Boolean).join(` ${W.to} `), longDay(day, lang), dep ? `${W.departs} ${clockTime(dep, lang)}` : "", arr ? `${W.arrives} ${clockTime(arr, lang)}` : ""].filter(Boolean);
+        return bits.length ? `${word}: ${bits.join(" · ")}` : "";
+      };
+      const air = [r.provider, k?.air_class].filter(Boolean).join(", ");
+      const hotel = [k?.hotel, k?.hotel_city, [longDay(k?.check_in, lang), longDay(k?.check_out, lang)].filter(Boolean).join(` ${W.to} `), k?.beds === "1" ? W.bed1 : k?.beds === "2" ? W.bed2 : "", k?.breakfast === true ? W.breakfast : k?.breakfast === false ? W.noBreakfast : ""].filter(Boolean).join(" · ");
+      travel.push({ title: W.pkg(post), value: amount, details: [
+        air ? `${W.flights}: ${air}` : "", leg(W.going, k?.flights, r.from_place, r.to_place, r.starts_at, k?.depart_time, k?.arrive_time),
+        leg(W.back, k?.return_flights, k?.return_from, k?.return_to, r.ends_at, k?.return_depart_time, k?.return_arrive_time), hotel ? `${W.hotel}: ${hotel}` : "", each,
+      ].filter(Boolean) });
+    } else {
+      travel.push({ title: r.label, value: amount, details: [[r.provider, [r.from_place, r.to_place].filter(Boolean).join(` ${W.to} `)].filter(Boolean).join(" · "), [longDay(r.starts_at, lang), r.kind === "hotel" ? longDay(r.ends_at, lang) : ""].filter(Boolean).join(` ${W.to} `), each].filter(Boolean) });
+    }
+  }
+  // Travel protection (Mark 2026-11-10): the plans Mark priced for this booking, per person, for the guest to pick from on the quote page. A plan the
+  // cruise line's quote already prints inside each guest's price is listed as printed and marked as already in the cruise total. A plan's "trip total
+  // with" is the trip total plus that plan for everyone on the booking; it is left out when the cruise total already holds the line's plan.
+  const insured = guests.filter((g) => g.insurance > 0);
+  const plans: NonNullable<QuoteDoc["protection"]>["plans"] = [];
+  if (asPrinted && insured.length) {
+    const same = insured.length === guests.length && insured.every((g) => g.insurance === insured[0]!.insurance);
+    plans.push({ key: "included", name: W.linePlan, price: same ? `${usd(insured[0]!.insurance)} ${W.perPerson}` : insured.map((g) => `${properName(g.name)} ${usd(g.insurance)}`).join(" · "), note: W.inCruise, withTotal: null });
+  }
+  // what each plan covers, from the database (protection_plans): the cruise line's own plan by the cruise line, an Allianz plan by its name. An
+  // Allianz plan not kept yet falls back to the quote the agent fetched for this trip (it is kept at the next fetch).
+  const fetched = allianzRecord(b.lead.form_data)?.plans ?? [];
+  const ownPlan = lineCoverage(b.coverages, lineSource(b.file?.["cruise_line"])?.cruiseLine ?? b.file?.["cruise_line"]);
+  const allianzOf = (name: string): { benefits: PlanBenefit[]; about: string | null; source: string } | null => {
+    const kept = allianzCoverage(b.coverages, name);
+    if (kept) return { benefits: kept.benefits, about: kept.about, source: lang === "es" ? kept.source_es : kept.source_en };
+    const f = fetched.find((x) => `${x.name} (Allianz)`.toLowerCase() === name.trim().toLowerCase() || x.name.toLowerCase() === name.trim().toLowerCase());
+    return f?.benefits?.length ? { benefits: f.benefits, about: f.about ?? null, source: ALLIANZ_SOURCE[lang] } : null;
+  };
+  v.protection.forEach((p, i) => plans.push({
+    ...(p.line && ownPlan ? { covers: ownPlan.benefits, ...(ownPlan.about ? { about: ownPlan.about } : {}), source: lang === "es" ? ownPlan.source_es : ownPlan.source_en }
+      : !p.line && allianzOf(p.name) ? { covers: allianzOf(p.name)!.benefits, ...(allianzOf(p.name)!.about ? { about: allianzOf(p.name)!.about! } : {}), source: allianzOf(p.name)!.source } : {}),
+    key: `p${i}`, name: p.name, price: p.total !== null ? `${usd(p.total)} ${W.forParty(count)}` : `${usd(p.per_person ?? 0)} ${W.perPerson}`, note: p.line ? W.lineOwn : null,
+    withTotal: !insured.length && v.totals.trip !== null && count > 0 ? { label: W.tripWith(p.name), value: usd(cents(v.totals.trip + (p.total ?? (p.per_person ?? 0) * count))) } : null,
+  }));
+  return {
+    heads: { cruise: W.cruise, travel: W.travel }, cabin: text(b.cabin?.["category"]), matrix, cruise,
+    cruiseTotal: v.totals.cruise !== null ? { label: W.cruiseTotal, value: usd(v.totals.cruise) } : null,
+    // the trip total shows whenever travel is priced, or protection is offered (the guest needs the figure the plans add to)
+    travel, tripTotal: (v.totals.travel !== null || plans.length > 0) && v.totals.trip !== null ? { label: W.tripTotal, value: usd(v.totals.trip) } : null,
+    protection: plans.length ? { head: W.protect, lede: W.protectLede, plans, own: W.own, none: W.none } : null,
+  };
+}
+/** The travel lines on the booking that have no quoted price yet: the quote does not go out while there is one. */
+const unpricedTravel = (b: BookingFile): string[] => bookingView(b).trip.filter((r) => r.price === null).map((r) => r.label);
+const unpricedError = (lines: string[]) => `These travel lines have no quoted price, so they would be missing from the quote: ${lines.join("; ")}. Enter each price on the booking's "Flights, hotels, transfers" tab and save, then press this again. (A line priced at 0 is left off the quote.)`;
+const priceKey = (iid: string) => `price:${iid}`;
+function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string | null {
+  const linkKey = hubKey();
+  return linkKey ? `${lang === "es" ? "/es" : ""}/price.html?r=${iid}&k=${deriveCallKey(priceKey(iid), linkKey)}${open ? `&do=${open}` : ""}` : null;
+}
+/**
+ * Mark 2026-11-12: "this does not give me the information I need for the review of this customer … I need information at my fingertips." Everything
+ * about the customer the file already holds, in one block for the booking's first screen: who is travelling (with ages), how to reach them, where they
+ * live, what they chose, what they asked Mark to price, and what has happened so far with its dates. Nothing here is worked out or guessed.
+ */
+function reviewOf(b: BookingFile) {
+  const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
+  const today = new Date().toISOString().slice(0, 10);
+  const price = storedPrice(b.reply.quote);
+  const happened: Array<{ at: string | null; label: string }> = [
+    { at: text(b.reply.created_at, 40), label: "Answered the group page" },
+    { at: text(b.reply.quote_requested_at, 40), label: "Sent their choices" },
+    ...(price.sent_at ? [{ at: price.sent_at, label: price.sent === "sent" ? "Quote emailed" : "Quote email did NOT go out" }] : []),
+    ...price.changes.map((c) => ({ at: c.at || null, label: `Asked for changes: "${c.text}"` })),
+    ...(price.approved_at ? [{ at: price.approved_at, label: price.approved_how === "mark" ? "Said yes (you recorded it)" : "Said Book It" }] : []),
+    ...(b.reply.booking_completed_at ? [{ at: text(b.reply.booking_completed_at, 40), label: "Booking confirmed with the cruise line and vendors" }] : []),
+  ];
+  return {
+    travelers: b.party.map((t) => {
+      const dob = text(t["dob"], 10);
+      return { name: nameOf(t) || "Unnamed traveler", dob, age: dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? ageOnDay(dob, today) : null, lead: t["id"] === b.lead.id };
+    }).sort((x, y) => Number(y.lead) - Number(x.lead)),
+    email: text(b.lead.email ?? b.reply.email, 200), phone: text(b.lead.phone ?? b.reply.phone, 40), lang: b.lead.lang === "es" ? "es" : "en",
+    home: [text(fd["address"], 200), text(fd["city_state_zip"], 120)].filter(Boolean).join(", ") || null,
+    note: text(b.reply.note, 2000),
+    chose: (b.quote?.lines ?? []).map((l) => ({ label: l.label, detail: l.detail })),
+    flexpay: b.quote?.flexpay === true, toPrice: b.quote?.toQuote ?? [],
+    happened: happened.filter((h) => h.at).sort((x, y) => String(x.at).localeCompare(String(y.at))),
+  };
+}
+/**
+ * The facts of the booking laid out the way the cruise line's own confirmation lays them out (Mark 2026-11-12, of MSC's confirmation page: "it is
+ * clean, easy to understand and the info is at my fingertips"): the booking number and where it stands on top, then the trip, then who is in the
+ * cabin with what each of them has. The money is the quote's own document (quoteDoc). Read from the file; nothing is worked out.
+ */
+function sheetOf(b: BookingFile, lang: Lang) {
+  const g = (b.file ?? {}) as Row;
+  const read = b.carrier && b.carrier["extracted"] && typeof b.carrier["extracted"] === "object" ? (b.carrier["extracted"] as Record<string, unknown>) : null;
+  const guests = storedGuestPrices(b.lead.form_data);
+  const stops = (Array.isArray(g["itinerary"]) ? g["itinerary"] : []).filter((x: unknown): x is Row => !!x && typeof x === "object").slice(0, 40).map((x: Row) => {
+    const day = text(x["date"], 10);
+    return {
+      weekday: day ? new Date(`${day}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { weekday: "short", timeZone: "UTC" }) : "",
+      date: day ? new Date(`${day}T12:00:00Z`).toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "",
+      port: text(x["port"], 120) ?? "", arrive: clockTime(text(x["arrive"], 10), lang) || null, depart: clockTime(text(x["depart"], 10), lang) || null,
+    };
+  });
+  const optionDay = text(read?.["option_until"], 10);
+  return {
+    bookingNumber: text(b.cabin?.["booking_number"], 60),
+    // an optioned booking: the day (and hour) the cruise line holds the cabin until, as its quote prints it
+    optionUntil: optionDay ? { day: optionDay, text: [longDay(optionDay, lang), text(read?.["option_until_time"], 30)].filter(Boolean).join(", ") } : null,
+    trip: {
+      line: text(g["cruise_line"], 80), ship: text(g["ship_name"], 80), from: text(g["embark_port"], 120), nights: Number.isFinite(Number(g["nights"])) && Number(g["nights"]) > 0 ? Number(g["nights"]) : null,
+      departs: longDay(text(g["sail_date"], 10), lang) || null, returns: longDay(text(g["return_date"], 10), lang) || null, stops,
+    },
+    cabin: { number: text(b.cabin?.["cabin_num"], 20), deck: text(b.cabin?.["deck"], 20), type: text(b.cabin?.["category"], 120) },
+    // each traveler with the add-ons the cruise line's quote lists under their name
+    travelers: b.party.map((t) => {
+      const name = nameOf(t) || "Traveler";
+      const first = name.split(/\s+/)[0]!.toLowerCase(), last = name.split(/\s+/).slice(-1)[0]!.toLowerCase();
+      const own = guests.find((x) => { const n = x.name.toLowerCase(); return n.includes(first) && n.includes(last); }) ?? guests.find((x) => x.name.toLowerCase().includes(first));
+      return { name, lead: t["id"] === b.lead.id, items: own?.items ?? [] };
+    }).sort((x, y) => Number(y.lead) - Number(x.lead)),
+  };
+}
+/** What Mark's booking page is sent: the booking, and the money exactly as the guest's quote prints it (the per-guest lines, the travel, the totals). */
+const bookingPage = (b: BookingFile) => ({ ...bookingView(b), doc: quoteDoc(b, "en") });
 function bookingView(b: BookingFile) {
   const chosen = tripEntries(b.lead.form_data);
   const needs = ((b.lead.form_data as Record<string, any> | null)?.["trip"]?.["needs"] ?? {}) as Record<string, boolean>;
@@ -638,12 +985,28 @@ function bookingView(b: BookingFile) {
     success: true,
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
+    review: reviewOf(b), sheet: sheetOf(b, "en"),
+    // the guest's own private quote page, once the quote has been emailed (it does not open before): for Mark to see exactly what they see
+    guestPage: storedPrice(b.reply.quote).sent_at ? pricePath(String(b.reply.id), b.lead.lang === "es" ? "es" : "en") : null,
     paperwork: b.quote?.paperwork ?? "booking",
+    // the price the guest approves before the paperwork goes out
+    price: storedPrice(b.reply.quote),
+    guestPrices: storedGuestPrices(b.lead.form_data),
+    // travel protection Mark priced for this booking; the guest picks one on the quote page
+    protection: protectionPlans(b.lead.form_data),
+    // Mark 2026-11-10 ("it does not show me the quotes from Allianz nor the cruise line so I cannot select which ones to add"): the quotes on the
+    // group file for this sailing, for him to tick onto this guest's quote: the cruise line's plan first, then each Allianz plan
+    protectionOnFile: [
+      ...plansFromText(b.file?.["line_protection"]).slice(0, 1).map((q) => ({ name: q.name, per_person: q.price_per_person, line: true })),
+      ...plansFromText(b.file?.["insurance_plans"]).map((q) => ({ name: q.name, per_person: q.price_per_person, line: false })),
+    ],
+    // the Allianz quote the agent fetched for THIS trip (the whole trip cost, each traveler's age): each plan with its one price for the party
+    allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: offeredTripPlans(a.plans), hidden: a.plans.length - offeredTripPlans(a.plans).length, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
     confirmWith: ["The cruise line", ...chosen.map((r) => [r.label, r.provider].filter(Boolean).join(" · "))],
-    flexpay: b.quote?.answers?.flexpay === true ? { link: text((b.reply.quote as Record<string, unknown> | null)?.["flexpay_link"], 20), call: callView(storedCall(b.reply.quote), "en") } : null,
+    flexpay: b.quote?.answers?.flexpay === true ? { call: callView(storedCall(b.reply.quote), "en") } : null,
   };
 }
 
@@ -665,13 +1028,161 @@ router.get("/groups/:id/bookings", requireToken, async (req: Request, res: Respo
   }
 });
 
+// ── Deleting (Mark 2026-11-12: "i need to be able to delete a group, quotes, and individuals") ──
+// A delete is for test data, a duplicate or a mistake. What is a RECORD is never deleted: a person or a group with a signed document or a recorded
+// payment is refused, in words that say what to do instead (close it). Everything else of the person or the group goes: the reply, the travelers it
+// put on the file, the uploaded cruise line quote, Mark's open items; the cabin goes back to held.
+const RECORD_ACTIONS = ["group-interest", "group-call", "group-hold", "group-quote", "group-price-ok", "group-price-change"];
+const DOCS_BUCKET = "group-docs";
+async function closeItemsOf(replyId: string): Promise<void> {
+  for (const k of RECORD_ACTIONS) await resolveActionsForSource("lead", `${k}-${replyId}`, "dismissed").catch(() => undefined);
+}
+async function dropIntake(intakeId: string | null): Promise<void> {
+  if (!intakeId) return;
+  const { data } = await db().from("group_intakes").select("id, storage_path").eq("id", intakeId).maybeSingle();
+  if (!data) return;
+  if (data.storage_path) await db().storage.from(DOCS_BUCKET).remove([String(data.storage_path)]).catch(() => undefined);
+  await db().from("group_intakes").delete().eq("id", intakeId);
+}
+
+/** One person off the group: a lead, a quote or a booking. Refused once there is a signed document or a recorded payment. */
+router.post("/groups/:id/interests/:iid/delete", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, traveler_id, quote, first_name, last_name").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
+    let cabinNote: string | null = null, travelersGone = 0;
+    if (reply.traveler_id) {
+      const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, created_at").eq("id", reply.traveler_id).maybeSingle();
+      if (le) throw new Error(le.message);
+      // With a cabin, the party is everyone on it. With NO cabin (every cabin of the type was taken), the lead's companions are the travelers of
+      // the group with no cabin that were put on the file in the same moment as the lead: they go too (2026-11-12: two were left behind as orphans).
+      const { data: party, error: pe } = lead?.cabin_id
+        ? await db().from("group_travelers").select("id, created_at, is_lead").eq("cabin_id", lead.cabin_id)
+        : await db().from("group_travelers").select("id, created_at, is_lead").eq("group_id", groupId).is("cabin_id", null);
+      if (pe) throw new Error(pe.message);
+      const born = Date.parse(String(lead?.created_at ?? ""));
+      const ids = ((party ?? []) as Row[])
+        .filter((t) => lead?.cabin_id || t["id"] === reply.traveler_id || (t["is_lead"] !== true && Number.isFinite(born) && Math.abs(Date.parse(String(t["created_at"] ?? "")) - born) < 10_000))
+        .map((t) => String(t["id"]));
+      if (ids.length) {
+        const { data: sigs, error: se } = await db().from("group_signatures").select("id").in("traveler_id", ids);
+        if (se) throw new Error(se.message);
+        if ((sigs ?? []).length) return res.status(409).json({ success: false, error: `${nameOf(reply) || "This person"} has ${(sigs ?? []).length} signed document${(sigs ?? []).length === 1 ? "" : "s"} on file. Signed documents are records and are kept, so this booking cannot be deleted. Close it as declined instead.` });
+      }
+      if (lead?.cabin_id) {
+        const { data: paid, error: ye } = await db().from("group_payments").select("id, paid_at").eq("cabin_id", lead.cabin_id);
+        if (ye) throw new Error(ye.message);
+        if (((paid ?? []) as Row[]).some((x) => x["paid_at"])) return res.status(409).json({ success: false, error: `A payment is recorded on this booking's cabin. Payments are records and are kept, so this booking cannot be deleted. Close it as declined instead.` });
+      }
+      for (const id of ids) { const { error: de } = await db().from("group_travelers").delete().eq("id", id); if (de) throw new Error(de.message); travelersGone++; }
+      // the cabin goes back to the block: held, with no booking on it; its type and price come back from another held cabin of the same code
+      if (lead?.cabin_id) {
+        const { data: cabin } = await db().from("group_cabins").select("id, category_code").eq("id", lead.cabin_id).maybeSingle();
+        const { data: sibs } = cabin?.category_code ? await db().from("group_cabins").select("id, category, price_total, deposit_amount, status").eq("group_id", groupId).eq("category_code", cabin.category_code) : { data: [] };
+        const like = ((sibs ?? []) as Row[]).find((c) => c["id"] !== lead.cabin_id && c["status"] === "held");
+        const { error: ce } = await db().from("group_cabins").update({ status: "held", booking_number: null, cabin_num: null, deck: null, ...(like ? { category: like["category"], price_total: like["price_total"], deposit_amount: like["deposit_amount"] } : {}) }).eq("id", lead.cabin_id);
+        if (ce) throw new Error(ce.message);
+        cabinNote = like ? "The cabin is back in the block as held, with its type and price as the other held cabins of its code." : "The cabin is back in the block as held. No other held cabin of its code was found to copy the price from: check its type and price in Group details, Cabins.";
+      }
+    }
+    await dropIntake(text((reply.quote as Row | null)?.["carrier_intake_id"], 60));
+    await closeItemsOf(iid);
+    const { error: de } = await db().from("group_interests").delete().eq("id", iid).eq("group_id", groupId);
+    if (de) throw new Error(de.message);
+    return res.json({ success: true, deleted: { name: nameOf(reply) || "Guest", travelers: travelersGone }, cabin: cabinNote });
+  } catch (err) {
+    return fail(req, res, err, "group person delete failed");
+  }
+});
+
+/** A whole group, with everything in it. The request must carry the group's name ({ confirm }), and a group with a signed document or a recorded payment is refused. */
+router.delete("/groups/:id", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_RE.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data: group, error } = await db().from("groups").select("id, name").eq("id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    if (String((req.body as Row | undefined)?.["confirm"] ?? "").trim() !== String(group.name ?? "").trim()) return res.status(400).json({ success: false, error: "Type the group's name exactly to delete it." });
+    const { data: sigs, error: se } = await db().from("group_signatures").select("id").eq("group_id", groupId);
+    if (se) throw new Error(se.message);
+    if ((sigs ?? []).length) return res.status(409).json({ success: false, error: `This group has ${(sigs ?? []).length} signed document${(sigs ?? []).length === 1 ? "" : "s"} on file. Signed documents are records and are kept, so the group cannot be deleted. Set its stage to closed or cancelled instead.` });
+    const { data: paid, error: ye } = await db().from("group_payments").select("id, paid_at").eq("group_id", groupId);
+    if (ye) throw new Error(ye.message);
+    if (((paid ?? []) as Row[]).some((x) => x["paid_at"])) return res.status(409).json({ success: false, error: "This group has a recorded payment. Payments are records and are kept, so the group cannot be deleted. Set its stage to closed or cancelled instead." });
+    const { data: replies, error: re } = await db().from("group_interests").select("id").eq("group_id", groupId);
+    if (re) throw new Error(re.message);
+    for (const r of (replies ?? []) as Row[]) await closeItemsOf(String(r["id"]));
+    // the uploaded documents of the group would otherwise stay behind with no group (their rows are not removed with it)
+    const { data: intakes, error: ie } = await db().from("group_intakes").select("id").eq("group_id", groupId);
+    if (ie) throw new Error(ie.message);
+    for (const x of (intakes ?? []) as Row[]) await dropIntake(String(x["id"]));
+    const { error: de } = await db().from("groups").delete().eq("id", groupId);
+    if (de) throw new Error(de.message);
+    return res.json({ success: true, deleted: { name: group.name, people: (replies ?? []).length } });
+  } catch (err) {
+    return fail(req, res, err, "group delete failed");
+  }
+});
+
+/**
+ * Where every person of the group stands and whose move it is (Mark 2026-11-11: "i need to see all the groups, the top level shows me the status. then
+ * be able to branch through it … leads, quotes, and booked … i cannot see currently what the status is and what the next step is after the client says
+ * Book it"). One row a reply: its level (lead, quote, booked, closed), its status and next step in words, and "on" (mark, guest, done).
+ * The rules are lib/group-pipeline.ts. Mark's alone; a name, never an address, a phone or a link.
+ */
+router.get("/groups/:id/pipeline", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_RE.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data: group, error: ge } = await db().from("groups").select("id").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data, error } = await db().from("group_interests")
+      .select("id, first_name, last_name, status, choice, call_when, cabin_type, guests, created_at, quote, quote_requested_at, booking_completed_at, traveler_id")
+      .eq("group_id", groupId).order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as Row[];
+    // the signatures are read once for the group, and only when somebody's paperwork is out
+    const out = rows.filter((r) => r["quote_requested_at"] && r["traveler_id"] && (storedQuote(r["quote"])?.paperwork ?? "booking") !== "booking");
+    const sets = out.length ? await loadSignSets(groupId) : null;
+    const people = rows.map((r) => {
+      const q = r["quote_requested_at"] ? storedQuote(r["quote"]) : null;
+      const price = storedPrice(r["quote"]);
+      const lead = sets && r["traveler_id"] ? sets.travelers.find((x) => x["id"] === r["traveler_id"]) : null;
+      const signedView = lead && q?.paperwork && q.paperwork !== "booking" ? signedFrom(sets!, lead) : null;
+      const stage = pipelineStage({
+        status: text(r["status"], 20), choice: text(r["choice"], 20), call_when: text(r["call_when"], 40),
+        quote_requested_at: text(r["quote_requested_at"], 40), booking_completed_at: text(r["booking_completed_at"], 40),
+        price: { sent: price.sent, sent_at: price.sent_at, approved_at: price.approved_at, approved_how: price.approved_how, changes_open: price.changes_open },
+        paperwork: r["quote_requested_at"] ? q?.paperwork ?? "booking" : null,
+        signed: signedView ? { required: signedView.required, signed: signedView.signed, complete: signedView.complete } : null,
+      });
+      return {
+        id: String(r["id"]), name: nameOf(r) || "Guest", ...stage,
+        // what they asked for: the cabin type and party on the quote once the choices are in, the reply's own answer before
+        category: q?.category ?? text(r["cabin_type"], 80), party: q?.party ?? (Number.isFinite(Number(r["guests"])) && Number(r["guests"]) > 0 ? Number(r["guests"]) : null),
+        replied_at: text(r["created_at"], 40), protection: price.protection?.label ?? null,
+        // a booking confirmation exists to open once the choices are in and the lead is on the file
+        has_booking: !!(r["quote_requested_at"] && r["traveler_id"]),
+      };
+    });
+    return res.json({ success: true, people });
+  } catch (err) {
+    return fail(req, res, err, "group pipeline read failed");
+  }
+});
+
 router.get("/groups/:id/interests/:iid/booking", requireToken, async (req: Request, res: Response) => {
   try {
     const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
     if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
     const b = await loadBooking(groupId, iid);
     if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
-    return res.json(bookingView(b));
+    return res.json(bookingPage(b));
   } catch (err) {
     return fail(req, res, err, "group booking read failed");
   }
@@ -701,20 +1212,35 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
     if (body["trip"] !== undefined) {
       if (!Array.isArray(body["trip"]) || body["trip"].length > 20) return bad("The travel list is not valid.");
       const chosen: TripEntry[] = [];
+      const everyone = b.quote?.party && b.quote.party > 0 ? b.quote.party : 1;
       for (const r of body["trip"] as Array<Record<string, unknown>>) {
         const kind = String(r?.["kind"] ?? "");
-        if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel or transfer.");
+        if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel, transfer or package.");
         const dir = r["direction"] === "post" ? "post" : "pre";
-        chosen.push({
+        const entry: TripEntry = {
           kind, direction: dir, provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
           starts_at: isoOrNull(r["starts_at"]), ends_at: isoOrNull(r["ends_at"]), confirmation: text(r["confirmation"]),
           price: ((m) => (m === undefined ? NaN : m))(money(r["price"] ?? null)),
           label: text(r["label"]) ?? `${dir === "post" ? "After" : "Before"} the cruise: ${kind}`,
-        });
+        };
+        // a package says its air and its hotel in the line itself: the label is written from the fields, so the paperwork prints what was entered
+        if (kind === "package") { entry.pkg = packageDetail(r["pkg"]); entry.label = packageLabel(entry); }
+        // a per-person price is kept as quoted and counted once for everyone on the booking
+        if (r["per"] === "person") { entry.per = "person"; entry.unit_price = entry.price; if (typeof entry.price === "number" && Number.isFinite(entry.price)) entry.price = cents(entry.price * everyone); }
+        else entry.per = "booking";
+        chosen.push(entry);
       }
       if (chosen.some((r) => Number.isNaN(r.price))) return bad("A travel price is not an amount.");
       const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), chosen } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
+    if (body["guest_prices"] !== undefined) {
+      if (body["guest_prices"] !== null && !Array.isArray(body["guest_prices"])) return bad("The per-guest price list is not valid.");
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), guest_prices: guestPriceRows(body["guest_prices"]) } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
     if (body["extras"] !== undefined) {
@@ -733,12 +1259,90 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), extras } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
+    if (body["protection"] !== undefined) {
+      if (!Array.isArray(body["protection"]) || body["protection"].length > 8) return bad("The travel protection list is not valid.");
+      const plans: ProtectionPlan[] = [];
+      for (const r of body["protection"] as Array<Record<string, unknown>>) {
+        const name = text(r?.["name"], 120), per = money(r?.["per_person"] ?? null), tot = money(r?.["total"] ?? null);
+        if (!name) return bad("Each travel protection plan needs a name.");
+        if (tot !== null && tot !== undefined && tot > 0) { plans.push({ name, per_person: null, total: cents(tot), line: r["line"] === true }); continue; }
+        if (tot === undefined || per === undefined || per === null || per <= 0) return bad(`The price of ${name} is not an amount.`);
+        plans.push({ name, per_person: cents(per), total: null, line: r["line"] === true });
+      }
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), protection: plans } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
     const again = await loadBooking(groupId, iid);
-    return res.json(bookingView(again ?? b));
+    return res.json(bookingPage(again ?? b));
   } catch (err) {
     return fail(req, res, err, "group booking save failed");
   }
 });
+
+/** Mark 2026-11-10: "once I complete adding the travel costs (cruise, air, hotel, transfers) the agent goes out to Allianz and enters the information
+ *  to get the quotes." Asked by the booking card after a save: the whole trip cost for everyone, the lead's home state, each traveler's age, the first
+ *  and last day of the trip, today as the deposit day until one is paid. The agent drives Allianz's agent site in the background; the card polls the
+ *  booking for the plans. The same trip is not quoted twice; a trip that changed is. What is missing is named, never guessed. */
+function allianzInputFor(b: BookingFile, party: Row[], today: string): TripQuoteInput | { missing: string[] } {
+  const v = bookingView(b), missing: string[] = [];
+  const csz = text((b.lead.form_data as Record<string, any> | null)?.["city_state_zip"], 120) ?? "";
+  const state = (/,\s*([A-Za-z]{2})\s+\d{5}/.exec(csz)?.[1] ?? "").toUpperCase();
+  if (!state) missing.push("the lead guest's home state (their address on the group file)");
+  if (v.totals.trip === null || v.totals.trip <= 0) missing.push("the cruise price (enter the cabin fare and save)");
+  const days = [text(b.file?.["sail_date"], 10), text(b.file?.["return_date"], 10), ...v.trip.flatMap((r) => [r.starts_at, r.ends_at]).map((d) => (d ? d.slice(0, 10) : null))].filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  if (!text(b.file?.["sail_date"], 10) || !text(b.file?.["return_date"], 10)) missing.push("the sailing dates on the group file");
+  const dobs = party.map((t) => text(t["dob"], 10)).filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d));
+  if (!dobs.length || dobs.length < party.length) missing.push("every traveler's birth date");
+  if (missing.length) return { missing };
+  return { state, total_trip_cost: v.totals.trip as number, ages: dobs.map((d) => ageOnDay(d, today)), depart_date: days[0]!, return_date: days[days.length - 1]!, deposit_date: today };
+}
+router.post("/groups/:id/interests/:iid/protection-quote", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const { data: party, error: pe } = b.lead.cabin_id
+      ? await db().from("group_travelers").select("id, dob").eq("cabin_id", b.lead.cabin_id)
+      : await db().from("group_travelers").select("id, dob").eq("id", b.lead.id);
+    if (pe) throw new Error(pe.message);
+    const now = new Date(), input = allianzInputFor(b, (party ?? []) as Row[], now.toISOString().slice(0, 10));
+    if ("missing" in input) return res.status(409).json({ success: false, error: `Allianz cannot be quoted yet. Still needed: ${input.missing.join("; ")}.`, missing: input.missing });
+    const have = allianzRecord(b.lead.form_data), force = (req.body as Row | undefined)?.["again"] === true;
+    const same = !!have?.input && JSON.stringify(have.input) === JSON.stringify(input);
+    if (!force && same && have.status === "ready") return res.json({ success: true, status: "ready", already: true });
+    if (same && have.status === "pending" && now.getTime() - Date.parse(have.requested_at) < 5 * 60_000) return res.json({ success: true, status: "pending", already: true });
+    const saveRecord = async (rec: AllianzRecord) => {
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), allianz: rec } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    };
+    const base: AllianzRecord = { status: "pending", requested_at: now.toISOString(), quoted_at: null, plans: [], reason: null, input };
+    await saveRecord(base);
+    res.status(202).json({ success: true, status: "pending" });
+    void allianzFetch(input, { chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"] })
+      .then(async (out) => {
+        await saveRecord(out.status === "ready" ? { ...base, status: "ready", quoted_at: new Date().toISOString(), plans: out.plans } : { ...base, status: "unavailable", reason: out.reason });
+        // Mark 2026-11-13: every plan's coverages, as Allianz listed them, are kept for the state they were quoted for (reused by any later quote)
+        if (out.status === "ready") for (const p of out.plans) {
+          if (p.benefits?.length) await saveCoverage(db(), { provider: "allianz", cruise_line: null, plan_name: p.name, product_code: null, state: input.state, about: p.about ?? null, source_en: ALLIANZ_SOURCE.en, source_es: ALLIANZ_SOURCE.es, source_url: "https://www.agentmaxonline.com", benefits: p.benefits })
+            .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e), plan: p.name }, "group booking: an Allianz plan's coverages could not be kept"));
+        }
+      })
+      .catch((e: unknown) => saveRecord({ ...base, status: "unavailable", reason: e instanceof Error ? e.message.slice(0, 300) : String(e) }).catch(() => undefined));
+    return;
+  } catch (err) {
+    return fail(req, res, err, "group protection quote failed");
+  }
+});
+/** The fetch itself, swappable in tests (no browser, no sign-in there). */
+let allianzFetch: typeof fetchAllianzTripQuote = fetchAllianzTripQuote;
+export function setAllianzFetchForTests(f: typeof fetchAllianzTripQuote | null): void { allianzFetch = f ?? fetchAllianzTripQuote; }
 
 /** Mark's "Booked" (2026-11-03): the cabin is booked with the cruise line and its number is on the file; the travel is validated. Only then does the
  *  guest's paperwork link go out. Refused until the cabin number is in the group file. Pressed twice, it sends nothing twice. */
@@ -758,17 +1362,348 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     const booking = await loadBooking(groupId, iid);
     const view = booking ? bookingView(booking) : null;
     if (!view || !view.ready) return res.status(409).json({ success: false, error: `Finish the booking confirmation first: ${(view?.missing ?? ["the cabin"]).join("; ")}.`, missing: view?.missing ?? [] });
+    // Mark 2026-11-09: the guest approves the price first ("Book It" in the price email, or Mark records a yes he got another way)
+    if (!storedPrice(reply.quote).approved_at) return res.status(409).json({ success: false, error: "The guest has not approved the price yet. Email the price to them, or record their yes if they gave it another way." });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    // Mark 2026-11-14 ("I never was offered a way to sign the documents where the advisor signs. this should be done before they are sent
+    // to the client"): sending IS the advisor's signing. The name is typed in the send box and kept on the lead's file with the time, and
+    // every form the client is shown, and every signed copy, carries it on the agent's signature lines.
+    const typedName = typeof req.body?.advisor_name === "string" ? req.body.advisor_name.replace(/\s+/g, " ").trim() : "";
+    if (typedName.toLowerCase() !== BUSINESS.agentName.toLowerCase()) {
+      return res.status(400).json({ success: false, code: "advisor-sign", error: `The documents carry your signature as the advisor, so type your full name, ${BUSINESS.agentName}, to sign them before they go to the guest.` });
+    }
+    const { data: fdRow, error: fe } = await db().from("group_travelers").select("form_data").eq("id", lead.id).maybeSingle();
+    if (fe) throw new Error(fe.message);
+    const fd = fdRow?.form_data && typeof fdRow.form_data === "object" ? fdRow.form_data : {};
+    const { error: ae } = await db().from("group_travelers").update({ form_data: { ...fd, advisor: { name: BUSINESS.agentName, signed_at: new Date().toISOString() } } }).eq("id", lead.id);
+    if (ae) throw new Error(ae.message);
     let paperwork: Quote["paperwork"];
     try { paperwork = await sendPaperwork(group, lead); }
     catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the paperwork link could not be sent after Booked"); paperwork = "failed"; }
     await db().from("group_interests").update({ quote: { ...(quote ?? {}), paperwork }, status: "booked", updated_at: new Date().toISOString() }).eq("id", iid);
     await resolveActionsForSource("lead", `group-quote-${iid}`, "done");
+    await resolveActionsForSource("lead", `group-price-ok-${iid}`, "done");
     return res.json({ success: true, paperwork });
   } catch (err) {
     return fail(req, res, err, "group booked failed");
+  }
+});
+
+let cornerstoneLogo: Buffer | null | undefined;
+function quoteLogo(): Buffer | null {
+  if (cornerstoneLogo === undefined) {
+    try { cornerstoneLogo = readFileSync(path.join(resolvePublicDir(), BUSINESS.logoPath)); } catch { cornerstoneLogo = null; }
+  }
+  return cornerstoneLogo;
+}
+/** The guest's quote as a PDF (Mark 2026-11-12): the same document the email and the quote page print. null when there is no price to print yet. */
+async function quotePdf(b: BookingFile, group: Row): Promise<{ bytes: Buffer; filename: string } | { error: string }> {
+  const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+  const doc = quoteDoc(b, lang);
+  if (!doc.cruiseTotal) return { error: "Enter the cabin fare and save the confirmation first: there is no price to print yet." };
+  if (unpricedTravel(b).length) return { error: unpricedError(unpricedTravel(b)) };
+  const facts = detailsFacts({ group, cabins: [] }, lang);
+  const answer = pricePath(String(b.reply.id), lang);
+  const who = [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest";
+  const bytes = await renderQuotePdf({
+    lang, doc, guestName: who, groupLabel: facts.label,
+    dateText: new Date().toLocaleDateString(lang === "es" ? "es-US" : "en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" }),
+    agentName: BUSINESS.agentName, businessName: BUSINESS.legalName, phone: BUSINESS.phone, email: BUSINESS.email, sellerOfTravel: SELLER_OF_TRAVEL,
+    answerUrl: answer ? `${publicSite()}${answer}` : null, logo: quoteLogo(), sheet: sheetOf(b, lang),
+    // the travel protection the guest chose on the page, when they have: the PDF then prints that one and the trip total with it
+    picked: ((key) => {
+      if (!key || !doc.protection) return null;
+      const plan = doc.protection.plans.find((p) => p.key === key);
+      return plan ? { name: plan.name, price: plan.price, withTotal: plan.withTotal } : key === "own" ? { name: doc.protection.own, price: "", withTotal: null } : key === "none" ? { name: doc.protection.none, price: "", withTotal: null } : null;
+    })(storedPrice(b.reply.quote).protection?.key),
+  });
+  return { bytes, filename: `${lang === "es" ? "cotizacion" : "quote"}-${who.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "guest"}.pdf` };
+}
+/**
+ * The insurance video the guest may choose to watch before they pick (Mark 2026-11-12: "Watch this insurance video (the video in the group library)").
+ * It is Mark's own booking video, "Travel Insurance Pros and Cons", in English and Spanish, kept on OUR server for booking and never on YouTube
+ * (Mark 2026-11-01: "the insurance video is not posted to youtube, it only resides on the servers for use in booking activities"; 2026-11-13: "that
+ * is why the video resides in the db so you do not call youtube"). GROUP_INSURANCE_VIDEO_URL may point somewhere else of ours; nothing here ever
+ * answers with a YouTube address.
+ */
+const BOOKING_VIDEO = { en: "/media/booking/booking-01-travel-insurance-pros-and-cons.mp4", es: "/media/booking/booking-01-travel-insurance-pros-and-cons-es.mp4" } as const;
+function insuranceVideo(lang: Lang): string | null {
+  const set = (process.env["GROUP_INSURANCE_VIDEO_URL"] ?? "").trim();
+  if (/^https:\/\//.test(set) && !/youtu\.?be|youtube/i.test(set)) return set;
+  return `${BUSINESS.site.replace(/\/$/, "").replace("://", "://www.")}${BOOKING_VIDEO[lang]}`;
+}
+const pdfPath = (iid: string): string | null => {
+  const linkKey = hubKey();
+  return linkKey ? `/api/price-confirm/${iid}/${deriveCallKey(priceKey(iid), linkKey)}/quote.pdf` : null;
+};
+const sendPdf = (res: Response, f: { bytes: Buffer; filename: string }) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${f.filename}"`);
+  res.setHeader("Cache-Control", "no-store");
+  return res.send(f.bytes);
+};
+
+/** The quote PDF for Mark, to read or to hand over himself (Mark 2026-11-12). Nothing is sent and nothing is recorded. */
+router.get("/groups/:id/interests/:iid/quote-pdf", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const f = await quotePdf(b, group);
+    if ("error" in f) return res.status(409).json({ success: false, error: f.error });
+    return sendPdf(res, f);
+  } catch (err) {
+    return fail(req, res, err, "group quote pdf failed");
+  }
+});
+
+/** The price email exactly as it would go out now, for Mark to read before he sends it: nothing is sent and nothing is recorded. */
+router.get("/groups/:id/interests/:iid/price-preview", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+    const doc = quoteDoc(b, lang);
+    if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to show yet." });
+    if (unpricedTravel(b).length) return res.status(409).json({ success: false, error: unpricedError(unpricedTravel(b)) });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), pageUrl: "#" });
+    return res.json({ success: true, subject: mail.subject, html: mail.html, to: (b.lead.email ?? b.reply.email ?? "").trim() });
+  } catch (err) {
+    return fail(req, res, err, "group price preview failed");
+  }
+});
+
+/** Mark emails the price to the guest (Mark 2026-11-09). Refused once the paperwork is out, and until the cabin fare is entered. Sent again after a
+ *  change, it is a new price: the earlier approval is cleared and the open change request is closed. */
+router.post("/groups/:id/interests/:iid/price-email", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    if (b.quote?.paperwork && b.quote.paperwork !== "booking") return res.status(409).json({ success: false, error: "The paperwork is already out to this guest." });
+    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
+    const doc = quoteDoc(b, lang);
+    if (!doc.cruiseTotal) return res.status(409).json({ success: false, error: "Enter the cabin fare and save the confirmation first: there is no price to send yet." });
+    if (unpricedTravel(b).length) return res.status(409).json({ success: false, error: unpricedError(unpricedTravel(b)) });
+    const book = pricePath(iid, lang, "book"), changes = pricePath(iid, lang, "changes");
+    if (!book || !changes) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const to = (b.lead.email ?? b.reply.email ?? "").trim();
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    let sent: "sent" | "held" | "no-email" | "failed";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) sent = "no-email";
+    else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
+      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
+      sent = "held";
+    } else {
+      const mail = priceEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), pageUrl: `${publicSite()}${pricePath(iid, lang)}` });
+      const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+      const at = new Date().toISOString();
+      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "price-confirmation", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
+      sent = ok ? "sent" : "failed";
+    }
+    const before = storedPrice(b.reply.quote);
+    const price: PriceState = { ...before, sent, sent_at: new Date().toISOString(), approved_at: null, approved_how: null, changes_open: false, protection: null };
+    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price }, updated_at: new Date().toISOString() }).eq("id", iid);
+    if (error) throw new Error(error.message);
+    await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");
+    await resolveActionsForSource("lead", `group-price-ok-${iid}`, "done");
+    return res.json({ success: true, price });
+  } catch (err) {
+    return fail(req, res, err, "group price email failed");
+  }
+});
+
+/** Mark records a yes the guest gave another way (a call, a text): the price counts as approved and the paperwork can go. */
+router.post("/groups/:id/interests/:iid/price-approved", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const before = storedPrice(b.reply.quote);
+    if (before.approved_at) return res.json({ success: true, price: before, already: true });
+    const price: PriceState = { ...before, approved_at: new Date().toISOString(), approved_how: "mark", changes_open: false };
+    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price }, updated_at: new Date().toISOString() }).eq("id", iid);
+    if (error) throw new Error(error.message);
+    await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");
+    return res.json({ success: true, price });
+  } catch (err) {
+    return fail(req, res, err, "group price approved failed");
+  }
+});
+
+// The guest's own price page (public/price.html): the address carries the reply's id and a key derived from it, like the FlexPay scheduler's.
+async function loadPrice(iid: unknown, key: unknown): Promise<{ b: BookingFile; group: Row; lang: Lang; price: PriceState } | null> {
+  if (typeof iid !== "string" || !UUID_RE.test(iid) || !callKeyMatches(priceKey(iid), key, hubKey())) return null;
+  const { data: reply, error } = await db().from("group_interests").select("id, group_id, status").eq("id", iid).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!reply || reply.status === "spam") return null;
+  const b = await loadBooking(String(reply.group_id), iid);
+  if (!b) return null;
+  const price = storedPrice(b.reply.quote);
+  if (!price.sent_at) return null;   // nothing has been sent to approve
+  const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
+  if (ge) throw new Error(ge.message);
+  if (!group) return null;
+  return { b, group, lang: b.lead.lang === "es" ? "es" : "en", price };
+}
+const priceState = (b: BookingFile, p: PriceState): "approved" | "changes" | "open" | "paperwork" =>
+  b.quote?.paperwork && b.quote.paperwork !== "booking" ? "paperwork" : p.approved_at ? "approved" : p.changes_open ? "changes" : "open";
+
+router.get("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { b, group, lang, price } = loaded;
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    return res.json({ success: true, firstName: firstWord(b.lead.first_name), label: facts.label, lang, doc: quoteDoc(b, lang), state: priceState(b, price), protection: price.protection?.key ?? null, sheet: sheetOf(b, lang), businessPhone: BUSINESS.phone, pdf: pdfPath(String(req.params["iid"])), video: insuranceVideo(lang) });
+  } catch (err) {
+    return fail(req, res, err, "price confirm read failed");
+  }
+});
+
+/** The guest's own quote as a PDF, behind the same private link as the quote page (Mark 2026-11-12: "we need to build it into a PDF for download"). */
+router.get("/price-confirm/:iid/:key/quote.pdf", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const f = await quotePdf(loaded.b, loaded.group);
+    if ("error" in f) return notFound(res);
+    return sendPdf(res, f);
+  } catch (err) {
+    return fail(req, res, err, "price confirm pdf failed");
+  }
+});
+
+/** { action: "book" } the guest's "Book It": Mark gets one item to book it and send the paperwork. { action: "changes", text } "I need changes": what
+ *  they want changed, in their own words, on Mark's list. Neither books, charges or signs anything. */
+router.post("/price-confirm/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    if (guardPost(req, res)) return;
+    const loaded = await loadPrice(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { b, group, lang, price } = loaded;
+    const iid = String(b.reply.id), body = (req.body ?? {}) as Row, action = body["action"];
+    const state = priceState(b, price);
+    const who = nameOf(b.reply) || "Guest";
+    const label = detailsFacts({ group, cabins: [] }, "en").label;
+    const save = async (next: PriceState) => {
+      const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), price: next }, updated_at: new Date().toISOString() }).eq("id", iid);
+      if (error) throw new Error(error.message);
+    };
+    // Mark 2026-11-12: the guest chooses the travel protection on the page (a pop-up with the video and the plans) BEFORE Book It: the choice is kept
+    // so that the quote on the page and the PDF show it. It approves nothing and tells Mark nothing yet.
+    if (action === "protect") {
+      if (state !== "open") return res.json({ success: true, state, already: true });
+      const key = typeof body["protection"] === "string" ? body["protection"] : "";
+      const plan = quoteDoc(b, "en").protection?.plans.find((p) => p.key === key);
+      if (!quoteDoc(b, "en").protection || (!plan && key !== "own" && key !== "none")) return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija una de las opciones, por favor." : "Pick one of the choices, please." });
+      await save({ ...price, protection: { key, label: plan ? `${plan.name}, ${plan.price}` : key === "own" ? "their own policy" : "no insurance" } });
+      return res.json({ success: true, state: "open", protection: key });
+    }
+    if (action === "book") {
+      if (state === "approved" || state === "paperwork") return res.json({ success: true, state, already: true });
+      // Mark 2026-11-10: when the quote offers travel protection, the guest picks one (a plan, their own policy, or none) with their "Book It"
+      const offer = quoteDoc(b, "en").protection, stored = protectionPlans(b.lead.form_data);
+      let picked: PriceState["protection"] = null, protectNote = "";
+      if (offer) {
+        // the choice made in the pop-up is on file; a choice sent with Book It itself still counts
+        const key = typeof body["protection"] === "string" && body["protection"] ? body["protection"] : price.protection?.key ?? "";
+        const plan = offer.plans.find((p) => p.key === key);
+        if (!plan && key !== "own" && key !== "none") return res.status(400).json({ success: false, field: "protection", error: lang === "es" ? "Elija primero su protección de viaje." : "Choose your travel protection first." });
+        picked = { key, label: plan ? `${plan.name}, ${plan.price}` : key === "own" ? "their own policy" : "no insurance" };
+        const typed = /^p\d+$/.test(key) ? stored[Number(key.slice(1))] : undefined;
+        const inPrice = offer.plans.some((p) => p.key === "included");
+        protectNote = ` Travel protection: ${picked.label}.`
+          + (inPrice && key !== "included" ? " The cruise line's quote has its protection plan in the price and they did not pick it: re-quote without it." : "")
+          + (typed?.line ? " Add the cruise line's protection plan when you book." : "");
+        // the pick goes on the file of everyone on the cabin, in the paperwork's own words, so the insurance step opens with it chosen
+        const choice = key === "own" ? "own" : key === "none" ? "decline" : key === "included" || typed?.line ? "line" : "quote";
+        const planText = choice === "quote" && typed ? (typed.total !== null ? `${typed.name}: ${plan?.price ?? usd(typed.total)}` : planLabel({ name: typed.name, price_per_person: typed.per_person })) : choice === "line" ? text(group["line_protection"], 300) : null;
+        const { data: party, error: pe } = b.lead.cabin_id
+          ? await db().from("group_travelers").select("id, form_data").eq("cabin_id", b.lead.cabin_id)
+          : await db().from("group_travelers").select("id, form_data").eq("id", b.lead.id);
+        if (pe) throw new Error(pe.message);
+        for (const t of (party ?? []) as Row[]) {
+          const fd = (t["form_data"] && typeof t["form_data"] === "object" ? t["form_data"] : {}) as Record<string, any>;
+          const { error: ue } = await db().from("group_travelers").update({ form_data: { ...fd, insurance: { ...(fd["insurance"] ?? {}), choice, plan: planText, chosen_at: new Date().toISOString(),
+            // Mark 2026-11-13: "the only place the insurance option is is in the quote email. if they have made their choice then it is done and only
+            // the decision is needed in the paperwork and part of the final quote in the paperwork." The paperwork reads these: it does not ask again.
+            from_quote: true, name: plan?.name ?? (key === "own" ? "My own policy" : key === "none" ? "No travel insurance" : null),
+            amount: typed ? cents(typed.total ?? (typed.per_person ?? 0) * Math.max(1, ((party ?? []) as Row[]).length)) : null } } }).eq("id", t["id"]);
+          if (ue) throw new Error(ue.message);
+        }
+      }
+      const now = new Date().toISOString();
+      await save({ ...price, approved_at: now, approved_how: "guest", changes_open: false, protection: picked });
+      res.json({ success: true, state: "approved" });
+      // Mark 2026-11-11: the guest hears back at once: "I have your decision", the paperwork arrives within 24 hours. A box that only emails its test
+      // addresses holds it and says so on the file; a send that fails is on the file too. Neither undoes the guest's Book It.
+      void (async () => {
+        const to = (b.lead.email ?? b.reply.email ?? "").trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) return;
+        const row = { group_id: String(group.id), traveler_id: b.lead.id, audience: "client", template: "booking-decision", to_email: to };
+        if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { await db().from("group_messages").insert({ ...row, subject: null, status: "skipped", error: "held: this box only emails its test addresses" }); return; }
+        const shown = picked ? quoteDoc(b, lang).protection : null;
+        const pickText = !picked || !shown ? null : picked.key === "own" ? shown.own : picked.key === "none" ? shown.none : ((p) => (p ? `${p.name}, ${p.price}` : null))(shown.plans.find((p) => p.key === picked!.key));
+        const facts = detailsFacts({ group, cabins: [] }, lang);
+        const mail = decisionEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), protection: pickText });
+        const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+        await db().from("group_messages").insert({ ...row, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? new Date().toISOString() : null, error: ok ? null : "mail sender refused or was unreachable" });
+      })().catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the Book It confirmation email could not be sent"));
+      void createAction({
+        type: "lead", source_ref: `group-price-ok-${iid}`, title: `Price approved: book it · ${who}`, priority: "lead",
+        body: `${label} · ${who} tapped "Book It" on the price you sent.${protectNote} Do this: book it with the cruise line and the vendors, enter the confirmation numbers on the booking confirmation, then send the paperwork.`,
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}/booking/${iid}` }],
+      }).then(async (made) => { if (made.created) await resolveActionsForSource("lead", `group-price-change-${iid}`, "done"); })
+        .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the price approval could not be put on the list"));
+      return;
+    }
+    if (action === "changes") {
+      if (state === "paperwork") return res.status(409).json({ success: false, error: lang === "es" ? `Sus documentos ya salieron. Para cambiar algo, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your paperwork is already out. To change anything, call or text Mark at ${BUSINESS.phone}.` });
+      const said = text(body["text"], 2000);
+      if (!said || said.length < 3) return res.status(400).json({ success: false, error: lang === "es" ? "Díganos qué desea cambiar." : "Please tell us what you would like changed." });
+      const now = new Date().toISOString();
+      await save({ ...price, approved_at: null, approved_how: null, changes: [...price.changes, { at: now, text: said }].slice(-10), changes_open: true });
+      res.json({ success: true, state: "changes" });
+      await resolveActionsForSource("lead", `group-price-change-${iid}`, "done");   // a second request replaces the first on Mark's list
+      void createAction({
+        type: "lead", source_ref: `group-price-change-${iid}`, title: `Changes asked on the price · ${who}`, priority: "lead",
+        body: `${label} · ${who} tapped "I need changes" and wrote: "${said}". Do this: re-quote, update the booking confirmation, then email the price again.`,
+        buttons: [{ label: "Open the booking confirmation", href: `/groups/${group.id}/booking/${iid}` }],
+      }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the change request could not be put on the list"));
+      return;
+    }
+    return res.status(400).json({ success: false, error: "Unknown action." });
+  } catch (err) {
+    return fail(req, res, err, "price confirm write failed");
   }
 });
 
@@ -794,45 +1729,8 @@ router.post("/groups/:id/interests/:iid/complete", requireToken, async (req: Req
   }
 });
 
-/** Mark 2026-11-05: "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Only for a guest who asked
- *  for FlexPay, and only once the booking is confirmed. The link is our own scheduler page (public/flexpay-call.html), never an outside scheduling
- *  service (Mark 2026-11-05: "I'm not paying for another service"). Sent again, it emails again (the same link: it is derived, not stored). */
-router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req: Request, res: Response) => {
-  try {
-    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
-    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
-    const b = await loadBooking(groupId, iid);
-    if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
-    if (b.quote?.answers?.flexpay !== true) return res.status(409).json({ success: false, error: "This guest did not ask for FlexPay." });
-    if (!b.reply.booking_completed_at) return res.status(409).json({ success: false, error: "Confirm the booking with the cruise line and the vendors first." });
-    const linkKey = hubKey();
-    if (!linkKey) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
-    const to = (b.lead.email ?? b.reply.email ?? "").trim();
-    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
-    if (ge) throw new Error(ge.message);
-    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
-    const lang: Lang = b.lead.lang === "es" ? "es" : "en";
-    const facts = detailsFacts({ group, cabins: [] }, lang);
-    const appointmentUrl = `${publicSite()}${lang === "es" ? "/es" : ""}/flexpay-call.html?r=${iid}&k=${deriveCallKey(iid, linkKey)}`;
-    let link: "sent" | "held" | "no-email" | "failed";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) link = "no-email";
-    else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
-      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "flexpay-appointment", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
-      link = "held";
-    } else {
-      const mail = flexpayEmail({ firstName: firstWord(b.lead.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), appointmentUrl });
-      const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
-      const at = new Date().toISOString();
-      await db().from("group_messages").insert({ group_id: groupId, traveler_id: b.lead.id, audience: "client", template: "flexpay-appointment", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable" });
-      link = ok ? "sent" : "failed";
-    }
-    const { error } = await db().from("group_interests").update({ quote: { ...((b.reply.quote ?? {}) as Row), flexpay_link: link }, updated_at: new Date().toISOString() }).eq("id", iid);
-    if (error) throw new Error(error.message);
-    return res.json({ success: true, link });
-  } catch (err) {
-    return fail(req, res, err, "group flexpay link failed");
-  }
-});
+// Mark 2026-11-09: there is no "FlexPay appointment link" email. The scheduler pops up on the quote page the moment the guest says yes to FlexPay, so
+// the appointment is already made there; the one email is the confirmation of the time they picked.
 
 // ── FlexPay: the guest picks the time of the video call (Mark 2026-11-05) ─────────────────────────────────────────
 // "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already". The page is ours
@@ -841,8 +1739,12 @@ router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req:
 // One appointment per guest: once a time is picked, a change goes through Mark (he moves it on his calendar).
 
 interface StoredCall { start: string; minutes: number; meet_link: string | null; event_id: string | null; booked_at: string | null }
-function storedCall(quote: unknown): StoredCall | null {
-  const c = (quote as Row | null)?.["flexpay_call"] as Row | undefined;
+/** The two meetings a guest books on our scheduler (Mark 2026-11-09): the FlexPay application (a video call) and the trip planning call (a phone call). */
+type CallKind = "flexpay" | "plan";
+const callKindOf = (v: unknown): CallKind => (v === "plan" ? "plan" : "flexpay");
+const CALL_FIELD: Record<CallKind, string> = { flexpay: "flexpay_call", plan: "plan_call" };
+function storedCall(quote: unknown, kind: CallKind = "flexpay"): StoredCall | null {
+  const c = (quote as Row | null)?.[CALL_FIELD[kind]] as Row | undefined;
   if (!c || typeof c["start"] !== "string" || !Number.isFinite(Date.parse(c["start"]))) return null;
   return {
     start: new Date(c["start"]).toISOString(), minutes: Number(c["minutes"]) || CALL.minutes,
@@ -853,6 +1755,11 @@ function storedCall(quote: unknown): StoredCall | null {
 const callView = (c: StoredCall | null, lang: Lang) => (c ? { start: c.start, minutes: c.minutes, whenText: callWhenText(c.start, lang), meetLink: c.meet_link } : null);
 
 /** The way into the scheduler for a reply whose names are in (Mark 2026-11-08: the quote page opens it in a pop-up on a FlexPay yes); null before that, and on a box with no link key. */
+/** The way into the scheduler for a planning call: open from the moment the guest has saved their spot (no names needed first). */
+function planCallPath(reply: Row, lang: Lang): string | null {
+  const linkKey = hubKey();
+  return linkKey ? `${lang === "es" ? "/es" : ""}/flexpay-call.html?r=${reply.id}&k=${deriveCallKey(reply.id, linkKey)}&kind=plan` : null;
+}
 function flexpayCallPath(reply: Row, lang: Lang): string | null {
   const linkKey = hubKey();
   if (!reply.hold_requested_at || !linkKey) return null;
@@ -861,16 +1768,17 @@ function flexpayCallPath(reply: Row, lang: Lang): string | null {
 
 /** The reply an appointment link opens: null for a wrong key, an unknown reply, and a reply whose names are not in yet (the quote step, where the pop-up lives, is not open).
  *  Mark 2026-11-08: the pop-up opens the moment the guest says yes to FlexPay, so neither a stored yes nor Mark's email is waited for. */
-async function loadCall(iid: unknown, key: unknown): Promise<{ reply: Row; group: Row; lang: Lang; call: StoredCall | null } | null> {
+async function loadCall(iid: unknown, key: unknown, kind: CallKind = "flexpay"): Promise<{ reply: Row; group: Row; lang: Lang; call: StoredCall | null } | null> {
   if (typeof iid !== "string" || !UUID_RE.test(iid) || !callKeyMatches(iid, key, hubKey())) return null;
   const { data: reply, error } = await db().from("group_interests").select("*").eq("id", iid).maybeSingle();
   if (error) throw new Error(error.message);
   const quote = (reply?.quote ?? null) as Row | null;
-  if (!reply || reply.status === "spam" || !reply.hold_requested_at) return null;
+  // the FlexPay call belongs to the quote step (names in); a planning call can be booked from the choice page, before any names
+  if (!reply || reply.status === "spam" || (kind === "flexpay" && !reply.hold_requested_at)) return null;
   const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
   if (ge) throw new Error(ge.message);
   if (!group) return null;
-  return { reply, group, lang: reply.lang === "es" ? "es" : "en", call: storedCall(quote) };
+  return { reply, group, lang: reply.lang === "es" ? "es" : "en", call: storedCall(quote, kind) };
 }
 
 const calendarQuiet = (lang: Lang) => ({
@@ -878,17 +1786,66 @@ const calendarQuiet = (lang: Lang) => ({
   error: lang === "es" ? `El calendario no responde en este momento. Intente de nuevo en unos minutos, o llame o escriba a Mark al ${BUSINESS.phone}.` : `The calendar is not answering right now. Please try again in a few minutes, or call or text Mark at ${BUSINESS.phone}.`,
 });
 
+/** The trip planning call (Mark 2026-11-09: "if they want a phone meeting to plan, they should be able to schedule the meeting through a pop up like
+ *  flexpay… we need to identify the type of meeting in my schedule so i know what im talking about"). A PHONE call: the calendar entry's title says
+ *  "Trip planning call (phone)", the number to ring is in it, Mark gets one item, the guest one email confirming the time. */
+async function bookPlanCall(req: Request, res: Response, o: { reply: Row; group: Row; lang: Lang; iso: string; now: Date; label: string; hostNames: string }) {
+  const { reply, group, lang, iso, now } = o;
+  const typed = text((req.body as Row | undefined)?.["phone"], 40);
+  const phone = text(reply.phone, 40) ?? (typed && typed.replace(/\D/g, "").length >= 10 ? typed : null);
+  if (!phone) return res.status(400).json({ success: false, field: "phone", error: lang === "es" ? "Escriba el número de teléfono al que Mark debe llamar." : "Please enter the phone number Mark should call." });
+  const who = nameOf(reply) || "guest";
+  const booked = await opsBook({
+    start: iso, minutes: CALL.minutes, title: `Trip planning call (phone): ${who} (${o.label})`,
+    description: ["PHONE call to plan the trip: ring the guest. Picked by the guest on the site.", `Guest: ${who}`, `Ring: ${phone}`, `Email: ${reply.email || "none given"}`, `Party of: ${reply.guests ?? "not said"}`, `Group: ${group.name ?? o.label}`, lang === "es" ? "Language: Spanish" : "Language: English"].join("\n"),
+    requestId: `plan-${reply.id}-${Math.floor(Date.parse(iso) / 60_000)}`,
+  });
+  if (!booked.ok && booked.reason === "taken") {
+    const window = ruleWindow(now), busy = await opsBusy(window.start, window.end);
+    return res.status(409).json({ success: false, field: "start", days: busy ? freeSlots(now, busy) : [], error: lang === "es" ? "Esa hora se acaba de ocupar. Estas son las que siguen libres." : "That time was just taken. These are the ones still open." });
+  }
+  if (!booked.ok) return res.status(503).json(calendarQuiet(lang));
+  const saved: StoredCall = { start: iso, minutes: CALL.minutes, meet_link: null, event_id: booked.eventId, booked_at: now.toISOString() };
+  const { error } = await db().from("group_interests").update({
+    quote: { ...((reply.quote ?? {}) as Row), plan_call: saved }, ...(text(reply.phone, 40) ? {} : { phone }), ...(reply.choice ? {} : { choice: "call", choice_at: now.toISOString() }), updated_at: now.toISOString(),
+  }).eq("id", reply.id);
+  if (error) throw new Error(error.message);
+  const whenEn = callWhenText(iso, "en");
+  void createAction({
+    type: "lead", source_ref: `group-call-${reply.id}`, title: `Planning call booked · ${who} · ${whenEn}`, priority: "lead",
+    body: `${o.label} · ${who} picked a time for a PHONE planning call: ${whenEn}. Ring ${phone}. It is on your calendar as "Trip planning call (phone)".`,
+    buttons: [{ label: "Open the group file", href: `/groups/${group.id}#replies` }],
+  }).then(async (made) => { if (made.created) await resolveActionsForSource("lead", `group-interest-${reply.id}`, "done"); })
+    .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the planning call could not be put on the list"));
+  // the one email that confirms the time (the dev box emails only its test addresses)
+  const to = typeof reply.email === "string" ? reply.email.trim() : "";
+  let email: "sent" | "held" | "no-email" | "failed";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) email = "no-email";
+  else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) {
+    await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "plan-call-booked", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
+    email = "held";
+  } else {
+    const mail = planBookedEmail({ firstName: firstWord(reply.first_name), groupLabel: o.label, hostNames: o.hostNames, lang, publicSite: publicSite(), whenText: callWhenText(iso, lang), phone });
+    const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+    await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "plan-call-booked", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now.toISOString() : null, error: ok ? null : "mail sender refused or was unreachable" });
+    email = ok ? "sent" : "failed";
+  }
+  return res.json({ success: true, booked: callView(saved, lang), email });
+}
+
 router.get("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
   try {
     privateHeaders(res);
-    const loaded = await loadCall(req.params["iid"], req.params["key"]);
+    const kind = callKindOf(req.query["kind"]);
+    const loaded = await loadCall(req.params["iid"], req.params["key"], kind);
     if (!loaded) {
       if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
       return notFound(res);
     }
     const { reply, group, lang, call } = loaded;
     const facts = detailsFacts({ group, cabins: [] }, lang);
-    const base = { success: true, firstName: reply.first_name ?? "", label: facts.label, lang, tz: CALL.tz, minutes: CALL.minutes, businessPhone: BUSINESS.phone };
+    // a planning call is a phone call: the page asks for the number when the guest gave only an email
+    const base = { success: true, kind, firstName: reply.first_name ?? "", label: facts.label, lang, tz: CALL.tz, minutes: CALL.minutes, businessPhone: BUSINESS.phone, ...(kind === "plan" ? { needsPhone: !text(reply.phone, 40) } : {}) };
     if (call) return res.json({ ...base, booked: callView(call, lang), days: [] });
     const now = new Date(), window = ruleWindow(now);
     const busy = await opsBusy(window.start, window.end);
@@ -902,7 +1859,8 @@ router.get("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
 router.post("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
   try {
     if (guardPost(req, res)) return;
-    const loaded = await loadCall(req.params["iid"], req.params["key"]);
+    const kind = callKindOf((req.body as Row | undefined)?.["kind"] ?? req.query["kind"]);
+    const loaded = await loadCall(req.params["iid"], req.params["key"], kind);
     if (!loaded) {
       if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
       return notFound(res);
@@ -918,6 +1876,7 @@ router.post("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
     if (!isRuleSlot(start, now)) return res.status(400).json({ success: false, field: "start", error: lang === "es" ? "Elija una de las horas que se muestran." : "Pick one of the times shown." });
     const iso = new Date(start).toISOString();
     const facts = detailsFacts({ group, cabins: [] }, lang);
+    if (kind === "plan") return await bookPlanCall(req, res, { reply, group, lang, iso, now, label: facts.label, hostNames: facts.hostNames });
     const booked = await opsBook({
       start: iso, minutes: CALL.minutes, title: `FlexPay application: ${nameOf(reply) || "guest"} (${facts.label})`,
       description: [`Video call to complete the FlexPay application. Picked by the guest on the site.`, `Guest: ${nameOf(reply)}`, `Reach: ${[reply.phone, reply.email].filter(Boolean).join(" · ") || "no contact given"}`, `Group: ${group.name ?? facts.label}`, lang === "es" ? "Language: Spanish" : "Language: English"].join("\n"),

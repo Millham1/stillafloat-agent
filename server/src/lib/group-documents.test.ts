@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, splitCityStateZip, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
-  normalizePhone } from "./group-documents";
+  normalizePhone, cabinLead, isAdultOn } from "./group-documents";
 import { BUSINESS } from "./group-secure";
 import { CLIENT_DOCUMENTS } from "../content/client-documents";
 
@@ -191,15 +191,51 @@ test("Mark 2026-11-09: the cruise line's extras and each booked flight, hotel an
   assert.ok(!t.includes("No price (cruise line add-on"), "an extra with no price is not printed");
   assert.ok(t.includes("Flight from Raleigh (RDU) | $272.40"));
   assert.ok(!t.includes("Hotel the night before |"), "a travel line with no booked price prints no amount row");
-  assert.ok(t.includes("Estimated Trip Total (cruise and travel) | $2,870.40"));
+  assert.ok(t.includes("Trip Total (cruise and travel) | $2,870.40"));
+  // Mark 2026-11-13 ("only the decision is needed in the paperwork and part of the final quote in the paperwork"): a plan chosen on the quote
+  // prints with its amount for the booking, and the trip total then includes it
+  const chose = { ...lead, form_data: { ...lead.form_data, insurance: { choice: "quote", plan: "Classic Plan (Allianz): $265.00 total for 2 travelers", from_quote: true, name: "Classic Plan (Allianz)", amount: 265 } } };
+  const withPlan = renderDocument("12-cruise-booking-agreement", ctxFor({}, chose)).text;
+  assert.ok(withPlan.includes("Travel Protection, as chosen on your quote: Classic Plan (Allianz) | $265"), withPlan.split("\n").filter((l) => l.includes("Protection")).join("\n"));
+  assert.ok(withPlan.includes("Trip Total with travel protection | $3,135.40"));
+  assert.ok(!withPlan.includes("as chosen on the paperwork"), "the older per-person line is not printed beside it");
+  // Mark 2026-11-13: the card form authorizes the same full amount (cruise, priced travel and the plan chosen on the quote)
+  const cardText = renderDocument("22-card-authorization", ctxFor({}, chose)).text;
+  assert.ok(cardText.includes("Total authorized: $ 3,135.40"), cardText.split("\n").filter((l) => l.includes("authorized")).join("\n"));
+  const none = { ...lead, form_data: { ...lead.form_data, insurance: { choice: "decline", plan: null, from_quote: true, name: "No travel insurance", amount: null } } };
+  const declined = renderDocument("12-cruise-booking-agreement", ctxFor({}, none)).text;
+  assert.ok(declined.includes("Travel Protection, as chosen on your quote: No travel insurance | Declined") && !declined.includes("with travel protection"));
   // with nothing priced the table is as it was
-  assert.ok(!renderDocument("12-cruise-booking-agreement", ctxFor()).text.includes("Estimated Trip Total"));
+  assert.ok(!renderDocument("12-cruise-booking-agreement", ctxFor()).text.includes("Trip Total (cruise and travel)"));
+});
+
+test("Mark 2026-11-14: air and a hotel booked as one package, and transfers with another company, fill the agreement's pre/post-cruise lines; the prices are not called estimates", () => {
+  const lead = { ...TRAVELERS[0]!, form_data: { ...((TRAVELERS[0]! as Record<string, any>)["form_data"] ?? {}), trip: { needs: {}, chosen: [
+    { kind: "transfer", direction: "pre", label: "Hotel to the cruise port", price: 45, provider: "Limopedia", starts_at: "2027-05-09" },
+    { kind: "transfer", direction: "post", label: "Cruise port to the airport", price: 45, provider: "Limopedia", starts_at: "2027-05-13" },
+    { kind: "package", direction: "pre", label: "Before the cruise: package, air and hotel", price: 367, provider: "Delta", from_place: "RDU", to_place: "ORD",
+      pkg: { hotel: "Fairfield Inn", hotel_city: "Orlando", check_in: "2027-05-08", check_out: "2027-05-09", flights: "DL9914", return_flights: "DL2657" } },
+  ] } } };
+  const t = renderDocument("12-cruise-booking-agreement", ctxFor({}, lead)).text.replace(/\s+/g, " ");
+  assert.ok(t.includes("Pre-Cruise Hotel: ☒ Yes — Destination: Orlando Hotel: Fairfield Inn Dates: May 8, 2027 to May 9, 2027 ☐ No"), t.slice(t.indexOf("Pre-Cruise Hotel"), t.indexOf("Pre-Cruise Hotel") + 400));
+  assert.match(t, /Post-Cruise Hotel:\s*☐ Yes[^☒]*☒ No/);
+  assert.ok(t.includes("☒ Agent to book independently") && t.includes("Departure Airport: RDU") && t.includes("Destination Airport: ORD"));
+  assert.ok(t.includes("Cruise Line Transfer: ☐ Yes ☐ No ☒ Independent Transfer Arranged: Hotel to the cruise port, May 9, 2027; Cruise port to the airport, May 13, 2027"), t.slice(t.indexOf("Cruise Line Transfer"), t.indexOf("Cruise Line Transfer") + 300));
+  assert.ok(t.includes("5.1 Cruise Cost") && !t.includes("Estimated Cruise Cost") && !t.includes("Estimated Total") && !t.includes("Estimated Trip Total"));
+});
+
+test("Mark 2026-11-14: the citizenship on the file answers \"U.S. citizen?\"; another traveler's passport takes its issue date, kept on their own file", () => {
+  const byName = Object.fromEntries(DOC_SPECS["15-emergency-contact-form"]!.fields.map((f) => [f.name, f]));
+  assert.equal(prefillValue(byName["us_citizen"]!, ctxFor({}, { ...TRAVELERS[0]!, citizenship: "United States" })), "yes");
+  assert.equal(prefillValue(byName["us_citizen"]!, ctxFor({}, { ...TRAVELERS[0]!, citizenship: "Peru" })), "no");
+  assert.equal(prefillValue(byName["us_citizen"]!, ctxFor({}, { ...TRAVELERS[0]!, citizenship: null })), undefined);
+  assert.ok(byName["m1_passport_issue"], "the other traveler's passport issue date is asked");
 });
 
 test("a cabin's cost, deposit and dates come from the file; what the file cannot give stays blank and is reported", () => {
   const t = renderDocument("12-cruise-booking-agreement", ctxFor()).text;
   assert.ok(t.includes("Cruise Fare (per person, taxes and fees as quoted) | $1,299"));
-  assert.ok(t.includes("Estimated Total (this cabin) | $2,598"));
+  assert.ok(t.includes("Total (this cabin) | $2,598"));
   assert.ok(t.includes("Cruise deposit (per person) | $250 | December 1, 2026"));
   assert.ok(t.includes("Final payment | The balance, as invoiced by the cruise line | January 12, 2027"));
   assert.ok(t.includes("Final payment is due no later than 90 days before sailing"));
@@ -256,7 +292,7 @@ test("the traveler form's blanks and boxes become the inputs its spec names, and
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 29 + 7 * ctxFor({}, TRAVELERS[0]!).mates.length);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
+  assert.equal(f15.fields.length, 29 + 9 * ctxFor({}, TRAVELERS[0]!).mates.length);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -334,7 +370,7 @@ const GOOD_15 = {
   phone: "(919) 555-0100", email: "jane@example.com", passport_number: "a1234-5678", passport_country: "United States", passport_expiry: "2031-02-03",
   passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   trusted_programs: ["tsa"], ktn: "TT1234567", loyalty_1_program: "Delta", loyalty_1_number: "123456", notes: "Window seat please.",
-  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States",
+  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States", m1_email: "john@example.com",
 };
 const doc15 = () => renderDocument("15-emergency-contact-form", ctxFor());
 
@@ -552,6 +588,32 @@ test("an answer that differs from the file is a correction: it is reported, with
   assert.ok(!("dob" in r.travelerPatch) && !("gender" in r.travelerPatch), "the corrected lines are Mark's to change");
   assert.ok("phone" in r.travelerPatch, "a line the file did not have is written as before");
   const john = r.mates!.find((m) => m.index === 1)!.patch;
-  assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
+  assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada", email: "john@example.com" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
   assert.equal(r.answers["dob"], "1960-05-05", "the signed document keeps exactly what was entered");
+});
+
+test("the booking agreement's dining line takes the group's dining from the cruise line's quote when the cabin has none (Mark 2026-11-14)", () => {
+  const field = (ctx: ReturnType<typeof ctxFor>) => renderDocument("12-cruise-booking-agreement", ctx).fields.find((f) => f.name === "dining")!;
+  const bare = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: { dining: "Early Dining" } }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
+  assert.equal(prefillValue(field(bare), bare), "early");
+  const none = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: {} }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
+  assert.equal(prefillValue(field(none), none), "none", "nothing on the cabin or the group: No Preference is ticked");
+});
+
+test("another adult on the lead's cabin signs their own terms, insurance document and waiver; a minor signs nothing (Mark 2026-11-14)", () => {
+  const lead = { ...TRAVELERS[0]!, form_data: { ...TRAVELERS[0]!.form_data, insurance: { choice: "quote" } } };
+  const adult = { ...TRAVELERS[1]!, is_lead: false };
+  const travelers = [lead, adult];
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: adult, travelers }), ["01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver"], "the insurance document is the one the lead's choice calls for");
+  assert.equal(cabinLead(travelers, adult, GROUP), null, "the lead does not sign for another adult");
+  const kid = { ...adult, dob: "2015-06-01" };
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: kid, travelers: [lead, kid] }), []);
+  assert.equal(cabinLead([lead, kid], kid, GROUP)?.id, "t1");
+  assert.equal(isAdultOn("2009-03-14", "2027-03-14"), true, "18 on the sailing date");
+  assert.equal(isAdultOn("2009-03-15", "2027-03-14"), false, "a day short of 18 on the sailing date");
+  assert.equal(isAdultOn(null, "2027-03-14"), true, "no date of birth on the file counts as an adult");
+  // the lead's traveler form asks the adult's email and not a minor's
+  const names = (ts: Array<Record<string, unknown>>) => renderDocument("15-emergency-contact-form", buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: ts, traveler: ts[0]!, now: NOW })).fields.map((f) => f.name);
+  assert.ok(names(travelers).includes("m1_email"));
+  assert.ok(!names([lead, kid]).includes("m1_email"));
 });

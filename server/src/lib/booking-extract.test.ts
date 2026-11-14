@@ -89,7 +89,7 @@ test("the schema requires every field so the model cannot skip one silently", ()
 
 // ── Terms: code finds the deadlines and checks the model's answer ─────────────
 import { mergeSingleMoney } from "./booking-extract";
-import { singleBookingMoney, readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
+import { readGuestPrices, singleBookingMoney, readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
 
 const QUOTE = `GROUP ALLOCATION AND GROUP RATES
 Category   Allotment   Commissionable Fare   NCF   Tax   Total Guest Price
@@ -480,6 +480,9 @@ test("normalizeExtraction: 'Cruise Only' is a package type and dining is a group
   assert.match(x.notes ?? "", /Group name on the quote: Millham F\/F 2027\./);
   assert.match(x.notes ?? "", /Group Dining: Early Dining/);
   assert.match(x.notes ?? "", /^Rates include NCF\./);
+  assert.equal(x.group_dining, "Early Dining", "the dining setting is also kept on its own for the booking agreement");
+  assert.equal(normalizeExtraction({ notes: "Group name on the quote: Millham F/F 2027. Group Dining: Early Dining Group total rate $11,850.96, as printed on the quote." }).group_dining, "Early Dining", "a stored reading has it in the notes");
+  assert.equal(normalizeExtraction({ amenities: ["Specialty dining package"], notes: "Deposit due at booking." }).group_dining, null);
   const real = normalizeExtraction({ group_number: "665450", guest_inclusions: ["Premium Extra drinks package"] });
   assert.equal(real.group_number, "665450");
   assert.deepEqual(real.guest_inclusions, ["Premium Extra drinks package"]);
@@ -611,4 +614,60 @@ test("the focused money answer overrides the whole read's: discount, add-ons, bo
   const x = verifyExtraction(normalizeExtraction(raw), PARADISE);
   assert.deepEqual([x.cabin_categories[0]!.price_per_person, x.total_price, x.discount_per_person, x.addons!.length], [382.5, 1081.5, 249.5, 1]);
   assert.deepEqual(x.warnings, [], x.warnings.join(" | "));
+});
+
+// Mark 2026-11-09: MSC's confirmation prices each guest apart. The reader had put the per-guest add-on amount on each of three names, then (after my
+// first fix) showed the two guests' amounts as one doubled figure. "the agent was supposed to read the quote, not make assumptions": every figure is the
+// printed one, per guest.
+const MSC_CONFIRMATION = [
+  "Name and Last Name", "PAT   EXAMPLE", "Additional items:", "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
+  "Name and Last Name", "ANA   EXAMPLE LOPEZ", "Additional items:", "Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices",
+  "PAYMENT DETAILS", "PAT EXAMPLE   • Cruise   With Discount   $ 437.00", "• Packaging item(s) added:   $ 0.00", "• Add Ons   $ 471.74", "• Insurance   $ 0.00", "• Taxes (where applicable)   $ 145.39",
+  "Total Booking Price   PAT EXAMPLE   $ 1,054.13", "Total Booking Price   ANA EXAMPLE LOPEZ   $ 1,054.13",
+  "ANA EXAMPLE LOPEZ   • Cruise   $ 437.00", "• Packaging item(s) added:   $ 0.00", "• Add Ons   $ 471.74", "• Insurance   $ 0.00", "• Taxes (where applicable)   $ 145.39",
+  "Total Booking Price", "$ 2,108.26",
+].join("\n");
+
+test("a confirmation that prices each guest apart is read line for line: each guest's Cruise, Add Ons, Taxes and total as printed, and the booking total", () => {
+  const read = readGuestPrices(MSC_CONFIRMATION);
+  const three = ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"];
+  assert.deepEqual(read, { bookingTotal: 2108.26, guests: [
+    { name: "PAT EXAMPLE", cruise: 437, packaging: 0, addons: 471.74, insurance: 0, taxes: 145.39, total: 1054.13, items: three },
+    { name: "ANA EXAMPLE LOPEZ", cruise: 437, packaging: 0, addons: 471.74, insurance: 0, taxes: 145.39, total: 1054.13, items: three },
+  ] });
+  assert.equal(readGuestPrices("Cabin Fare $ 1,000.00 Passenger Total $ 1,100.00"), null, "another layout is not this one");
+});
+
+test("whatever the AI read answered for the add-ons, the per-guest figures are the printed ones: one add-on line per guest, nothing doubled or split", () => {
+  const base = { total_price: 9999, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] };
+  for (const addons of [
+    ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 471.74, qty: 1, total: 471.74 })),   // the amount on each name
+    ["Trilogy - Three Exclusive Dining Experiences", "PREMIUM EXTRA DRINK PACKAGE", "Browse & Stream - 2 devices"].map((name) => ({ name, price: 157.25, qty: 1, total: 157.25 })),   // split three ways
+    [],
+  ]) {
+    const out = verifyExtraction(normalizeExtraction({ ...base, addons }), MSC_CONFIRMATION);
+    assert.deepEqual((out.addons ?? []).map((a) => [a.name, a.qty, a.total]), [
+      ["PAT EXAMPLE: Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices", 1, 471.74],
+      ["ANA EXAMPLE LOPEZ: Trilogy - Three Exclusive Dining Experiences, PREMIUM EXTRA DRINK PACKAGE, Browse & Stream - 2 devices", 1, 471.74],
+    ]);
+    assert.equal(out.total_price, 2108.26, "the booking total is the printed one");
+    assert.deepEqual((out.guest_prices ?? []).map((g) => [g.name, g.cruise, g.addons, g.taxes, g.total]), [["PAT EXAMPLE", 437, 471.74, 145.39, 1054.13], ["ANA EXAMPLE LOPEZ", 437, 471.74, 145.39, 1054.13]]);
+    assert.ok(!(out.warnings ?? []).some((w) => /add-on|Add-on|Total Booking Price/.test(w)), JSON.stringify(out.warnings));
+  }
+});
+
+test("an add-on with its own printed price is left as read", () => {
+  const text = "Cruise Enhancements\nPREMIUM PLUS BEVERAGE PACKAGE $ 300.00 1 $ 300.00\nTotal Booking Amount $ 1,300.00";
+  const x = normalizeExtraction({ total_price: 1300, cabin_categories: [{ category: "Balcony", price_per_person: 1000, count: 1 }], addons: [{ name: "PREMIUM PLUS BEVERAGE PACKAGE", price: 300, qty: 1, total: 300 }] });
+  const out = verifyExtraction(x, text), addons = out.addons ?? [];
+  assert.deepEqual(addons.map((a) => [a.name, a.total]), [["PREMIUM PLUS BEVERAGE PACKAGE", 300]]);
+});
+
+// Mark 2026-11-10: "i dont understand this warning… the confirmation shows a deposit date of 11/12." An optioned booking prints when the hold ends; the
+// reader had filed that day as the final payment and warned that it was not "0 days before sailing".
+test("an optioned booking: 'Option valid until 6pm EST on: November 12, 2026' is the deposit's deadline, never the final payment, and raises no warning", () => {
+  const text = `CONFIRMATION PAGE\nBooking Status\nOptioned\nOption valid until 6pm EST on :   November 12, \n2026\n${MSC_CONFIRMATION}`;
+  const out = verifyExtraction(normalizeExtraction({ sail_date: "2027-05-09", final_payment_due: "2026-11-12", final_payment_days_before: 0, cabin_categories: [{ category: "DELUXE BALCONY AUREA", price_per_person: 437, taxes: 145.39, count: 1 }] }), text);
+  assert.deepEqual([out.option_until, out.option_until_time, out.deposit_due, out.final_payment_due], ["2026-11-12", "6pm EST", "2026-11-12", null]);
+  assert.ok(!(out.warnings ?? []).some((w) => /final payment/i.test(w)), JSON.stringify(out.warnings));
 });

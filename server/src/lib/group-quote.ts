@@ -246,8 +246,10 @@ export function validateQuoteAnswers(body: unknown, o: QuoteOptions, lang: Lang)
     if (typeof a["drinks"] !== "boolean") return { ok: false, error: A.drinks, field: "drinks" };
     drinks = a["drinks"];
   }
+  // Mark 2026-11-10: the page no longer asks about insurance ("delete this section for now and create an insurance section on the quote"):
+  // no answer is fine and stays empty; an answer that IS sent must still be one of the choices.
   const insurance = typeof a["insurance"] === "string" ? a["insurance"] : "";
-  if (!o.insurance.some((i) => i.key === insurance)) return { ok: false, error: A.insurance, field: "insurance" };
+  if (insurance && !o.insurance.some((i) => i.key === insurance)) return { ok: false, error: A.insurance, field: "insurance" };
   const travelRaw = Array.isArray(a["travel"]) ? a["travel"] : [];
   const travel: string[] = [];
   for (const k of travelRaw) {
@@ -370,7 +372,7 @@ export function quoteSummary(q: Quote, o: QuoteOptions): string {
   parts.push(`FlexPay ${q.answers.flexpay ? "yes" : "no"}`);
   if (o.drinks === "ask") parts.push(`drinks ${q.answers.drinks ? "yes" : "no"}`);
   const ins = o.insurance.find((i) => i.key === q.answers.insurance);
-  parts.push(`insurance: ${ins ? (ins.name ?? (ins.key === "quote" ? "quote both" : ins.key === "own" ? "own policy" : "none")) : q.answers.insurance}`);
+  parts.push(`insurance: ${ins ? (ins.name ?? (ins.key === "quote" ? "quote both" : ins.key === "own" ? "own policy" : "none")) : (q.answers.insurance || "not asked (goes on the quote)")}`);
   const travel = q.answers.travel.map((k) => o.travel.find((t) => t.key === k)?.label).filter((x): x is string => !!x);
   const needs = o.needs.filter((k) => q.answers.needs[k] === true).map((k) => `${k} (quote)`);
   if (travel.length || needs.length) parts.push([...travel, ...needs].join(", "));

@@ -64,6 +64,18 @@ export function gateClientAddress(random = Math.random) {
   return `198.${18 + Math.floor(random() * 2)}.${Math.floor(random() * 256)}.${1 + Math.floor(random() * 254)}`;
 }
 
+// Addresses this process has already handed out. Two random draws can land on the same address (about 1 run
+// in 160 for 41 requests), which made two probes share one visitor's budget and failed the unit test now and
+// then. A drawn address that was already used is drawn again.
+const usedGateAddresses = new Set();
+function freshGateClientAddress() {
+  for (let i = 0; i < 50; i++) {
+    const a = gateClientAddress();
+    if (!usedGateAddresses.has(a)) { usedGateAddresses.add(a); return a; }
+  }
+  return gateClientAddress();
+}
+
 /**
  * One check's working context. All HTTP goes through here so that load, timeouts,
  * auth and recording are uniform, and so the vacuity test can swap the transport.
@@ -111,7 +123,7 @@ export class Ctx {
     // then never use up another probe's budget, which is why full sweeps need no hour-long cooldown
     // (Mark 2026-10-11: "im tired of having to wait an hour for every refresh"). A check that sets its
     // own address (to make several requests share a bucket on purpose) keeps it.
-    if (!Object.keys(h).some((k) => k.toLowerCase() === "x-forwarded-for")) h["x-forwarded-for"] = gateClientAddress();
+    if (!Object.keys(h).some((k) => k.toLowerCase() === "x-forwarded-for")) h["x-forwarded-for"] = freshGateClientAddress();
     if (auth) {
       if (!this.token) throw new Untestable(`this check needs the dashboard token and none was supplied (${redactUrl(path)})`);
       h["x-affiliate-token"] = this.token;

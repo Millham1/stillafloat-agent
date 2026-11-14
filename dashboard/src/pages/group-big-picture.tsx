@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronRight, ExternalLink } from "lucide-react";
 import { ANALYTICS_KEY, ANALYTICS_STALE_MS, fetchAnalytics, groupBookingsHref } from "@/lib/group-api";
 import { DUE_WINDOW_DAYS, LEADS_WINDOW_DAYS, bigPicture, shortDate } from "@/lib/group-workspace";
 import { money } from "./group-workspace-parts";
@@ -11,14 +11,24 @@ import { money } from "./group-workspace-parts";
 // It reads the same single request as the workspace (GET /api/groups/analytics), so the two always agree.
 // Mark 2026-10-19: "the group booking tab in the business dashboard should give the 'big picture', the power BI should be the workhorse."
 
-function Tile({ label, value, caption, bad, captionBad }: { label: string; value: string; caption: string; bad?: boolean; captionBad?: boolean }) {
-  return (
-    <div className={`rounded-md border p-3 ${bad ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`mt-0.5 text-xl font-bold leading-tight ${bad ? "text-red-600" : ""}`}>{value}</div>
+/**
+ * One number card. With `href` or `onClick` the whole card is the button that drills into what it counts (Mark 2026-11-11: "a continuation of the
+ * power bi format from the top level"); `active` marks the card the list below is filtered to; `small` is for a value that is a sentence.
+ */
+export function Tile({ label, value, caption, bad, captionBad, href, onClick, active, small }: {
+  label: string; value: string; caption: string; bad?: boolean; captionBad?: boolean; href?: string; onClick?: () => void; active?: boolean; small?: boolean;
+}) {
+  const drill = !!href || !!onClick;
+  const body = (
+    <div className={`h-full rounded-md border p-3 ${bad ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"} ${drill ? "cursor-pointer transition-colors hover:border-foreground/50" : ""} ${active ? "border-foreground ring-1 ring-foreground/40" : ""}`}>
+      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}{drill && <ChevronRight className="w-3.5 h-3.5 shrink-0" />}</div>
+      <div className={`mt-0.5 font-bold leading-tight ${small ? "text-base" : "text-xl"} ${bad ? "text-red-600" : ""}`}>{value}</div>
       <div className={`text-xs ${captionBad ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{caption}</div>
     </div>
   );
+  if (href) return <Link href={href} className="block h-full">{body}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} aria-pressed={!!active} className="block h-full w-full text-left">{body}</button>;
+  return body;
 }
 
 const when = (n: number) => (n === 0 ? "today" : n > 0 ? `in ${n} day${n === 1 ? "" : "s"}` : `${-n} day${n === -1 ? "" : "s"} ago`);
@@ -64,7 +74,7 @@ export function GroupBigPicture() {
                 <ul className="divide-y divide-border rounded-md border bg-card">
                   {bp.next.map((d, i) => (
                     <li key={`${d.groupId}-${d.date}-${i}`}>
-                      <Link href={`/groups/${d.groupId}#attention`}>
+                      <Link href={`/groups/${d.groupId}`}>
                         <span className="flex items-baseline gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/40">
                           <span className={`w-14 shrink-0 tabular-nums ${d.daysOut < 0 ? "text-red-600 font-semibold" : "text-muted-foreground"}`} title={when(d.daysOut)}>{shortDate(d.date)}</span>
                           <span className="min-w-0">

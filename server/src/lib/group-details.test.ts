@@ -6,8 +6,7 @@ import assert from "node:assert/strict";
 import {
   CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
   reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
-  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held,
-} from "./group-details";
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held, callBookedEmail, priceEmail, type QuoteDoc } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
@@ -359,7 +358,7 @@ test("Road A's email repeats each answer in its own words, and names neither a c
 test("Road A's email: the logos are the site's own hosted images, every value is escaped, and a missing host name signs Mark", () => {
   const m = callEmail({ ...CALL, groupLabel: 'Fam <b>& "Friends"', firstName: "<i>Pat</i>", hostNames: "  ", publicSite: "https://dev.example.test/" });
   assert.ok(m.html.includes('src="https://dev.example.test/assets/images/still_afloat_logo.png"'));
-  assert.ok(m.html.includes('src="https://dev.example.test/assets/images/cornerstone-white.png"'));
+  assert.ok(!/cornerstone/i.test(m.html), "Mark 2026-11-09: no Cornerstone logo on the group emails");
   assert.ok(!/<i>Pat|<b>& "Friends"/.test(m.html), "markup from a person or a file is escaped");
   assert.match(m.html, /&lt;i&gt;Pat&lt;\/i&gt;/);
   assert.match(m.text, /\n\nMark\n\nStill Afloat LLC/);
@@ -435,4 +434,32 @@ test("no em dash anywhere in either email, in either language", () => {
     const b = holdEmail({ ...HOLD, lang });
     for (const t of [a.subject, a.text, a.html, b.subject, b.text, b.html]) assert.ok(!/—/.test(t), `an em dash in the ${lang} email`);
   }
+});
+
+// Mark 2026-11-09: the group's friendly emails carry no Cornerstone logo. Mark 2026-11-10: the QUOTE is his own business letter: it is signed Mark
+// alone ("this is a quote from me, not Mark and Ceci") and carries the Cornerstone logo with the Seller of Travel numbers under it.
+const QUOTE: QuoteDoc = {
+  heads: { cruise: "Your cruise", travel: "Getting there" }, cabin: "DELUXE BALCONY AUREA",
+  matrix: { names: ["Pat Example", "Ana Example"], rows: [{ label: "Cruise fare", values: ["$437.00", "$437.00"] }, { label: "Add-ons", values: ["$471.74", "$471.74"] }, { label: "Taxes", values: ["$145.39", "$145.39"] }, { label: "Total per guest", values: ["$1,054.13", "$1,054.13"], strong: true }],
+    addons: [{ title: "Add-ons for each guest", items: ["Dining package", "Drink package"] }] },
+  cruise: [], cruiseTotal: { label: "Cruise total", value: "$2,108.26" },
+  travel: [{ title: "Air and hotel package, before the cruise", value: "$367.00", details: ["Flights: Delta, Economy Plus", "Going: flight DL9914 · RDU to ORD · May 8, 2027", "Hotel: Fairfield Inn · Orlando · 1 bed"] }],
+  tripTotal: { label: "Trip total (cruise and travel)", value: "$2,475.26" },
+};
+test("the friendly group emails carry no Cornerstone logo; the quote is signed Mark alone and carries the logo with the Seller of Travel numbers under it", () => {
+  const base = { firstName: "Pat", groupLabel: "Fam 2027", hostNames: "Mark & Ceci", lang: "en" as const, publicSite: "https://dev.example.test" };
+  for (const html of [callEmail({ ...CALL }).html, callBookedEmail({ ...base, whenText: "Monday at 7:00 PM Eastern", meetLink: null }).html]) {
+    assert.ok(!/cornerstone/i.test(html) && !/Seller of Travel/.test(html));
+  }
+  // Mark 2026-11-12: "the email tells them the quote is ready and provide a link to the secured page": no figure and no Book It button in the email;
+  // one button opens the guest's own private page, where the quote, the travel protection choice, the PDF and the two answers are.
+  const q = priceEmail({ ...base, pageUrl: "https://dev.example.test/price.html?r=x&k=y" });
+  assert.equal(q.subject, "Your quote from Mark… Fam 2027");
+  assert.ok(q.html.indexOf("cornerstone-white.png") > 0 && q.html.indexOf("Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620") > q.html.indexOf("cornerstone-white.png"));
+  assert.match(q.html, /font-size:24px;color:#9a6b00">Mark<\/p>/, "signed Mark, not the group's hosts");
+  assert.ok(!q.html.includes("Mark &amp; Ceci"));
+  for (const piece of ["your quote is ready on your private page", 'href="https://dev.example.test/price.html?r=x&amp;k=y"', ">See my quote</a>", "choose your travel protection, download the whole quote as a PDF, and tap Book It or I need changes"]) assert.ok(q.html.includes(piece), `the quote email says ${piece}`);
+  assert.ok(!/\$\d/.test(q.html) && !q.html.includes(">Book It</a>"), "no price and no Book It button in the email itself");
+  assert.match(q.text, /See my quote: https:\/\/dev\.example\.test\/price\.html\?r=x&k=y/);
+  assert.equal(priceEmail({ ...base, lang: "es", pageUrl: "https://dev.example.test/es/price.html" }).subject, "Su cotización de Mark… Fam 2027");
 });

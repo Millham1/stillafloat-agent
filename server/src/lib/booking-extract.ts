@@ -47,6 +47,8 @@ export interface ItineraryStop {
   depart: string | null;
 }
 
+/** One guest's price lines as the cruise line's confirmation prints them (Mark 2026-11-09: "the agent was supposed to read the quote, not make assumptions"). */
+export interface GuestPrice { name: string; cruise: number; packaging: number; addons: number; insurance: number; taxes: number; total: number | null; items: string[] }
 export interface BookingExtraction {
   cruise_line: string | null;
   ship_name: string | null;
@@ -74,6 +76,11 @@ export interface BookingExtraction {
   /** Paid add-ons printed on a single booking's confirmation ("Cruise Enhancements": a drinks package, Wi-Fi …), read by the program from the printed
    *  lines, never by the model. Not inclusions: the guest pays for these on top of the cabin. */
   addons?: AddOn[];
+  /** A confirmation that prices each guest apart (MSC's confirmation page): every guest's own lines exactly as printed, never summed or split here. */
+  guest_prices?: GuestPrice[];
+  /** An optioned booking (MSC "Option valid until 6pm EST on: November 12, 2026"): the day the hold ends unless the deposit is paid, and the hour as printed. */
+  option_until?: string | null;
+  option_until_time?: string | null;
   /** The discount printed against the cabin fare on a single booking's confirmation, per guest. */
   discount_per_person?: number | null;
   organizer_name: string | null;
@@ -86,6 +93,8 @@ export interface BookingExtraction {
   allotment_reviews: AllotmentReview[];
   cancellation_schedule: CancellationRow[];
   cancellation_note: string | null;
+  /** The group's dining setting as the quote prints it ("Early Dining"), for the booking agreement's dining line (Mark 2026-11-14). */
+  group_dining?: string | null;
   deadlines: Deadline[];
   /** Air, hotel before the cruise and transfers, when the quote prints them (Mark 2026-10-10:
    *  "If the quote holds transfers, air and hotel then the fields prepopulate"). */
@@ -386,6 +395,10 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     ...amenitiesRaw.filter((x) => isDiningSetting(x) || isNoteHeader(x)),
     ...guestRaw.filter(isNoteHeader),
   ].map((x) => x.replace(/\s+/g, " ").trim()))];
+  // Mark 2026-11-14 ("this should be populated"): the dining setting is also kept on its own, so the booking agreement can tick it.
+  // A stored reading has it only in the notes ("Group Dining: Early Dining"), so the notes are read too.
+  const diningValue = (x: string | null | undefined) => /\b(?:group\s+)?dining\s*[:\-–—]\s*([A-Za-z' ]{3,40}?)(?=\s+Group\b|[.;,\n]|$)/i.exec(x ?? "")?.[1]?.trim() || null;
+  const groupDining = str(r["group_dining"]) ?? diningValue(amenitiesRaw.find(isDiningSetting)) ?? diningValue(str(r["notes"]));
   // A group NUMBER is assigned by the line; a quote often prints only the group NAME ("Millham F/F 2027"). Words with
   // spaces are a name, never a number: keep it in the notes for Mark and leave the number blank.
   const groupNumberRaw = str(r["group_number"]);
@@ -483,6 +496,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     allotment_reviews,
     cancellation_schedule,
     cancellation_note: str(r["cancellation_note"]),
+    group_dining: groupDining,
     deadlines,
     warnings: list(r["warnings"]).map(str).filter((x): x is string => !!x),
   };

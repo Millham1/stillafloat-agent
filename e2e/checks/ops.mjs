@@ -1345,7 +1345,7 @@ export default [
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
         // Mark 2026-11-08: after "Save my spot!" the guest goes to the choice page (/choice.html?t=, its own page); no choice card sits on this page.
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'data-t="travel_est"', "These are current estimates, prices may change until booking.", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/choice.html"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'data-t="travel_est"', "These are current estimates, prices may change until booking.", "Let's get going!", "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/choice.html"] });
         t.ok(!html.includes('id="gp-choice"') && !html.includes("/api/group-details/"), `${p} still carries the choice card (Mark 2026-11-08: it is its own page)`);
         t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in" (Mark 2026-10-24: the button is "Save my spot!")`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
@@ -1566,9 +1566,9 @@ export default [
       const DETAILS = (lang) => ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Armar mi cotización" : "Build my quote", "/pick", "/hold", lang === "es" ? "/es/quote.html" : "/quote.html", 'aria-disabled="true"', 'id="d-summary"'];
       const QUOTE = (lang) => ["/api/group-details/", 'id="d-website"', lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", lang === "es" ? "Agendemos una cita breve con Mark para solicitarlo." : "Let's schedule a brief appointment with Mark to apply.", "/quote", "/request", lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', lang === "es" ? "/es/details.html" : "/details.html",
         // Mark 2026-11-08: a FlexPay yes opens OUR scheduler in a pop-up (an iframe of flexpay-call.html on this site); no price is written on this page
-        'id="d-fp"', 'id="d-fp-frame"', 'id="d-fp-close"', "flexpayCallUrl", "embed=1", "m.close === true", "Pick what you want added."];
+        'id="d-fp"', 'id="d-fp-frame"', 'id="d-fp-close"', "flexpayCallUrl", "embed=1", "m.close === true", "Pick what you want added.", "Still to answer before this can go to Mark:"];
       // Mark 2026-11-08: the choice after Save my spot! is its own page on the same private link: the cheer, two equal pills, the drop-down for the time
-      const CHOICE = (lang) => ["/api/group-details/", "/choice", 'id="gp-choice"', 'id="gp-finish"', 'id="gp-talk"', 'id="gp-dd"', 'data-when="morning"', 'data-when="anytime"', lang === "es" ? "¡Guíeme paso a paso, Mark!" : "Walk me through it, Mark!", lang === "es" ? "¡Yo me encargo… déjeme llenarlo!" : "I've got this… let me fill it in!", lang === "es" ? "/es/details.html" : "/details.html", "/css/group-page.css"];
+      const CHOICE = (lang) => ["/api/group-details/", 'id="gp-choice"', 'id="gp-finish"', 'id="gp-talk"', 'id="gp-sent"', lang === "es" ? "¡Su cita ha sido enviada" : "Your appointment has been sent", 'id="gp-fp"', 'id="gp-fp-frame"', "planCallUrl", lang === "es" ? "¡Guíeme paso a paso, Mark!" : "Walk me through it, Mark!", lang === "es" ? "¡Yo me encargo… déjeme llenarlo!" : "I've got this… let me fill it in!", lang === "es" ? "/es/details.html" : "/details.html", "/css/group-page.css"];
       for (const [p, lang, mustContain] of [["/choice.html", "en", CHOICE("en")], ["/es/choice.html", "es", CHOICE("es")], ["/details.html", "en", DETAILS("en")], ["/es/details.html", "es", DETAILS("es")], ["/quote.html", "en", QUOTE("en")], ["/es/quote.html", "es", QUOTE("es")]]) {
         const html = t.html(await t.get(p), { mustContain });
         if (p.endsWith("/details.html")) t.ok(!html.includes('id="d-part4"') && !html.includes("Send my choices to Mark!") && !html.includes("¡Enviar mis decisiones a Mark!"), `${p} still carries the quote step (Mark 2026-11-07: it is its own page)`);
@@ -1613,7 +1613,7 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/flexpay-call.html", "en"], ["/es/flexpay-call.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/flexpay-call/", 'id="c-days"', 'id="c-times"', 'id="c-book"', 'id="c-continue"', "close: true", "website: ''", lang === "es" ? "Su llamada de FlexPay" : "Your FlexPay call", "Monday to Saturday, 10 AM to 8 PM Eastern", "De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/flexpay-call/", 'id="c-days"', 'id="c-times"', 'id="c-book"', 'id="c-continue"', "close: true", "website: ''", "kind=plan", 'id="c-phone"', "Phone call with Mark to plan your trip", lang === "es" ? "Su llamada de FlexPay" : "Your FlexPay call", "Monday to Saturday, 10 AM to 8 PM Eastern", "De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este"] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
         t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
@@ -1641,6 +1641,77 @@ export default [
     },
   },
   {
+    id: "ops.price-confirm-public",
+    basis: "ruling: Mark 2026-11-09 — 'we need to send an email to confirm the pricing before we send the paperwork. the email should have cta's one Book It and one I need changes. the changes opens a pop up for the client to enter their narrative of what changes they want to make'; the page is the guest's private link from that email and carries the Seller of Travel numbers under the Cornerstone logo",
+    title: "The guest's price page opens in English and Spanish with Book It and I need changes, stays out of search, calls only its own API, and any wrong link gets one neutral 'not found'",
+    covers: ["page /price.html", "page /es/price.html", "GET /api/price-confirm/:iid/:key"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      for (const [p, lang] of [["/price.html", "en"], ["/es/price.html", "es"]]) {
+        const html = t.html(await t.get(p), { mustContain: ["/api/price-confirm/", 'id="p-book"', 'id="p-changes"', 'id="p-modal"', 'id="p-text"', "website: ''", "book:'Book It'", "changes:'I need changes'", "book:'Reservar'", "changes:'Necesito cambios'", 'data-prot="', 'id="pr-modal"', "action: 'protect'", "Choose your travel protection first.", "Elija primero su protección de viaje.", "pr_video:'Watch this insurance video'", 'id="pr-play"', 'class="pr-film"', "pr_cov:'See what it covers'", "pr_cov:'Ver qué cubre'", "pr_video:'Vea este video sobre el seguro'", 'id="p-pdf"', "Seller of Travel: CA #2158353-50 | FL #ST44927 | WA #605824620"] });
+        t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
+        t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
+        t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
+        const sheets = [...html.matchAll(/<link rel="stylesheet" href="(\/css\/[a-z-]+\.css)[^"]*"/g)].map((m) => m[1]);
+        t.ok(sheets.includes("/css/price-page.css"), `${p} does not link its own stylesheet /css/price-page.css`);
+        for (const sheet of sheets) {
+          const css = await t.get(sheet);
+          t.ok(css.status === 200 && /^text\/css/i.test(css.headers.get("content-type") || ""), `${p}'s stylesheet ${sheet} is not served as CSS: ${css.describe()}`);
+        }
+        t.observe(`${p} title`, H.title(html));
+      }
+      // Every kind of wrong link: the same answer, never a hint about which part was wrong (a real link exists only for a guest Mark emailed the price to).
+      const bodies = new Set();
+      for (const [iid, key] of [[ZERO, "A".repeat(43)], [ZERO, "short"], ["not-a-reply", "A".repeat(43)], [ZERO, "A".repeat(44)]]) {
+        const res = await t.get(`/api/price-confirm/${encodeURIComponent(iid)}/${encodeURIComponent(key)}`);
+        refused(t, res, 404, `a wrong price link (${iid.length}/${key.length} characters)`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the price page answer");
+        bodies.add(res.text);
+      }
+      t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+    },
+  },
+  {
+    id: "ops.price-confirm-writes-refuse",
+    basis: "ruling: Mark 2026-11-09 — the guest approves the price ('Book It') or asks for changes before the paperwork goes out; only the guest Mark emailed can answer, and only Mark can send the price or record a yes he got another way",
+    title: "Book It and I need changes refuse a link that does not exist, the bot trap records nothing, and sending the price or recording an approval is Mark's alone",
+    covers: ["POST /api/price-confirm/:iid/:key", "POST /api/groups/:id/interests/:iid/price-email", "POST /api/groups/:id/interests/:iid/price-approved", "GET /api/groups/:id/interests/:iid/price-preview", "POST /api/groups/:id/interests/:iid/protection-quote", "GET /api/price-confirm/:iid/:key/quote.pdf", "GET /api/groups/:id/interests/:iid/quote-pdf", "POST /api/groups/:id/interests/:iid/delete", "DELETE /api/groups/:id", "POST /api/protection-plans/pull"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap, no token, a guest that does not exist; nothing is approved and nobody is emailed); prod sweeps are read-only",
+    run: async (t) => {
+      const send = (p, body, auth = false) => t.send("POST", p, { auth, body });
+      for (const action of ["book", "changes"]) {
+        const res = await send(`/api/price-confirm/${ZERO}/${"A".repeat(43)}`, { action, text: "a different cabin, please" });
+        refused(t, res, 404, `POST /api/price-confirm/:iid/:key (${action}) with a link that does not exist`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused price answer");
+      }
+      const bot = await send(`/api/price-confirm/${ZERO}/${"A".repeat(43)}`, { action: "book", website: "http://spam.example" });
+      t.ok(bot.status === 200 && bot.json?.success === true && !("state" in (bot.json || {})), `the bot trap on the price page should pretend success and approve nothing: ${bot.describe()}`);
+      // the preview of the price email is Mark's alone too, and shows nothing for a guest that does not exist
+      unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: false }), "GET /api/groups/:id/interests/:iid/price-preview");
+      refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/price-preview`, { auth: true }), 404, "the price preview of a guest who has not sent their choices", /has not sent|not found/i);
+      // Mark 2026-11-12: the quote as a PDF. The guest's copy sits behind the same private link (a wrong link gets nothing); Mark's copy is his alone.
+      refused(t, await t.send("GET", `/api/price-confirm/${ZERO}/${"A".repeat(43)}/quote.pdf`, { auth: false }), 404, "the quote PDF behind a link that does not exist", /^not found$/i);
+      unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/quote-pdf`, { auth: false }), "GET /api/groups/:id/interests/:iid/quote-pdf");
+      refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/quote-pdf`, { auth: true }), 404, "the quote PDF of a guest who has not sent their choices", /has not sent|not found/i);
+      // Mark 2026-11-12: deleting a person or a whole group is Mark's alone, and one that does not exist deletes nothing.
+      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/delete`, {}), "POST /api/groups/:id/interests/:iid/delete");
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/delete`, {}, true), 404, "deleting a person who does not exist", /not found/i);
+      unauthorized(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: false, body: {} }), "DELETE /api/groups/:id");
+      refused(t, await t.send("DELETE", `/api/groups/${ZERO}`, { auth: true, body: { confirm: "x" } }), 404, "deleting a group that does not exist", /group not found/i);
+      // Mark 2026-11-13: pulling a cruise line's plan coverages is Mark's alone, and a request that names no cruise line or no state pulls nothing
+      // (refusal paths only: nothing is fetched from any other site and nothing is kept).
+      unauthorized(t, await send(`/api/protection-plans/pull`, { cruise_line: "MSC Cruises", state: "NC" }), "POST /api/protection-plans/pull");
+      refused(t, await send(`/api/protection-plans/pull`, { state: "NC" }, true), 400, "a pull that names no cruise line", /name the cruise line/i);
+      refused(t, await send(`/api/protection-plans/pull`, { cruise_line: "MSC Cruises", state: "North Carolina!" }, true), 400, "a pull whose state is not two letters", /two letters/i);
+      refused(t, await send(`/api/protection-plans/pull`, { cruise_line: "No Such Cruise Line", state: "NC" }, true), 409, "a pull for a cruise line with no known source", /no published source/i);
+      for (const step of ["price-email", "price-approved", "protection-quote"]) {
+        unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}), `POST /api/groups/:id/interests/:iid/${step}`);
+        refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/${step}`, {}, true), 404, `${step} for a guest who has not sent their choices`, /has not sent|not found/i);
+      }
+    },
+  },
+  {
     id: "ops.flexpay-call-writes-refuse",
     basis: "ruling: Mark 2026-11-05 — the guest picks the FlexPay video call on our own scheduler, 'M-S 10-8 and doesn't conflict with any meetings on my schedule already'; only the guest Mark emailed can book, so a link that does not exist books nothing",
     title: "Booking a FlexPay video call refuses a link that does not exist, and the bot trap books nothing",
@@ -1663,7 +1734,7 @@ export default [
     id: "ops.group-details-writes-refuse",
     basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person. Mark 2026-11-01 — the quote step sits behind the same link: a link that does not exist and a robot get the same refusals, and no quote is pretended. Mark 2026-11-05 — \"Send my choices to Mark!\" agrees to nothing; Mark 2026-11-08/09 — no pricing on the quote page at all (no starting price, no fare or plan price on the pills: the booking confirmation carries every figure); Mark re-quotes in the carrier's system, uploads that quote (it fills the booking confirmation) and sends the paperwork; signed, it comes back to him, he confirms the booking with the cruise line and the vendors, and a FlexPay guest gets the appointment link; each of those is his alone",
     title: "Choosing a time to be rung, picking a cabin, saving details, sending the names, answering the quote step and agreeing refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing and pretends no pick and no quote, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
-    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/request", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how", "POST /api/groups/:id/interests/:iid/booked", "GET /api/groups/:id/bookings", "GET /api/groups/:id/interests/:iid/booking", "PUT /api/groups/:id/interests/:iid/booking", "POST /api/groups/:id/interests/:iid/carrier-quote", "POST /api/groups/:id/interests/:iid/complete", "POST /api/groups/:id/interests/:iid/flexpay-link"],
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/request", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how", "POST /api/groups/:id/interests/:iid/booked", "GET /api/groups/:id/bookings", "GET /api/groups/:id/pipeline", "GET /api/groups/:id/interests/:iid/booking", "PUT /api/groups/:id/interests/:iid/booking", "POST /api/groups/:id/interests/:iid/carrier-quote", "POST /api/groups/:id/interests/:iid/complete"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
     run: async (t) => {
@@ -1712,6 +1783,9 @@ export default [
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/booked`, {}, true), 404, "'Booked' for a guest who has not sent their choices", /has not sent|not found/i);
       // The booking confirmation (Mark 2026-11-04): Mark's alone, and an unknown guest is refused.
       unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/bookings`, { auth: false }), "GET /api/groups/:id/bookings");
+      // Where every person of a group stands (Mark 2026-11-11): Mark's alone, and a group that does not exist has no people.
+      unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/pipeline`, { auth: false }), "GET /api/groups/:id/pipeline");
+      refused(t, await t.send("GET", `/api/groups/${ZERO}/pipeline`, { auth: true }), 404, "the pipeline of a group that does not exist", /group not found/i);
       unauthorized(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/booking`, { auth: false }), "GET /api/groups/:id/interests/:iid/booking");
       refused(t, await t.send("GET", `/api/groups/${ZERO}/interests/${ZERO}/booking`, { auth: true }), 404, "the booking confirmation of a guest who has not sent their choices", /has not sent|not found/i);
       unauthorized(t, await t.send("PUT", `/api/groups/${ZERO}/interests/${ZERO}/booking`, { auth: false, body: {} }), "PUT /api/groups/:id/interests/:iid/booking");
@@ -1721,8 +1795,6 @@ export default [
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/carrier-quote`, {}, true), 404, "the cruise line's quote for a guest who has not sent their choices", /has not sent|not found/i);
       unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/complete`, {}), "POST /api/groups/:id/interests/:iid/complete");
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/complete`, {}, true), 404, "completing the booking of a guest who has not sent their choices", /has not sent|not found/i);
-      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/flexpay-link`, {}), "POST /api/groups/:id/interests/:iid/flexpay-link");
-      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/flexpay-link`, {}, true), 404, "FlexPay's appointment link for a guest who has not sent their choices", /has not sent|not found/i);
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/confirmed`, {}, true), 404, "confirming a reply that does not exist", /reply not found/i);
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/later`, {}, true), 404, "a button that does not exist", /reply not found/i);
     },

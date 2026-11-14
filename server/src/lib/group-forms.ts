@@ -28,11 +28,12 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
+  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, isAdultOn, leadOfCabin, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
-import { renderFormPdf, type FormMark } from "./group-form-pdf";
+import { renderFormPdf, signAgent, type FormMark } from "./group-form-pdf";
+import { zipName, zipStored } from "./group-zip";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong, type Advisory, type EntryRequirement } from "./group-document-kit";
@@ -43,7 +44,9 @@ import { pagePhotos } from "./group-page-photos";
 
 export type Reply = { status: number; json: Record<string, unknown> };
 const reply = (status: number, json: Record<string, unknown>): Reply => ({ status, json });
-const NOT_FOUND = reply(404, { success: false, error: "This link is not valid. Please check that you opened the whole link from your email, or ask for a new one." });
+// Mark 2026-11-13: a guest who opens an OLDER email after a newer one went out landed on "This link is not valid" with nowhere to go. Only the newest
+// link works (a new link cancels the one before it), and the page cannot tell an old link from a mistyped one, so it says both and gives the phone.
+const NOT_FOUND = reply(404, { success: false, error: `This link no longer works. If we sent you more than one email, please use the link in the newest one. If that one does not work either, call or text Mark at ${BUSINESS.phone} and he will send a new link.` });
 
 // ── What the flow needs from the outside ──────────────────────────────────────
 
@@ -148,16 +151,34 @@ async function travelChecks(deps: Pick<FormsDeps, "advisories" | "entry">, group
   return { advisories, entry };
 }
 
+/** Mark 2026-11-14: another adult on the lead's cabin signs their own terms, insurance document and waiver. Those documents carry the
+ *  LEAD's decisions (the plan chosen once, on the quote; the trip that was priced), so the companion's row is read with them laid over
+ *  it. Only in memory: nothing of the lead's is written on the companion's file. */
+/** The advisor's signature on a booking's documents (Mark 2026-11-14): typed when the paperwork is sent, kept on the lead's file. */
+export function advisorOf(traveler: Row | null | undefined): { name: string; signedAt: string } | null {
+  const a = traveler?.form_data?.advisor;
+  return a && typeof a === "object" && typeof a.name === "string" && a.name && typeof a.signed_at === "string" ? { name: a.name, signedAt: a.signed_at } : null;
+}
+
+function withLeadsChoices(traveler: Row, travelers: Row[]): Row {
+  const lead = leadOfCabin(travelers, traveler);
+  if (!lead) return traveler;
+  const own = traveler.form_data && typeof traveler.form_data === "object" ? traveler.form_data : {};
+  const from = lead.form_data && typeof lead.form_data === "object" ? lead.form_data : {};
+  return { ...traveler, form_data: { ...own, ...(from.insurance ? { insurance: from.insurance } : {}), ...(from.trip ? { trip: from.trip } : {}), ...(from.advisor ? { advisor: from.advisor } : {}) } };
+}
+
 export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories" | "entry">, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
   const { store } = deps;
-  const traveler = await store.travelerByTokenHash(hash);
+  const found = await store.travelerByTokenHash(hash);
   const now = deps.now();
-  if (traveler) {
-    const group = await store.group(traveler.group_id);
+  if (found) {
+    const group = await store.group(found.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
+    const traveler = withLeadsChoices(found, travelers);
     const checks = await travelChecks(deps, group);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, ...checks });
     const packet = packetFor({ group, cabin: ctx.cabin, traveler, travelers });
@@ -518,7 +539,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     const base = {
       businessName: BUSINESS.legalName, title: doc.title, blocks: fillBlocks(doc, stored, now),
       signerName, signerRole: spec.signerRole, signedAt: now, docVersion: doc.version, contentSha256: doc.sha256,
-      signatureId: saved.id, agentCountersignPending: !!spec.agentCountersign, logo: deps.logo,
+      signatureId: saved.id, agentCountersignPending: !!spec.agentCountersign, advisor: advisorOf(loaded.traveler), logo: deps.logo,
     };
     const audit = auditFor(loaded, { ip: meta.ip, ua: meta.ua, at: now, seal: deps.seal });
     let bytes = await deps.renderPdf({ ...base, audit });
@@ -541,6 +562,12 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     deps.warn({ err: err instanceof Error ? err.message : String(err), signature: saved.id }, "paperwork: the signed copy could not be saved (the signature itself is recorded)");
   }
 
+  // Mark 2026-11-14: the lead's traveler information form names the cabin's other adults and their email; each gets a link of their own
+  if (traveler && loaded.kind === "traveler" && traveler.is_lead && docKey === "15-emergency-contact-form") {
+    try { await sendCompanionLinks(deps, loaded.group, traveler); } catch (err) {
+      deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the second adult's link could not be sent (the signature is recorded)");
+    }
+  }
   if (complete) {
     // One notice per signer, on the last signature. The organizer's contract also waits for Mark's countersignature.
     const card = cardOf(traveler);
@@ -606,9 +633,16 @@ export function copiesUrl(publicSite: string, token: string, signatureId: string
   return `${publicSite.replace(/\/$/, "")}/api/forms/copies/${token}/${signatureId}.pdf`;
 }
 
+/** Mark 2026-11-14 ("there should be an option to download all at once"): every signed copy of this link, in one ZIP file. */
+export function copiesAllUrl(publicSite: string, token: string): string {
+  return `${publicSite.replace(/\/$/, "")}/api/forms/copies/${token}/all.zip`;
+}
+
 /** The email that carries the signer's copies: warm, one tip, the facts. Mark's register (a laugh and a cruise-smart tip in every beat). */
-export function copiesEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; docs: Array<{ title: string; url: string }>; sealed: boolean }): { subject: string; text: string; html: string } {
+export function copiesEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; docs: Array<{ title: string; url: string }>; sealed: boolean; allUrl?: string }): { subject: string; text: string; html: string } {
   const es = input.lang === "es"; const n = input.docs.length;
+  // one link for all of them, offered first, when there is more than one
+  const all = input.allUrl && n > 1 ? { label: es ? `Descargar los ${n} documentos en un solo archivo (ZIP)` : `Download all ${n} documents in one file (ZIP)`, url: input.allUrl } : null;
   const hello = es ? (input.firstName ? `Hola ${input.firstName},` : "Hola,") : (input.firstName ? `Hi ${input.firstName},` : "Hi,");
   const opening = es
     ? `¡Firmado, sellado… y entregado! ${n === 1 ? "Su documento" : `Los ${n} documentos`} de ${input.trip} ${n === 1 ? "está listo" : "están listos"}. Aquí ${n === 1 ? "tiene su copia" : "tiene sus copias, un PDF por documento"}:`
@@ -623,10 +657,11 @@ export function copiesEmail(input: { lang: "en" | "es"; firstName: string; group
   const fix = es ? `¿Algo que corregir? Responda a este correo o llame al ${BUSINESS.phone} y lo resolvemos juntos.` : `Spot something that needs fixing? Reply to this email or call ${BUSINESS.phone}, and we'll sort it together.`;
   const bye = es ? "¡Nos vemos a bordo!" : "See you on board!";
   const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")]; // Mark 2026-10-30: the signature reads "Still Afloat Cruising"
-  const text = [hello, opening, ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
+  const text = [hello, opening, ...(all ? [`${all.label}\n${all.url}`] : []), ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
   const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">`
     + `<p>${esc(hello)}</p><p>${esc(opening)}</p>`
+    + (all ? `<p><a href="${esc(all.url)}" style="font-weight:bold">${esc(all.label)}</a></p>` : "")
     + `<ul>${input.docs.map((d) => `<li><a href="${esc(d.url)}">${esc(d.title)}</a></li>`).join("")}</ul>`
     + `<p>${esc(tip)}</p><p>${esc(seal)}</p><p>${esc(fix)}</p><p>${esc(bye)}</p><p>${sign.map(esc).join("<br>")}</p></div>`;
   return { subject: es ? `Sus documentos firmados: ${input.groupName}` : `Your signed paperwork for ${input.groupName}`, text, html };
@@ -650,7 +685,7 @@ async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
     .map((d) => ({ title: renderDocument(d.key, loaded.ctx).title, url: copiesUrl(deps.publicSite, token, String(d.sig.id)) }));
   const when = fmtLong(g.sail_date);
   const trip = [guestGroupName(g), [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
-  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: owner ? firstOf(cardOf(t).name) : String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal });
+  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: owner ? firstOf(cardOf(t).name) : String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal, allUrl: copiesAllUrl(deps.publicSite, token) });
   const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
   await deps.store.logMessage({
     group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: owner ? "paperwork-copies-cardholder" : "paperwork-copies",
@@ -742,12 +777,13 @@ export async function getChecklistPdf(deps: FormsDeps, token: unknown): Promise<
 async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
-  const t = await deps.store.travelerByCopiesHash(hash);
+  const owner = await deps.store.travelerByCopiesHash(hash);
   const now = deps.now();
-  if (t) {
-    const group = await deps.store.group(t.group_id);
+  if (owner) {
+    const group = await deps.store.group(owner.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+    const t = withLeadsChoices(owner, travelers);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now });
     const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: t.id });
     return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t, travelers }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
@@ -776,7 +812,23 @@ export async function getCopies(deps: FormsDeps, token: unknown): Promise<Reply>
   const tok = String(token);
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ id: String(d.sig.id), title: renderDocument(d.key, loaded.ctx).title, signed_at: d.sig.signed_at ?? null, sealed: !!d.sig.sealed, url: copiesUrl(deps.publicSite, tok, String(d.sig.id)) }));
-  return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs });
+  return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs, ...(docs.length > 1 ? { all_url: copiesAllUrl(deps.publicSite, tok) } : {}) });
+}
+
+/** GET /api/forms/copies/:token/all.zip — every signed copy that belongs to this link's owner, in one file. The PDFs are stored
+ *  as they are (a sealed copy stays sealed). One that cannot be read fails the whole download: a partial set would look complete. */
+export async function getCopiesZip(deps: FormsDeps, token: unknown): Promise<{ status: 200; bytes: Buffer; filename: string } | Reply> {
+  const loaded = await loadByCopiesToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const signed = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig && typeof d.sig.pdf_path === "string" && !!d.sig.pdf_path);
+  if (!signed.length) return NOT_FOUND;
+  const files: Array<{ name: string; bytes: Uint8Array }> = [];
+  for (const [i, d] of signed.entries()) {
+    const bytes = await deps.store.downloadPdf(String(d.sig.pdf_path));
+    if (!bytes) return reply(503, { success: false, error: "Your copies are not available right now. Please try again in a minute." });
+    files.push({ name: zipName(`${i + 1} ${renderDocument(d.key, loaded.ctx).title} signed.pdf`), bytes });
+  }
+  return { status: 200, bytes: zipStored(files, deps.now()), filename: zipName(`${guestGroupName(loaded.group) || "Signed paperwork"} signed paperwork.zip`) };
 }
 
 // ── Mark's own PDF of a document, filled in (Mark 2026-10-27: "show the client the actual populated document") ──
@@ -796,7 +848,9 @@ function previewInput(raw: unknown): Answers {
 
 /** The clean printed form of one document (lib/group-form-pdf.ts) with these answers, this date and, once typed, this name. */
 async function formPdf(deps: Pick<FormsDeps, "logo">, key: string, ctx: DocCtx, answers: Answers, today: string, signer: string, onMark?: (m: FormMark) => void): Promise<Uint8Array> {
-  const { spec, blocks } = blocksFor(key, ctx, { paper: true });
+  const { spec, blocks: plain } = blocksFor(key, ctx, { paper: true });
+  const advisor = advisorOf(ctx.traveler);
+  const blocks = signAgent(plain, advisor ? { name: advisor.name, date: fmtLong(advisor.signedAt) } : null);
   return renderFormPdf({ title: spec.title, businessName: BUSINESS.legalName, blocks, answers, today, ...(signer ? { signer } : {}), logo: deps.logo, ...(onMark ? { onMark } : {}) });
 }
 
@@ -826,8 +880,14 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
     ctx = { ...ctx, mates, traveler: { ...t, ...applied.travelerPatch, form_data: mergeDeep((t["form_data"] as Row) ?? {}, applied.formData) } };
   }
   const doc = renderDocument(key, ctx);
-  const own: Answers = {};
+  let own: Answers = {};
   for (const f of doc.fields) if (typed[f.name] !== undefined) own[f.name] = typed[f.name]!;
+  // Mark 2026-11-14 ("the cc auth says N/A instead of transferring the details from the booking"): whose card it is was answered and kept
+  // on the file when its screen was left, so the form shown reads it from there when the page did not send it again; and the lines the
+  // file fills (the traveler's own card: name, billing address, phone, email) show even while another line is still empty or refused.
+  if (key === CARD_DOCUMENT && loaded.kind === "traveler" && own["cardholder"] === undefined) { const holder = cardOf(loaded.traveler).holder; if (holder) own["cardholder"] = holder; }
+  const filled = DOC_SPECS[key]?.complete;
+  if (filled) own = filled(own, ctx);
   // shown as it will be kept: a passport or licence number never in full
   const applied = applyAnswers(doc, own, ctx);
   const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}), ...(typeof own["dl_number"] === "string" ? { dl_number: "" } : {}) };
@@ -854,11 +914,16 @@ export async function documentPdf(deps: FormsDeps, token: unknown, docKey: unkno
     const answers = (sig["answers"] && typeof sig["answers"] === "object" ? sig["answers"] : {}) as Answers;
     return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(String(sig["signed_at"] ?? "")), String(sig["signer_name"] ?? "")), key };
   }
-  const answers: Answers = {};
+  let answers: Answers = {};
   for (const f of renderDocument(key, loaded.ctx).fields) {
     const v = prefillValue(f, loaded.ctx);
     if (v !== undefined) answers[f.name] = v;
   }
+  // Mark 2026-11-14 ("I opened up the view or print for the cc auth. the cardholder info is blank"): the printed copy fills the same
+  // lines from the file as the page does (whose card it is, then the cardholder's name, billing address, phone and email).
+  if (key === CARD_DOCUMENT && loaded.kind === "traveler" && answers["cardholder"] === undefined) { const holder = cardOf(loaded.traveler).holder; if (holder) answers["cardholder"] = holder; }
+  const filled = DOC_SPECS[key]?.complete;
+  if (filled) answers = filled(answers, loaded.ctx);
   return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(deps.now().toISOString()), ""), key };
 }
 
@@ -936,7 +1001,7 @@ export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Ro
     const required = packetFor({ group: input.group, cabin, traveler: t, travelers: input.travelers });
     const signed = required.filter((k) => input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === k));
     const card = cardOf(t);
-    const lead = cabinLead(input.travelers, t);
+    const lead = cabinLead(input.travelers, t, input.group);
     out[t.id] = {
       required, signed, complete: required.length > 0 && signed.length === required.length,
       ...(lead ? { covered_by: String(lead.id) } : {}),
@@ -973,6 +1038,41 @@ export function cardLinkEmail(input: { name: string; leadName: string; groupName
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">${lines
     .map((l) => (l === input.url ? `<p><a href="${esc(l)}">${esc(l)}</a></p>` : `<p>${esc(l)}</p>`)).join("")}<p>${sign.map(esc).join("<br>")}</p></div>`;
   return { subject: `Credit card authorization for ${input.leadName ? `${input.leadName}'s` : "a"} cruise booking`, text, html };
+}
+
+/** Mark 2026-11-14: another adult on the lead's cabin signs their own documents. Their link goes to the address the lead gave on the
+ *  traveler information form, once, when the lead signs that form. A companion who already has a link, has no address, or owes
+ *  nothing (a minor) is left alone. A refused email leaves the link stored, marks it unsent and tells Mark where to send it from. */
+export async function sendCompanionLinks(deps: FormsDeps, group: Row, lead: Row): Promise<number> {
+  if (!lead.is_lead || !lead.cabin_id) return 0;
+  const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+  const cabin = cabins.find((c) => c.id === lead.cabin_id) ?? null;
+  let sent = 0;
+  for (const mate of travelers) {
+    if (leadOfCabin(travelers, mate)?.id !== lead.id || !isAdultOn(mate.dob, group.sail_date)) continue;
+    if (mate.form_token_hash || mate.form_sent_at || mate.form_submitted_at) continue;
+    if (!packetFor({ group, cabin, traveler: mate, travelers }).length) continue;
+    const to = String(mate.email ?? "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) continue;
+    const now = deps.now().toISOString();
+    const { token, hash } = issueToken();
+    await deps.store.updateTraveler(mate.id, { form_token_hash: hash, form_sent_at: now });
+    const mail = linkEmail({ firstName: String(mate.first_name ?? ""), groupName: guestGroupName(group), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(deps.publicSite, token) });
+    const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
+    await deps.store.logMessage({
+      group_id: group.id, cabin_id: mate.cabin_id ?? null, traveler_id: mate.id, audience: "client", template: "paperwork-link",
+      to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
+    });
+    if (ok) { sent++; continue; }
+    await deps.store.updateTraveler(mate.id, { form_sent_at: null });
+    deps.warn({ group: group.id, traveler: mate.id }, "paperwork: the second adult's link email did not go out (the link itself is stored)");
+    await deps.notify({
+      title: `Paperwork link to send: ${personName(mate) || "the second adult"}`,
+      body: `${guestGroupName(group)} — ${personName(mate) || "The second adult"} on ${personName(lead) || "the lead"}'s cabin signs their own terms, insurance document and waiver, and the email with their link did not go out (the mail sender refused it, or this box emails only its test addresses). Send it from Group details, Travelers, "Email link".`,
+      groupId: group.id,
+    }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the second adult's link notice failed"));
+  }
+  return sent;
 }
 
 /** A new link for the card's owner, emailed to the address the lead gave. The old link stops working the moment the new one is
@@ -1058,19 +1158,22 @@ export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { i
   if (!loaded || loaded.kind !== "traveler" || !loaded.traveler) return NOT_FOUND;
   if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
   if (INSURANCE_DOCUMENTS.some((k) => loaded.signed.has(k))) return reply(409, { success: false, code: "insurance-signed", error: "Your travel insurance document is already signed, so the choice cannot change here. Ask Mark to take that signature back if you need to change it." });
-  const choice = typeof body.insurance_choice === "string" ? body.insurance_choice : "";
+  // a choice made on the quote stands: whatever the page sends, the decision on the file is the one kept (only the details of an own policy are taken)
+  const made = rowOf(rowOf(loaded.traveler.form_data)["insurance"]);
+  const fromQuote = made["from_quote"] === true && (INSURANCE_CHOICES as readonly string[]).includes(made["choice"]);
+  const choice = fromQuote ? String(made["choice"]) : typeof body.insurance_choice === "string" ? body.insurance_choice : "";
   if (!(INSURANCE_CHOICES as readonly string[]).includes(choice)) return reply(400, { success: false, error: "Please choose one of the options.", fields: { insurance_choice: "Please choose one." } });
   const pub = insurancePublic(loaded, deps);
   const quote = pub["quote"] as { status: string; plans: Row[] };
-  let plan: string | null = null;
-  if (choice === "quote") {
+  let plan: string | null = fromQuote && typeof made["plan"] === "string" ? made["plan"] : null;
+  if (choice === "quote" && !fromQuote) {
     const typed = typeof body.insurance_plan === "string" ? body.insurance_plan.replace(/\s+/g, " ").trim() : "";
     const offered = (quote.plans ?? []).map((p) => planLabel(p));
     if (!offered.length) return reply(400, { success: false, error: "There is no price to pick from yet. Please wait for the quote, or choose another option for now.", fields: { insurance_plan: "No plan to pick from yet." } });
     if (!offered.includes(typed)) return reply(400, { success: false, error: "Please choose your plan.", fields: { insurance_plan: "Please choose your plan." } });
     plan = typed;
   }
-  if (choice === "line") {
+  if (choice === "line" && !fromQuote) {
     const line = pub["line_protection"];
     if (typeof line !== "string" || !line) return reply(400, { success: false, error: "The cruise line's own plan is not on file for this sailing. Please choose another option, or ask Mark.", fields: { insurance_choice: "Not on file for this sailing." } });
     plan = line;
@@ -1116,7 +1219,15 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
   // Mark 2026-10-30: "they should be able to select the policy/price here" — the box's own quote for this traveler first; until it
   // has one, the plans Mark quoted for the sailing on the group file, so the client always has prices to pick from on the page.
   const file = plansFromText(loaded.group.insurance_plans);
-  const quote = q?.status === "ready"
+  // Mark 2026-11-10: the plans he priced for THIS booking on the booking card (the lead's file, trip.protection; the ones that are not the cruise
+  // line's own) come before everything else: they are what the guest saw, and picked from, on the quote.
+  const bookedRaw: unknown = rowOf(rowOf(loaded.traveler?.form_data)["trip"])["protection"];
+  const booked = (Array.isArray(bookedRaw) ? bookedRaw : [])
+    .filter((r): r is Row => !!r && typeof r === "object" && r["line"] !== true && typeof r["name"] === "string" && !!r["name"].trim() && typeof r["per_person"] === "number" && r["per_person"] > 0)
+    .map((r) => ({ name: String(r["name"]).trim(), price_per_person: r["per_person"] as number }));
+  const quote = booked.length
+    ? { status: "ready", source: "booking", plans: booked, quoted_at: null, note: QUOTE_NOTE, trip_cost: null }
+    : q?.status === "ready"
     ? { status: "ready", source: "portal", plans: q.plans, quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
     : file.length
       ? { status: "ready", source: "file", plans: file, quoted_at: null, note: QUOTE_NOTE, trip_cost: null }
@@ -1132,10 +1243,18 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
     if (f.name === "insurance_choice") pub["options"] = (pub["options"] as Array<{ value: string; label: string }>).flatMap((o) => (o.value !== "line" ? [o] : lineText ? [{ value: "line", label: `The cruise line's own protection plan: ${lineText}` }] : []));
     return pub;
   }) : [];
+  // Mark 2026-11-13: a choice made on the quote is DONE: the paperwork states it and never offers or asks again (no video, no prices, no options)
+  const decidedChoice = ins["from_quote"] === true && (INSURANCE_CHOICES as readonly string[]).includes(ins["choice"]) ? String(ins["choice"]) : null;
+  const decided = decidedChoice ? {
+    choice: decidedChoice, plan: typeof ins["plan"] === "string" ? ins["plan"] : null,
+    label: decidedChoice === "own" ? "My own travel insurance policy" : decidedChoice === "decline" ? "No travel insurance for this trip"
+      : (typeof ins["plan"] === "string" && ins["plan"].trim() ? ins["plan"].trim() : typeof ins["name"] === "string" ? ins["name"] : "Travel protection through Mark"),
+  } : null;
   return {
-    video_url: deps.insurance?.videoUrl ?? null,
+    decided,
+    video_url: decided ? null : deps.insurance?.videoUrl ?? null,
     line_protection: lineText,
-    quote,
+    quote: decided ? { status: "decided", source: null, plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null } : quote,
     // the choice made on the page (Mark 2026-10-30) and the lines that ask it; locked once the insurance document is signed
     choice: {
       value: (INSURANCE_CHOICES as readonly string[]).includes(ins["choice"]) ? ins["choice"] : null,

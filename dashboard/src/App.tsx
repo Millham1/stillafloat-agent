@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { ConfirmHost } from "@/components/confirm";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
@@ -68,6 +69,9 @@ function Router() {
         {/* before /groups/:id, or "workspace" would be read as a group id */}
         <Route path="/groups/workspace" component={ToGroupBookings} />
         <Route path="/groups/:id" component={Groups} />
+        {/* one group, level by level: /groups/<id>/leads|quotes|booked|details[/part] and /groups/<id>/lead|booking/<person> (Mark 2026-11-11) */}
+        <Route path="/groups/:id/:view" component={Groups} />
+        <Route path="/groups/:id/:view/:sub" component={Groups} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/commentary"  component={CommentaryManager} />
@@ -90,6 +94,7 @@ function App() {
             <Router />
           </WouterRouter>
           <Toaster />
+          <ConfirmHost />
         </TokenGate>
       </TooltipProvider>
     </QueryClientProvider>
