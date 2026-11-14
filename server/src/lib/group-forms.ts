@@ -1277,7 +1277,7 @@ const TEN_MINUTES = 10 * 60_000;
 /** POST …/insurance/quote: start the background quote for this traveler (once; again when the last one failed or stalled). */
 export async function requestInsuranceQuote(deps: FormsDeps, token: unknown): Promise<{ status: number; json: Row }> {
   const loaded = await loadByToken(deps, token);
-  if (!loaded || !loaded.traveler) return { status: 404, json: { success: false, error: "This link is not valid." } };
+  if (!loaded || !loaded.traveler) return { status: 404, json: NOT_FOUND.json as Row }; // the one answer every wrong paperwork link gets
   const t = loaded.traveler;
   const now = deps.now();
   const have = quoteOf(t);
@@ -1318,6 +1318,6 @@ async function finishQuote(deps: FormsDeps, loaded: Loaded, q: QuoteRecord): Pro
 /** GET …/insurance: where the quote stands, for the page to poll. */
 export async function insuranceStatus(deps: FormsDeps, token: unknown): Promise<{ status: number; json: Row }> {
   const loaded = await loadByToken(deps, token);
-  if (!loaded || !loaded.traveler) return { status: 404, json: { success: false, error: "This link is not valid." } };
+  if (!loaded || !loaded.traveler) return { status: 404, json: NOT_FOUND.json as Row }; // the one answer every wrong paperwork link gets
   return { status: 200, json: { success: true, ...insurancePublic(loaded, deps) } };
 }
