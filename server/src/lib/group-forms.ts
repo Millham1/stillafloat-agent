@@ -828,8 +828,14 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
     ctx = { ...ctx, mates, traveler: { ...t, ...applied.travelerPatch, form_data: mergeDeep((t["form_data"] as Row) ?? {}, applied.formData) } };
   }
   const doc = renderDocument(key, ctx);
-  const own: Answers = {};
+  let own: Answers = {};
   for (const f of doc.fields) if (typed[f.name] !== undefined) own[f.name] = typed[f.name]!;
+  // Mark 2026-11-14 ("the cc auth says N/A instead of transferring the details from the booking"): whose card it is was answered and kept
+  // on the file when its screen was left, so the form shown reads it from there when the page did not send it again; and the lines the
+  // file fills (the traveler's own card: name, billing address, phone, email) show even while another line is still empty or refused.
+  if (key === CARD_DOCUMENT && loaded.kind === "traveler" && own["cardholder"] === undefined) { const holder = cardOf(loaded.traveler).holder; if (holder) own["cardholder"] = holder; }
+  const filled = DOC_SPECS[key]?.complete;
+  if (filled) own = filled(own, ctx);
   // shown as it will be kept: a passport or licence number never in full
   const applied = applyAnswers(doc, own, ctx);
   const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}), ...(typeof own["dl_number"] === "string" ? { dl_number: "" } : {}) };

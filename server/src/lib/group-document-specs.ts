@@ -212,6 +212,8 @@ const mateFields = (i: number): FieldSpec[] => {
   const citizenship = (c: DocCtx) => cleanValue(m(c)?.citizenship) || undefined;
   const country = (c: DocCtx) => cleanValue(m(c)?.passport_country) || undefined;
   const expiry = (c: DocCtx) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined);
+  // Mark 2026-11-14 ("it's missing the issue date"): kept on their own file, where the lead's own issue date is kept (form_data.passport.issue_date)
+  const issue = (c: DocCtx) => { const v = m(c)?.form_data?.passport?.issue_date; return typeof v === "string" ? v.slice(0, 10) : undefined; };
   return [
     text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: name, fileValue: name }),
     { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: dob, fileValue: dob },
@@ -219,6 +221,7 @@ const mateFields = (i: number): FieldSpec[] => {
     text(`m${i}_citizenship`, `${n}: citizenship`, { required: true, prefill: (c) => citizenship(c) || "United States", fileValue: citizenship }),
     { name: `m${i}_passport_number`, label: `${n}: passport number`, kind: "passport" },
     text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: country, fileValue: country }),
+    { name: `m${i}_passport_issue`, label: `${n}: passport issue date`, kind: "date", date: "past", prefill: issue, fileValue: issue },
     { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: expiry, fileValue: expiry },
   ];
 };
@@ -233,7 +236,7 @@ const mateBlocks15 = (blocks: Block[], ctx: DocCtx): Block[] => {
     extra.push({ t: "p", text: `**Full Legal Name:** {{in:m${i}_legal_name}}` }, { t: "p", text: `**Date of Birth:** {{in:m${i}_dob}}` });
     extra.push({ t: "p", text: `**Gender:** ${GENDER.map((o) => `{{ch:m${i}_gender:${o.value}}} ${o.label}`).join(" ")}` });
     extra.push({ t: "p", text: `**Citizenship:** {{in:m${i}_citizenship}}` });
-    extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Expiration Date:** {{in:m${i}_passport_expiry}}` });
+    extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Issue Date:** {{in:m${i}_passport_issue}} **Expiration Date:** {{in:m${i}_passport_expiry}}` });
   }
   if (!extra.length) return blocks;
   const at = blocks.findIndex((b) => b.t === "h" && /loyalty/i.test(b.text));
@@ -260,14 +263,23 @@ const MATE_DERIVE_15: NonNullable<DocSpec["mateDerive"]> = (a, ctx) => MATE_SLOT
   if (typeof a[`m${i}_citizenship`] === "string") patch["citizenship"] = a[`m${i}_citizenship`];
   if (typeof a[`m${i}_passport_country`] === "string") patch["passport_country"] = a[`m${i}_passport_country`];
   if (typeof a[`m${i}_passport_expiry`] === "string") patch["passport_expiry"] = a[`m${i}_passport_expiry`];
+  if (typeof a[`m${i}_passport_issue`] === "string") {
+    const fd = (m.form_data && typeof m.form_data === "object" ? m.form_data : {}) as Record<string, any>;
+    patch["form_data"] = { ...fd, passport: { ...(fd["passport"] ?? {}), issue_date: a[`m${i}_passport_issue`] } };
+  }
   return [{ index: i, patch }];
 });
+
+// Mark 2026-11-14 ("this question is answered earlier and should be pre-populated"): the citizenship given on the details page answers
+// "U.S. citizen?" here; the guest can still change it.
+const US_NAMES = /^(united states( of america)?|usa?|u\.s\.(a\.)?)$/i;
+const usCitizenFromFile = (c: DocCtx): string | undefined => { const v = cleanValue(c.traveler?.citizenship); return v ? (US_NAMES.test(v) ? "yes" : "no") : undefined; };
 
 const FIELDS_15: FieldSpec[] = [
   text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
-  { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen", prefill: usCitizenFromFile },
   text("citizenship", "Citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
   text("address", "Home address", { required: true, form: "address" }),
   text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
@@ -306,7 +318,7 @@ const DERIVE_15: NonNullable<DocSpec["derive"]> = (a, ctx) => {
   const patch: Row = {};
   const phone = typeof a["ec1_cell_phone"] === "string" ? a["ec1_cell_phone"] : undefined;
   if (phone) patch["emergency_phone"] = phone;
-  if (a["us_citizen"] === "yes" && typeof a["citizenship"] !== "string") patch["citizenship"] = "United States";
+  if (a["us_citizen"] === "yes") patch["citizenship"] = "United States"; // "Yes" wins over a country left typed in the hidden line below it
   // The file's name columns are Mark's to edit: fill them from the form only when they are empty.
   const t = ctx.traveler;
   const legal = typeof a["legal_name"] === "string" ? a["legal_name"] : "";
@@ -327,6 +339,8 @@ const FORM_15: DocSpec = {
   rules: RULES_15,
   fields: FIELDS_15,
   edits: EDITS_15,
+  // "Yes" to U.S. citizen: the form reads "United States", whatever was left typed in the line under "No"
+  complete: (a) => (a["us_citizen"] === "yes" ? { ...a, citizenship: "United States" } : a),
   derive: DERIVE_15,
   mateDerive: MATE_DERIVE_15,
 };
@@ -824,11 +838,21 @@ const tripOf = (c: DocCtx): { chosen: Array<Record<string, any>>; needs: Record<
 };
 const hasTrip = (c: DocCtx) => !!c.traveler?.form_data?.trip;
 const stayDates = (r: Record<string, any>) => [fmtLong(r["starts_at"]), fmtLong(r["ends_at"])].filter(Boolean).join(" to ");
+// Mark 2026-11-14 ("the pre hotel / air and transfers didn't roll into the booking agreement"): air and a hotel booked as ONE package
+// (one price, kind "package", the parts under pkg) fill the hotel and air lines the same as a hotel or a flight booked on its own.
+const pkgHotel = (r: Record<string, any>) => r["kind"] === "package" && !!cleanValue(r["pkg"]?.["hotel"]);
+const pkgAir = (r: Record<string, any>) => r["kind"] === "package" && !!(cleanValue(r["pkg"]?.["flights"]) || cleanValue(r["pkg"]?.["return_flights"]));
 const hotelBlock = (title: "Pre-Cruise Hotel" | "Post-Cruise Hotel", post: boolean) => (c: DocCtx, was: string): string => {
   if (!hasTrip(c)) return was;
   const { chosen, needs } = tripOf(c);
   const h = chosen.find((r) => r["kind"] === "hotel" && (r["direction"] === "post") === post);
-  const asked = needs["hotel"] === true && !chosen.some((r) => r["kind"] === "hotel");
+  const p = h ? undefined : chosen.find((r) => pkgHotel(r) && (r["direction"] === "post") === post);
+  if (p) {
+    const k = p["pkg"] as Record<string, any>;
+    const dates = [fmtLong(k["check_in"]), fmtLong(k["check_out"])].filter(Boolean).join(" to ");
+    return `**${title}:** ☒ Yes — Destination: ${cleanValue(k["hotel_city"]) || "As quoted"}\n\nHotel: ${cleanValue(k["hotel"])} Dates: ${dates || "To be confirmed with Mark"} ☐ No`;
+  }
+  const asked = needs["hotel"] === true && !chosen.some((r) => r["kind"] === "hotel" || pkgHotel(r));
   if (!h && !asked) return was.replace(/☐ No$/, "☒ No").replace(/☐ Yes/, "☐ Yes");
   if (!h) return `**${title}:** ☒ Yes — Destination: To be confirmed with Mark\n\nHotel: To be confirmed with Mark Dates: To be confirmed with Mark ☐ No`;
   return `**${title}:** ☒ Yes — Destination: ${cleanValue(h["from_place"]) || cleanValue(h["to_place"]) || "As quoted"}\n\nHotel: ${cleanValue(h["provider"]) || "To be confirmed with Mark"} Dates: ${stayDates(h) || "To be confirmed with Mark"} ☐ No`;
@@ -841,7 +865,7 @@ const TRIP_RULES: DocSpec["rules"] = [
     with: (c, was) => {
       if (!hasTrip(c)) return was;
       const { chosen, needs } = tripOf(c);
-      const fl = chosen.filter((r) => r["kind"] === "flight");
+      const fl = chosen.filter((r) => r["kind"] === "flight" || pkgAir(r));
       if (!fl.length && needs["flight"] !== true) return was.replace("☐ Client handling independently", "☒ Client handling independently");
       const out = fl.find((r) => r["direction"] !== "post") ?? fl[0];
       return `**Air Travel:** ☐ Included through cruise line ☒ Agent to book independently\n\n☐ Client handling independently Departure Airport: ${cleanValue(out?.["from_place"]) || "To be confirmed with Mark"}\n\nDestination Airport: ${cleanValue(out?.["to_place"]) || "To be confirmed with Mark"}`;
@@ -852,9 +876,13 @@ const TRIP_RULES: DocSpec["rules"] = [
     with: (c, was) => {
       if (!hasTrip(c)) return was;
       const { chosen, needs } = tripOf(c);
-      return chosen.some((r) => r["kind"] === "transfer") || needs["transfer"] === true
-        ? "**Cruise Line Transfer:** ☒ Yes ☐ No ☐ Independent Transfer Arranged"
-        : "**Cruise Line Transfer:** ☐ Yes ☒ No ☐ Independent Transfer Arranged";
+      const tr = chosen.filter((r) => r["kind"] === "transfer");
+      if (!tr.length) return needs["transfer"] === true ? "**Cruise Line Transfer:** ☒ Yes ☐ No ☐ Independent Transfer Arranged" : "**Cruise Line Transfer:** ☐ Yes ☒ No ☐ Independent Transfer Arranged";
+      // a transfer the cruise line runs ticks "Yes"; one booked with another company is an independent transfer; each is listed with its day
+      const line = (cleanValue(displayName(c.group.cruise_line)) || "").toLowerCase().split(" ")[0] ?? "";
+      const own = !!line && tr.every((r) => (cleanValue(r["provider"]) || "").toLowerCase().includes(line));
+      const list = tr.map((r) => [cleanValue(r["label"]) || "Transfer", fmtLong(r["starts_at"])].filter(Boolean).join(", ")).join("; ");
+      return `**Cruise Line Transfer:** ${own ? "☒" : "☐"} Yes ☐ No ${own ? "☐" : "☒"} Independent Transfer Arranged: ${list}`;
     },
   },
 ];
@@ -945,20 +973,22 @@ const BOOKING_12: DocSpec = {
       const f = fee(ctx, "planning_fee") ?? fee(ctx, "service_fee");
       if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
       const total = cabinTotal(ctx);
-      if (total) rows.push(["**Estimated Total (this cabin)**", `**${fmtMoney(total)}**`]);
+      if (total) rows.push(["**Total (this cabin)**", `**${fmtMoney(total)}**`]);
       // the flights, hotels and transfers Mark booked, each at its booked price, and the trip's total with them
       const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
       for (const r of travel) rows.push([cleanValue(r["label"]) || "Travel", fmtMoney(r["price"])]);
       const tripSum = total ? Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100 : 0;
-      if (travel.length && total) rows.push(["**Estimated Trip Total (cruise and travel)**", `**${fmtMoney(tripSum)}**`]);
+      if (travel.length && total) rows.push(["**Trip Total (cruise and travel)**", `**${fmtMoney(tripSum)}**`]);
       if (onQuote) {
         const what = cleanValue(made["name"]) || (insuranceChoice(ctx) === "own" ? "My own policy" : insuranceChoice(ctx) === "decline" ? "No travel insurance" : "Travel protection");
         rows.push([`Travel Protection, as chosen on your quote: ${what}`, planAmount ? fmtMoney(planAmount) : insuranceChoice(ctx) === "own" ? "Own policy" : insuranceChoice(ctx) === "decline" ? "Declined" : premium]);
-        if (planAmount && total) rows.push(["**Estimated Trip Total with travel protection**", `**${fmtMoney(Math.round((tripSum + planAmount) * 100) / 100)}**`]);
+        if (planAmount && total) rows.push(["**Trip Total with travel protection**", `**${fmtMoney(Math.round((tripSum + planAmount) * 100) / 100)}**`]);
       }
       if (!rows.length) return [{ t: "p", text: "*The amounts for this cabin are shown on your cruise line booking confirmation.*" }];
       return [{ ...t, rows }];
     }),
+    // Mark 2026-11-14 ("these prices are not estimates"): the amounts are the final quote the guest approved, so the heading says so
+    (blocks, ctx) => (cabinTotal(ctx) ? blocks.map((b) => (b.t === "p" && b.text.includes("5.1 Estimated Cruise Cost") ? { ...b, text: b.text.replace("5.1 Estimated Cruise Cost", "5.1 Cruise Cost") } : b)) : blocks),
     (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Payment" && t.header[2] === "Due Date", (t) => {
       const deposit = depositPerPerson(ctx);
       const depositDue = fmtLong(ctx.group.deposit_due) || (ctx.group.terms?.deposit_timing === "at_booking" ? "At booking" : "—");
@@ -1156,7 +1186,7 @@ const FIELDS_20: FieldSpec[] = [
   text("legal_name", "Full legal name, exactly as on your passport or ID", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
-  { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen", prefill: usCitizenFromFile },
   text("citizenship", "Your country of citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
   text("address", "Home address", { required: true, form: "address" }),
   text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
