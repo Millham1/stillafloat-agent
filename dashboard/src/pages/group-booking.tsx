@@ -226,7 +226,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
       const unpriced = trip.filter((r) => r.price === null || String(r.price).trim() === "").length;
       return unpriced > 0 ? { text: `${unpriced} with no price`, bad: true } : trip.length ? { text: usd(travelSum) } : { text: "none" };
     }
-    if (k === "protection") return { text: plans.length ? `${plans.length} on the quote` : "none on the quote" };
+    if (k === "protection") return { text: price?.protection?.label ? "chosen" : plans.length ? `${plans.length} on the quote` : "none on the quote" };
     if (k === "quote") return { text: sent || approved ? "approved" : price?.changes_open ? "changes asked" : price?.sent_at ? (price.sent === "sent" ? "emailed" : "not sent") : "not sent", bad: !sent && !approved && (!!price?.changes_open || (!!price?.sent_at && price.sent !== "sent")) };
     return { text: data.completedAt ? "confirmed" : data.signed ? `${data.signed.signed} of ${data.signed.required} signed` : "not sent" };
   };
@@ -636,6 +636,8 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           <H>Travel protection</H>
           <p className="text-base leading-7">{price?.protection?.label ? <>The guest chose: <b>{price.protection.label}</b></> : <span className="text-[#4a5a7a]">The guest has not chosen yet. They choose on their quote page.</span>}</p>
 
+          {/* Mark 2026-11-13: once the guest has chosen, this page shows the chosen plan only; the list of plans offered is for before the choice. */}
+          {!price?.protection?.label && (<>
           <H>Plans offered on the quote</H>
           {(data.protection ?? []).length === 0 && <p className="text-base font-bold text-red-600">No plans are offered on this quote yet.</p>}
           {(data.protection ?? []).map((p, n) => (
@@ -646,6 +648,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           ))}
           {data.allianz?.status === "pending" && <p className="mt-3 text-base text-[#4a5a7a]">Allianz is being asked for this trip's prices.</p>}
           {data.allianz?.status === "unavailable" && <p className="mt-3 text-base font-bold text-[#8a5f00]">Allianz's prices could not be fetched{data.allianz.reason ? `: ${data.allianz.reason}` : ""}.</p>}
+          </>)}
         </div>
       )}
       {tab === "protection" && editing === "protection" && (
