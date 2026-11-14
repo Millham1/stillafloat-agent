@@ -14,6 +14,7 @@ import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
+  guestGroupName,
 } from "../lib/group-marketing";
 import { assetsFor, fetchAssets, putPublic, type AssetRow } from "../lib/group-assets";
 import { pickPhotos, posterPdf, posterSpec, renderPoster, renderSocial } from "../lib/group-package";
@@ -467,10 +468,10 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     } else {
       const { data: prospect, error: pe } = await db().from("prospects").insert({
         first_name: first, last_name: last, email, phone,
-        destination: `${group.ship_name ?? "Group cruise"} — ${group.name}`,
+        destination: `${group.ship_name ?? "Group cruise"} — ${guestGroupName(group)}`,
         preferred_lang: lang, num_travelers: guests, cruise_line_pref: group.cruise_line ?? null,
         referral_source: "group-page",
-        notes: `Group: ${group.name}. ${text(body["note"], 800)}`.trim(),
+        notes: `Group: ${guestGroupName(group)}. ${text(body["note"], 800)}`.trim(),
         status: "new",
       }).select("id").maybeSingle();
       if (pe) logger.warn({ err: pe.message }, "group interest: prospects insert failed (interest still saved)");
@@ -493,7 +494,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
       type: "lead",
       source_ref: interestId ? `group-interest-${interestId}` : `group-interest-${group.id}-${Date.now()}`,
       title: `Group reply: ${first}${last ? " " + last : ""}`,
-      body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
+      body: `${guestGroupName(group)} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));

@@ -26,6 +26,7 @@ import {
 import { sha256Hex } from "./group-secure";
 import type { Lang } from "./group-journey-strings";
 import { isProductionUrl } from "./site-kind";
+import { guestGroupName } from "./group-marketing";
 
 export const MAX_SENDS_PER_TICK = 150;
 export const SIM_PREFIX = "sim:";
@@ -225,9 +226,9 @@ export async function tick(deps: RunDeps, only?: { groupId: string }): Promise<T
         w.count++; waiting.set(i.kind, w);
       }
       for (const [kind, w] of waiting) {
-        out.waiting.push({ group: String(input.group.name ?? id), kind, reason: w.reason, count: w.count });
+        out.waiting.push({ group: guestGroupName(input.group) || id, kind, reason: w.reason, count: w.count });
         if (w.reason.includes("not approved")) {
-          await deps.requestApproval({ groupId: id, groupName: String(input.group.name ?? ""), kind, count: w.count })
+          await deps.requestApproval({ groupId: id, groupName: guestGroupName(input.group), kind, count: w.count })
             .catch((e: unknown) => deps.warn({ err: errText(e) }, "group journey: the approval request could not be filed"));
         }
       }

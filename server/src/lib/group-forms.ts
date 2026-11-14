@@ -495,11 +495,11 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
           first_name: String(patch["first_name"] ?? traveler.first_name ?? "").trim() || signerName.split(" ")[0],
           last_name: String(patch["last_name"] ?? traveler.last_name ?? "").trim(),
           email, phone: String(patch["phone"] ?? traveler.phone ?? "").trim() || null,
-          destination: `${loaded.group.ship_name ?? "Group cruise"} — ${loaded.group.name}`,
+          destination: `${loaded.group.ship_name ?? "Group cruise"} — ${guestGroupName(loaded.group)}`,
           preferred_lang: traveler.lang === "es" ? "es" : "en",
           cruise_line_pref: loaded.group.cruise_line ?? null,
           referral_source: "group-paperwork",
-          notes: `Group: ${loaded.group.name}. Ticked the newsletter box on the paperwork form.`,
+          notes: `Group: ${guestGroupName(loaded.group)}. Ticked the newsletter box on the paperwork form.`,
           status: "new",
         });
         patch["newsletter_opt_in"] = true;
@@ -521,7 +521,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
         const lines = applied.corrections.map((c) => `${c.who} — ${c.label}: the file says "${c.was}", the form says "${c.now}".`);
         void deps.notify({
           title: `Paperwork correction: ${personName(traveler) || signerName}`,
-          body: `${loaded.group.name} — ${docKey.replace(/^\d+-/, "")}. ${lines.join(" ")} Nothing on the file was changed. The booking is already made (Mark 2026-11-07): make the correction in the group file and with the cruise line and every vendor it concerns.`,
+          body: `${guestGroupName(loaded.group)} — ${docKey.replace(/^\d+-/, "")}. ${lines.join(" ")} Nothing on the file was changed. The booking is already made (Mark 2026-11-07): make the correction in the group file and with the cruise line and every vendor it concerns.`,
           groupId: loaded.group.id,
         }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the correction notice failed"));
       }
@@ -575,10 +575,10 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
       ? ` The credit card authorization is ${card.name || "the card's owner"}'s to sign${signedKeys.has(CARD_DOCUMENT) ? " (signed)" : traveler?.card_link_sent_at ? " (their link was emailed)" : " (their link has NOT been emailed yet)"}.`
       : "";
     void deps.notify(loaded.kind === "cardholder"
-      ? { title: `Card authorization signed: ${signerName}`, body: `${loaded.group.name} — the card for ${personName(traveler) || "the lead"}'s cabin, signed by its owner.`, groupId: loaded.group.id }
+      ? { title: `Card authorization signed: ${signerName}`, body: `${guestGroupName(loaded.group)} — the card for ${personName(traveler) || "the lead"}'s cabin, signed by its owner.`, groupId: loaded.group.id }
       : traveler
-        ? { title: `Paperwork returned: ${personName(traveler) || signerName}`, body: `${loaded.group.name} — all ${loaded.packet.length} documents signed.${cardNote}`, groupId: loaded.group.id }
-        : { title: `Group contract signed: ${signerName}`, body: `${loaded.group.name} — the organizer signed. Your countersignature is still to do.`, groupId: loaded.group.id },
+        ? { title: `Paperwork returned: ${personName(traveler) || signerName}`, body: `${guestGroupName(loaded.group)} — all ${loaded.packet.length} documents signed.${cardNote}`, groupId: loaded.group.id }
+        : { title: `Group contract signed: ${signerName}`, body: `${guestGroupName(loaded.group)} — the organizer signed. Your countersignature is still to do.`, groupId: loaded.group.id },
     ).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the completion notice failed"));
   }
 
