@@ -617,3 +617,13 @@ test("another adult on the lead's cabin signs their own terms, insurance documen
   assert.ok(names(travelers).includes("m1_email"));
   assert.ok(!names([lead, kid]).includes("m1_email"));
 });
+
+test("documents name the group as guests see it (the page label), never the file's own name (Mark 2026-11-14)", () => {
+  const labelled = ctxFor({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } });
+  const booking = renderDocument("12-cruise-booking-agreement", labelled).text;
+  assert.ok(booking.includes("Friends and Family 2027") && !booking.includes("Millham F/F"), "the booking agreement's Group line");
+  const contract = renderDocument("09-group-travel-contract", ctxFor({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } }, null)).text;
+  assert.ok(contract.includes("Friends and Family 2027") && !contract.includes("Millham F/F"), "the group contract's group name");
+  // a group with no page label still shows its file name
+  assert.ok(renderDocument("12-cruise-booking-agreement", ctxFor({ name: "Smith Reunion 2028" })).text.includes("Smith Reunion 2028"));
+});

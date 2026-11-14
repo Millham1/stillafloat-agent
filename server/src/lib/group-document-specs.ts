@@ -29,7 +29,7 @@ import {
   fmtLong, fmtMoney, fullName, isAdultOn, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
   type Answers, type Block, type DocCtx, type DocSpec, type EntryRequirement, type FieldSpec, type Option, type Row, type VaccineLine,
 } from "./group-document-kit";
-import { displayName } from "./group-marketing";
+import { displayName, guestGroupName } from "./group-marketing";
 import { planLabel, plansFromText } from "./allianz-quote";
 import { STATE_COUNTRY_INDEX, countriesOf } from "./entry-requirements";
 import { itineraryPorts } from "./travel-advisories";
@@ -131,7 +131,8 @@ const TRIP_LINES = [
 
 /** The cruise lines of the booking documents (12, 21, 22, 23): group, ship, sailing and return from the file. */
 const CRUISE_LINES: DocSpec["rules"] = [
-  { after: "**Group:**", fill: (c) => cleanValue(displayName(c.group.name)), label: "Group name" },
+  // Mark 2026-11-14 ("nothing should be labeled Millham F/F"): the name guests see (the page label), never the cruise line's own name for the group on the file
+  { after: "**Group:**", fill: (c) => cleanValue(displayName(guestGroupName(c.group))), label: "Group name" },
   { after: "**Ship:**", fill: (c) => [displayName(c.group.cruise_line), displayName(c.group.ship_name)].map(cleanValue).filter(Boolean).join(" · "), label: "Ship" },
   { after: "**Sailing:**", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
   { after: "**Returning:**", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
@@ -1039,7 +1040,7 @@ const CONTRACT_09: DocSpec = {
   rules: [
     { after: "Date:", today: true },
     { after: "Name:", fill: (c) => cleanValue(c.group.organizer_name), label: "Organizer name" },
-    { after: "Organization / Group Name:", fill: (c) => cleanValue(c.group.name), label: "Group name" },
+    { after: "Organization / Group Name:", fill: (c) => cleanValue(guestGroupName(c.group)), label: "Group name" },
     { after: "Address:", slot: "org_address" },
     { after: "City, State, ZIP:", slot: "org_city_state_zip" },
     { after: "Phone:", slot: "org_phone" },

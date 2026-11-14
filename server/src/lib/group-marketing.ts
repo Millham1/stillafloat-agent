@@ -618,7 +618,7 @@ export function buildFacts(
   const facts: GroupFacts = {
     lang,
     business: { legalName: BUSINESS.legalName, tradeName: BUSINESS.tradeName, agentName: BUSINESS.agentName, email: BUSINESS.email, site: BUSINESS.site, host: BUSINESS.host },
-    groupName: g.name,
+    groupName: guestGroupName(g), // Mark 2026-11-14: the name guests see, never the file's own
     organizerName: g.organizer_name ?? null,
     line, ship,
     shipSlug: g.ship_slug ?? null,
