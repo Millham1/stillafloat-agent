@@ -509,7 +509,11 @@ export default [
       t.ok(unstamped.length === 0, `YouTube has no English/Spanish language on record for ${unstamped.join(", ")} — publish_youtube.py stamps every upload`);
       s.topVideos.slice(0, 12).forEach((live, rank) => {
         const mine = cache.get(live.id);
-        if (mine && mine.lang !== live.lang) stale.push(`${live.id} is ${live.lang} on YouTube but sits in the site's ${mine.lang ?? "unlabelled"} rows`);
+        // 2026-11-14: a long video with a Spanish audio track is ONE video shown in both languages' rows (Mark's one-video rule); each
+        // row answers the language it SHOWS the video in and, beside it, the language it was recorded in. YouTube's own language is the
+        // recorded one, so that is what is compared (N3YGsjCaVkI: en on YouTube, shown in the es rows with recordedLang en, was called stale).
+        const recorded = mine ? (mine.recordedLang ?? mine.lang) : null;
+        if (mine && recorded !== live.lang) stale.push(`${live.id} is ${live.lang} on YouTube but the site has it recorded as ${recorded ?? "unlabelled"}`);
         if (!mine) { if (!hiddenByRank(live)) stale.push(`${live.id} (${live.views} views on YouTube) is not in the site's video cache`); return; }
         if (rank < 3 && mine.title !== live.title) stale.push(`${live.id} carries an old title on the site`);
         if (live.views >= 200 && mine.views < live.views * (rank < 3 ? 0.8 : 0.7)) stale.push(`${live.id} shows ${mine.views} views on the site against ${live.views} on YouTube`);
