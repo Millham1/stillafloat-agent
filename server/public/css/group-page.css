@@ -142,27 +142,6 @@ a.btn{text-decoration:none}
   .day{grid-template-columns:78px 1fr;gap:10px}
 }
 
-/* WIDE SCREENS (Mark 2026-11-14: "i want the format to match the device. PC gets the wide format, mobile devices get the mobile
-   format"). The page was one 640px column on every screen, so on a PC it read as a phone page with empty navy either side. From
-   1000px up the column opens to 1200px and the two groups of sections (.gp-col in group.html) sit side by side: the invitation and
-   the day-by-day plan on the left, the cabins, dates and getting there on the right, and the ask LAST, centered across the bottom
-   (his 10/24 rule: the pitch first, the ask at the bottom). Below 1000px nothing here applies and
-   the sections stack in the same order as before. The top picture was already edge to edge. */
-@media(min-width:1000px){
-  .wrap{max-width:1200px}
-  .hdr{padding:18px 28px 12px}
-  .hdr .logo{height:84px}
-  .plaque span{font-size:36px}
-  .plaque span::before,.plaque span::after{width:34px;margin:0 14px}
-  #gp-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 14px;align-items:start;padding:8px 14px 0}
-  .gp-col{min-width:0}
-  #gp-main > #interest{grid-column:1/-1;width:100%;max-width:760px;margin:22px auto 18px;padding:28px 32px}
-  .welcome{padding:22px 22px 8px}
-  .welcome h1{font-size:46px}
-  .photo{height:300px}
-  .foot{padding:36px 28px 30px}
-  p.gp-what{max-width:900px;font-size:21px}
-}
 /* Mark 2026-11-03: the one plain line under the name that says what this page is */
 .gp-what{max-width:640px;margin:10px auto 0;padding:0 16px;text-align:center;color:#fff;font-size:19px;line-height:1.45}
 
