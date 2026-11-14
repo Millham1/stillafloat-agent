@@ -437,6 +437,10 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         const today = new Date().toISOString().slice(0, 10);
         const lapsed = !!sh?.optionUntil && sh.optionUntil.day < today && !sent;
         const picked = price?.protection?.label ?? null;
+        // Mark 2026-11-13: "the summary page doesn't show the insurance": the plan the guest chose is a line in the money and part of the trip total.
+        const pkey = price?.protection?.key ?? "";
+        const pplan = /^p\d+$/.test(pkey) ? (data.protection ?? [])[Number(pkey.slice(1))] : undefined;
+        const pcost = pplan ? (pplan.total != null ? Number(pplan.total) : pplan.per_person != null ? Number(pplan.per_person) * party : null) : null;
         const act = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
         return (
           <div className="space-y-4">
@@ -504,7 +508,9 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               )) : (doc?.cruise ?? []).map((l, n) => <React.Fragment key={n}>{pay(l.label, l.value)}</React.Fragment>)}
               {pay("Cruise total", doc?.cruiseTotal?.value ?? <span className="text-red-600">no price yet</span>, "sub")}
               {data.trip.map((r, n) => <React.Fragment key={n}>{pay(<>{r.kind === "package" ? "Air and hotel package" : r.label}{r.per === "person" && r.unit_price != null ? <span className="text-[#4a5a7a]"> · {usd(Number(r.unit_price))} per person × {party}</span> : null}</>, r.price != null ? usd(Number(r.price)) : <span className="font-bold text-red-600">no price yet</span>)}</React.Fragment>)}
-              {pay(`Trip total · cruise and travel, ${party} traveler${party === 1 ? "" : "s"}`, complete && data.totals.trip != null ? usd(data.totals.trip) : <span className="text-red-600">not finished</span>, "total")}
+              {picked && pplan && pay(<>Travel protection · {pplan.name}</>, pcost != null ? usd(pcost) : <span className="font-bold text-red-600">no price yet</span>)}
+              {picked && !pplan && pay("Travel protection", pkey === "included" ? "in the cruise total" : picked)}
+              {pay(`Trip total · ${pcost != null ? "cruise, travel and travel protection" : "cruise and travel"}, ${party} traveler${party === 1 ? "" : "s"}`, complete && data.totals.trip != null && !(pplan && pcost == null) ? usd(data.totals.trip + (pcost ?? 0)) : <span className="text-red-600">not finished</span>, "total")}
               {data.cabin?.deposit_amount != null && <p className="mt-2 text-base text-[#4a5a7a]">Deposit: <b className="text-[#07183f]">{usd(Number(data.cabin.deposit_amount))}</b></p>}
             </div>
             {dirty && <p className="text-base text-amber-500">You have changes that are not saved: this page shows the saved booking.</p>}
