@@ -14,7 +14,7 @@ import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS, isAdultOn } from "../lib/group-documents";
 import { advisoriesForGroup } from "../lib/travel-advisories";
-import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopiesZip, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 import { entryRequirementsForGroup } from "../lib/entry-requirements";
 import { supabaseVisaStore } from "../lib/visa-requirements";
 
@@ -448,6 +448,17 @@ router.get("/forms/copies/:token", async (req: Request, res: Response) => {
 router.get("/forms/copies/:token/:sid", async (req: Request, res: Response) => {
   try {
     privateHeaders(res);
+    // Mark 2026-11-14: all of the signer's copies in one ZIP
+    if (req.params["sid"] === "all.zip") {
+      const all = await getCopiesZip(deps(), req.params["token"]);
+      if ("bytes" in all) {
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader("Content-Disposition", `attachment; filename="${all.filename.replace(/[^\w.-]/g, "_")}"`);
+        return res.status(200).send(all.bytes);
+      }
+      if (all.status === 404 && missLimited(clientIp(req))) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email." });
+      return res.status(all.status).json(all.json);
+    }
     const out = await getCopyPdf(deps(), req.params["token"], req.params["sid"]);
     if ("bytes" in out) {
       res.setHeader("Content-Type", "application/pdf");

@@ -33,6 +33,7 @@ import {
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
 import { renderFormPdf, signAgent, type FormMark } from "./group-form-pdf";
+import { zipName, zipStored } from "./group-zip";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong, type Advisory, type EntryRequirement } from "./group-document-kit";
@@ -632,9 +633,16 @@ export function copiesUrl(publicSite: string, token: string, signatureId: string
   return `${publicSite.replace(/\/$/, "")}/api/forms/copies/${token}/${signatureId}.pdf`;
 }
 
+/** Mark 2026-11-14 ("there should be an option to download all at once"): every signed copy of this link, in one ZIP file. */
+export function copiesAllUrl(publicSite: string, token: string): string {
+  return `${publicSite.replace(/\/$/, "")}/api/forms/copies/${token}/all.zip`;
+}
+
 /** The email that carries the signer's copies: warm, one tip, the facts. Mark's register (a laugh and a cruise-smart tip in every beat). */
-export function copiesEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; docs: Array<{ title: string; url: string }>; sealed: boolean }): { subject: string; text: string; html: string } {
+export function copiesEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; docs: Array<{ title: string; url: string }>; sealed: boolean; allUrl?: string }): { subject: string; text: string; html: string } {
   const es = input.lang === "es"; const n = input.docs.length;
+  // one link for all of them, offered first, when there is more than one
+  const all = input.allUrl && n > 1 ? { label: es ? `Descargar los ${n} documentos en un solo archivo (ZIP)` : `Download all ${n} documents in one file (ZIP)`, url: input.allUrl } : null;
   const hello = es ? (input.firstName ? `Hola ${input.firstName},` : "Hola,") : (input.firstName ? `Hi ${input.firstName},` : "Hi,");
   const opening = es
     ? `¡Firmado, sellado… y entregado! ${n === 1 ? "Su documento" : `Los ${n} documentos`} de ${input.trip} ${n === 1 ? "está listo" : "están listos"}. Aquí ${n === 1 ? "tiene su copia" : "tiene sus copias, un PDF por documento"}:`
@@ -649,10 +657,11 @@ export function copiesEmail(input: { lang: "en" | "es"; firstName: string; group
   const fix = es ? `¿Algo que corregir? Responda a este correo o llame al ${BUSINESS.phone} y lo resolvemos juntos.` : `Spot something that needs fixing? Reply to this email or call ${BUSINESS.phone}, and we'll sort it together.`;
   const bye = es ? "¡Nos vemos a bordo!" : "See you on board!";
   const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")]; // Mark 2026-10-30: the signature reads "Still Afloat Cruising"
-  const text = [hello, opening, ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
+  const text = [hello, opening, ...(all ? [`${all.label}\n${all.url}`] : []), ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
   const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">`
     + `<p>${esc(hello)}</p><p>${esc(opening)}</p>`
+    + (all ? `<p><a href="${esc(all.url)}" style="font-weight:bold">${esc(all.label)}</a></p>` : "")
     + `<ul>${input.docs.map((d) => `<li><a href="${esc(d.url)}">${esc(d.title)}</a></li>`).join("")}</ul>`
     + `<p>${esc(tip)}</p><p>${esc(seal)}</p><p>${esc(fix)}</p><p>${esc(bye)}</p><p>${sign.map(esc).join("<br>")}</p></div>`;
   return { subject: es ? `Sus documentos firmados: ${input.groupName}` : `Your signed paperwork for ${input.groupName}`, text, html };
@@ -676,7 +685,7 @@ async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
     .map((d) => ({ title: renderDocument(d.key, loaded.ctx).title, url: copiesUrl(deps.publicSite, token, String(d.sig.id)) }));
   const when = fmtLong(g.sail_date);
   const trip = [guestGroupName(g), [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
-  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: owner ? firstOf(cardOf(t).name) : String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal });
+  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: owner ? firstOf(cardOf(t).name) : String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal, allUrl: copiesAllUrl(deps.publicSite, token) });
   const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
   await deps.store.logMessage({
     group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: owner ? "paperwork-copies-cardholder" : "paperwork-copies",
@@ -803,7 +812,23 @@ export async function getCopies(deps: FormsDeps, token: unknown): Promise<Reply>
   const tok = String(token);
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ id: String(d.sig.id), title: renderDocument(d.key, loaded.ctx).title, signed_at: d.sig.signed_at ?? null, sealed: !!d.sig.sealed, url: copiesUrl(deps.publicSite, tok, String(d.sig.id)) }));
-  return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs });
+  return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs, ...(docs.length > 1 ? { all_url: copiesAllUrl(deps.publicSite, tok) } : {}) });
+}
+
+/** GET /api/forms/copies/:token/all.zip — every signed copy that belongs to this link's owner, in one file. The PDFs are stored
+ *  as they are (a sealed copy stays sealed). One that cannot be read fails the whole download: a partial set would look complete. */
+export async function getCopiesZip(deps: FormsDeps, token: unknown): Promise<{ status: 200; bytes: Buffer; filename: string } | Reply> {
+  const loaded = await loadByCopiesToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const signed = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig && typeof d.sig.pdf_path === "string" && !!d.sig.pdf_path);
+  if (!signed.length) return NOT_FOUND;
+  const files: Array<{ name: string; bytes: Uint8Array }> = [];
+  for (const [i, d] of signed.entries()) {
+    const bytes = await deps.store.downloadPdf(String(d.sig.pdf_path));
+    if (!bytes) return reply(503, { success: false, error: "Your copies are not available right now. Please try again in a minute." });
+    files.push({ name: zipName(`${i + 1} ${renderDocument(d.key, loaded.ctx).title} signed.pdf`), bytes });
+  }
+  return { status: 200, bytes: zipStored(files, deps.now()), filename: zipName(`${guestGroupName(loaded.group) || "Signed paperwork"} signed paperwork.zip`) };
 }
 
 // ── Mark's own PDF of a document, filled in (Mark 2026-10-27: "show the client the actual populated document") ──

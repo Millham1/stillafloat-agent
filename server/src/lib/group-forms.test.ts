@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, requestInsuranceQuote, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, sendCompanionLinks, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
+ giveConsent, getCopies, getCopiesZip, getCopyPdf, copiesEmail, previewDocument, documentPdf, sendCompanionLinks, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -884,6 +884,21 @@ test("the last signature emails the signer their copies once: one link per docum
   assert.equal(((await getCopyPdf(t.deps, copiesToken, "sigX.pdf")) as { status: number }).status, 404);
   assert.equal((await getCopies(t.deps, issueToken().token)).status, 404);
   assert.equal((await getCopies(t.deps, token)).status, 404, "the signing link is not a copies link");
+  // Mark 2026-11-14 ("there should be an option to download all at once"): one link for all of them, first in the email
+  const allLink = `https://stillafloatcruising.com/api/forms/copies/${copiesToken}/all.zip`;
+  assert.ok(m.text.includes(`Download all ${ORDER_T2.length} documents in one file (ZIP)\n${allLink}`));
+  assert.ok(m.html.indexOf(allLink) > 0 && m.html.indexOf(allLink) < m.html.indexOf("<ul>"), "above the list of single documents");
+  assert.equal(list.json["all_url"], allLink);
+  const zip = await getCopiesZip(t.deps, copiesToken);
+  assert.ok("bytes" in zip);
+  if ("bytes" in zip) {
+    assert.equal(zip.bytes.readUInt32LE(0), 0x04034b50, "a ZIP file");
+    assert.equal(zip.bytes.readUInt16LE(zip.bytes.length - 12), ORDER_T2.length, "one file per signed document");
+    assert.match(zip.filename, /signed paperwork\.zip$/);
+    assert.ok(zip.bytes.includes(Buffer.from("1 Traveler")) || zip.bytes.includes(Buffer.from("signed.pdf")), "the files are named after their documents");
+  }
+  assert.equal(((await getCopiesZip(t.deps, token)) as { status: number }).status, 404, "the signing link is not a copies link");
+  assert.equal(((await getCopiesZip(t.deps, issueToken().token)) as { status: number }).status, 404);
 });
 
 test("a refused copies email is logged as failed and leaves the file saying not sent; the signatures stand", async () => {
