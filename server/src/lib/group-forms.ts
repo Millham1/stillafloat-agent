@@ -862,11 +862,16 @@ export async function documentPdf(deps: FormsDeps, token: unknown, docKey: unkno
     const answers = (sig["answers"] && typeof sig["answers"] === "object" ? sig["answers"] : {}) as Answers;
     return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(String(sig["signed_at"] ?? "")), String(sig["signer_name"] ?? "")), key };
   }
-  const answers: Answers = {};
+  let answers: Answers = {};
   for (const f of renderDocument(key, loaded.ctx).fields) {
     const v = prefillValue(f, loaded.ctx);
     if (v !== undefined) answers[f.name] = v;
   }
+  // Mark 2026-11-14 ("I opened up the view or print for the cc auth. the cardholder info is blank"): the printed copy fills the same
+  // lines from the file as the page does (whose card it is, then the cardholder's name, billing address, phone and email).
+  if (key === CARD_DOCUMENT && loaded.kind === "traveler" && answers["cardholder"] === undefined) { const holder = cardOf(loaded.traveler).holder; if (holder) answers["cardholder"] = holder; }
+  const filled = DOC_SPECS[key]?.complete;
+  if (filled) answers = filled(answers, loaded.ctx);
   return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(deps.now().toISOString()), ""), key };
 }
 
