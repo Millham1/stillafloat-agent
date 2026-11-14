@@ -85,7 +85,8 @@ function advisoryLines(ctx: DocCtx): string {
 /** The cabin's dining on the file, as the booking agreement's box value; a cabin with none takes the group's dining from the cruise line's quote. */
 function diningFromFile(ctx: DocCtx): string | undefined {
   const d = (cleanValue(ctx.cabin?.dining) || cleanValue(ctx.group.terms?.dining)).toLowerCase();
-  if (!d) return undefined;
+  // Mark 2026-11-14: "if it is blank, the no preference should be selected"
+  if (!d) return "none";
   if (/early|first|main/.test(d)) return "early";
   if (/late|second/.test(d)) return "late";
   if (/any|my ?time|flex|open/.test(d)) return "anytime";

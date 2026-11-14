@@ -597,5 +597,5 @@ test("the booking agreement's dining line takes the group's dining from the crui
   const bare = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: { dining: "Early Dining" } }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
   assert.equal(prefillValue(field(bare), bare), "early");
   const none = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: {} }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
-  assert.equal(prefillValue(field(none), none) || "", "");
+  assert.equal(prefillValue(field(none), none), "none", "nothing on the cabin or the group: No Preference is ticked");
 });
