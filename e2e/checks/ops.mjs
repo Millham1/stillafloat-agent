@@ -1838,7 +1838,7 @@ export default [
   {
     id: "ops.paperwork-link-page",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
-    title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'not valid' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",
+    title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'this link no longer works' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",
     covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "GET /api/forms/copies/:token", "GET /api/forms/copies/:token/:sid"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -1851,7 +1851,7 @@ export default [
       const bodies = new Set();
       for (const token of ["short", "A".repeat(43), "wrong-link-with-$ymbols!-and-the-right-length"]) { // a traversal-shaped token never reaches the route: the box's proxy answers it first, and that is the proxy's property, not the site's
         const res = await t.get(`/api/forms/${encodeURIComponent(token)}`);
-        refused(t, res, 404, `a wrong paperwork link (${token.length} characters)`, /not valid/i);
+        refused(t, res, 404, `a wrong paperwork link (${token.length} characters)`, /no longer works/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the paperwork answer");
         t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of the paperwork answer");
         bodies.add(res.text);
@@ -1861,7 +1861,7 @@ export default [
       // Mark 2026-10-25: the signer's copies link (from the "your signed paperwork" email) answers a wrong link the same way.
       for (const path of [`/api/forms/copies/${"A".repeat(43)}`, `/api/forms/copies/${"A".repeat(43)}/${ZERO}.pdf`, "/api/forms/copies/short"]) {
         const res = await t.get(path);
-        refused(t, res, 404, `a wrong copies link (${path})`, /not valid/i);
+        refused(t, res, 404, `a wrong copies link (${path})`, /no longer works/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the copies answer");
       }
 
@@ -1978,9 +1978,9 @@ export default [
       refused(t, await send("DELETE", `/api/groups/${g.id}/signatures/${ZERO}`), 404, "removing a signature that does not exist", /not found/i);
       // The public signing address: a link that does not exist signs nothing; the bot trap answers as if it had.
       const body = { doc_key: "16-passport-document-checklist", signer_name: "Fixture Tester", agreed: true, content_sha256: "0".repeat(64), answers: {} };
-      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/sign`, body, false), 404, "signing with a link that does not exist", /not valid/i);
-      refused(t, await send("POST", "/api/forms/short/sign", body, false), 404, "signing with a malformed link", /not valid/i);
-      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/consent`, { agreed: true }, false), 404, "agreeing to electronic signing with a link that does not exist", /not valid/i);
+      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/sign`, body, false), 404, "signing with a link that does not exist", /no longer works/i);
+      refused(t, await send("POST", "/api/forms/short/sign", body, false), 404, "signing with a malformed link", /no longer works/i);
+      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/consent`, { agreed: true }, false), 404, "agreeing to electronic signing with a link that does not exist", /no longer works/i);
       const trap = await send("POST", `/api/forms/${"A".repeat(43)}/sign`, { ...body, website: "e2e-fixture-honeypot" }, false);
       t.ok(trap.status === 200 && trap.json?.success === true, `the paperwork bot trap should answer as if accepted: ${trap.describe()}`);
       t.ok(!("packet" in (trap.json || {})) && !("signed" in (trap.json || {})), "the bot trap must not pretend a document was signed");
@@ -2046,7 +2046,7 @@ export default [
         const printedChecklist = await t.get(`/api/forms/${token}/document/16-passport-document-checklist`);
         t.status(printedChecklist, 200);
         t.matches(printedChecklist.headers.get("content-type") || "", /application\/pdf/, "the prepared passport checklist, printed from the traveler's page (never signed)");
-        refused(t, await t.get(`/api/forms/checklist/${"A".repeat(43)}.pdf`), 404, "the checklist on a link that does not exist", /not valid/i);
+        refused(t, await t.get(`/api/forms/checklist/${"A".repeat(43)}.pdf`), 404, "the checklist on a link that does not exist", /no longer works/i);
         unauthorized(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { body: {} }), "POST /api/groups/:id/travelers/:tid/checklist/send");
         refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${ZERO}/checklist/send`, { auth: true, body: {} }), 404, "the checklist emailed to a traveler who does not exist", /traveler not found/i);
         refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { auth: true, body: {} }), 400, "the checklist emailed to a traveler with no email address", /no email address/i);
@@ -2090,7 +2090,7 @@ export default [
         const insAfter = t.success(await t.get(`/api/forms/${token}/insurance`));
         t.ok(["pending", "unavailable", "ready"].includes(insAfter.quote?.status), `the quote's state on the page (${insAfter.quote?.status})`);
         t.ok(!JSON.stringify(insAfter).includes("ALLIANZ_AGENT") && !/password/i.test(JSON.stringify(insAfter)), "the insurance step leaks nothing of the box's sign-in");
-        refused(t, await t.get("/api/forms/nope/insurance"), 404, "the insurance step on a wrong link", /not valid/i);
+        refused(t, await t.get("/api/forms/nope/insurance"), 404, "the insurance step on a wrong link", /no longer works/i);
         const actRows = t.success(await t.get("/api/actions", { auth: true }), "ok");
         const quoteRows = (actRows.actions || []).filter((a) => a && a.type === "group-insurance-quote" && a.source_ref === travelerId);
         t.ok(quoteRows.length <= 1, `rows for Mark about this traveler's quote (${quoteRows.length}; one at most)`);
@@ -2195,7 +2195,7 @@ export default [
         t.status(second, 201);
         const token2 = new URL(second.json.url).searchParams.get("t");
         t.ok(token2 !== token, "a second link is the same as the first");
-        refused(t, await t.get(`/api/forms/${token}`), 404, "the replaced link", /not valid/i);
+        refused(t, await t.get(`/api/forms/${token}`), 404, "the replaced link", /no longer works/i);
         const reopened = t.success(await t.get(`/api/forms/${token2}`));
         t.equal(reopened.docs.find((d) => d.key === "01-terms-and-conditions").status, "signed", "status of the signed document on the new link");
 
