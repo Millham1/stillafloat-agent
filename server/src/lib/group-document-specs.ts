@@ -1089,6 +1089,8 @@ const CONTRACT_09: DocSpec = {
     text("budget_pp", "Overall group budget, approximate per person ($)", { maxLength: 20 }),
   ],
   edits: [
+    // Mark 2026-11-14 ("these prices are not estimates"): a price from the group's own terms is the price, so the label says so
+    (blocks) => blocks.map((b) => (b.t === "p" && /\*\*Per-Person Estimated Cost:\*\*\s*\$?\s*\d/.test(b.text) ? { ...b, text: b.text.replace("Per-Person Estimated Cost:", "Per-Person Cost:") } : b)),
     // 4.2: the amounts and dates the file holds; the second payment is not part of a group quote.
     (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Payment" && t.header[2] === "Due Date", (t) => {
       const deposit = depositPerPerson(ctx);
