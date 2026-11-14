@@ -78,7 +78,9 @@ export type BookingTab = "summary" | "cruise" | "travel" | "protection" | "quote
 export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: string; iid: string; initialTab?: BookingTab; stage?: BookingStage | null }) {
   const guest = { id: iid };
   const [, go] = useLocation();
-  const [tab, setTab] = useState<BookingTab>(initialTab ?? "summary");
+  // Mark 2026-11-13: "the summary should be closed. If I want to see it I will select it": a booking opens with every tab closed (status, steps and
+  // buttons only); pressing a tab opens it, pressing the open tab closes it
+  const [tab, setTab] = useState<BookingTab | null>(initialTab ?? null);
   const qc = useQueryClient();
   const { toast } = useToast();
   const key = ["group-booking", groupId, guest.id];
@@ -389,7 +391,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         {TABS.map((t) => {
           const note = tabNote(t.key);
           return (
-            <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+            <button key={t.key} role="tab" aria-selected={tab === t.key} aria-expanded={tab === t.key} onClick={() => setTab((cur) => (cur === t.key ? null : t.key))}
               className={`px-3 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
               {t.label}{note && <span className={`ml-2 text-xs font-normal ${note.bad ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>{note.text}</span>}
             </button>
@@ -801,7 +803,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
       )}
       </div>
       {/* The save bar stays at the bottom of the screen on every tab: one button, always in the same place. */}
-      {!sent && (dirty || ["cruise", "travel", "protection"].includes(tab)) && (
+      {!sent && (dirty || ["cruise", "travel", "protection"].includes(tab ?? "")) && (
         <div data-save-bar className="sticky -bottom-4 md:-bottom-6 z-10 flex items-center justify-between gap-3 flex-wrap border-t bg-card px-4 py-3 rounded-b-lg shadow-[0_-4px_12px_rgba(0,0,0,0.25)]">
           <p className={`text-sm font-medium ${dirty ? "text-amber-500" : "text-muted-foreground"}`}>{dirty ? "You have changes on this booking that are not saved." : "Everything on this booking is saved."}</p>
           <button className="text-base font-semibold px-6 py-2.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 inline-flex items-center gap-2" disabled={busy || !dirty} onClick={save}>
