@@ -191,7 +191,7 @@ test("an unknown, malformed, replaced or cancelled link all get the same neutral
   const unknown = issueToken().token;
   const answers = await Promise.all([getPacket(t.deps, "short"), getPacket(t.deps, unknown), getPacket(t.deps, undefined), getPacket(t.deps, "../../etc/passwd")]);
   for (const a of answers) { assert.equal(a.status, 404); assert.deepEqual(a.json, answers[0]!.json); }
-  assert.match(String(answers[0]!.json["error"]), /not valid/);
+  assert.match(String(answers[0]!.json["error"]), /no longer works.*newest one.*919-346-6127/);
   assert.equal((await getPacket(t.deps, token)).status, 200);
   t.link("t1"); // a new link replaces the old one
   assert.equal((await getPacket(t.deps, token)).status, 404, "the old link must stop working");

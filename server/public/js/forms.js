@@ -27,6 +27,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
   // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
   // holds a ZIP (or a city and state), the post office's whole address is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
+  // the same words the server sends for a link that is not on file (an older email's link, or a mistyped one)
+  var DEAD_LINK = 'This link no longer works. If we sent you more than one email, please use the link in the newest one. If that one does not work either, call or text Mark at 919-346-6127 and he will send a new link.';
   var ADDR = {
     tidied: "We tidied it to the post office's spelling:", right: 'Right?', yes: 'Yes', no: "No, I'll fix it",
     nf: "We couldn't find that one… check the street and ZIP.", na: "We couldn't check that address right now, so we'll take it as typed.",
@@ -824,7 +826,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         var j = r.json || {};
         // the screens may have been rebuilt (signed documents drop out of the list): find this screen again, then move on from it
         if (r.status === 200 && j.success && j.packet) { var cur = steps[at]; adopt(j.packet); var i = stepIndex(cur); goStep((i >= 0 ? i : at) + 1); return; }
-        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+        if (r.status === 404) { setState(j.error || DEAD_LINK); show('fm-wiz', false); return; }
         if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
         showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
         fieldErrors(j.fields);
@@ -873,7 +875,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }
       if (r.status === 409 && j.code === 'document-changed') return reload('This document was just updated, so please read it again before you sign.');
       if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
-      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+      if (r.status === 404) { setState(j.error || DEAD_LINK); show('fm-wiz', false); return; }
       // a refused answer: go to the screen that asks it
       var bad = Object.keys(j.fields || {}), s2 = bad.length ? stepOf(bad[0]) : -1;
       if (s2 >= 0) goStep(s2);
@@ -885,7 +887,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   function reload(msg) {
     return api('').then(function (r) {
-      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-wiz', false); return; }
+      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || DEAD_LINK); show('fm-wiz', false); return; }
       packet = r.json; render();
       if (msg) showErr(msg);
     });

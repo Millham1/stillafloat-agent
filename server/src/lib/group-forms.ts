@@ -43,7 +43,9 @@ import { pagePhotos } from "./group-page-photos";
 
 export type Reply = { status: number; json: Record<string, unknown> };
 const reply = (status: number, json: Record<string, unknown>): Reply => ({ status, json });
-const NOT_FOUND = reply(404, { success: false, error: "This link is not valid. Please check that you opened the whole link from your email, or ask for a new one." });
+// Mark 2026-11-13: a guest who opens an OLDER email after a newer one went out landed on "This link is not valid" with nowhere to go. Only the newest
+// link works (a new link cancels the one before it), and the page cannot tell an old link from a mistyped one, so it says both and gives the phone.
+const NOT_FOUND = reply(404, { success: false, error: `This link no longer works. If we sent you more than one email, please use the link in the newest one. If that one does not work either, call or text Mark at ${BUSINESS.phone} and he will send a new link.` });
 
 // ── What the flow needs from the outside ──────────────────────────────────────
 
