@@ -252,7 +252,7 @@ test("the booking agreement's dining and occasion come from the booking; a line 
   assert.equal(by["dining"]!.prefill!(c), "late");
   assert.deepEqual(by["occasions"]!.prefill!(c), ["other"]);
   assert.equal(by["occasion_other"]!.prefill!(c), "A reunion of old friends");
-  assert.equal(by["dining"]!.prefill!(ctx()), undefined, "no dining on the file: nothing ticked");
+  assert.equal(by["dining"]!.prefill!(ctx()), "none", "no dining on the file: No Preference is ticked (Mark 2026-11-14)");
   const filled = blocksToText(fillBlocks(d, { dining: "late", occasions: ["other"], occasion_other: "A reunion of old friends" }, NOW));
   assert.ok(filled.includes("☒ Late Seating") && filled.includes("☒ Other: A reunion of old friends"), filled.slice(filled.indexOf("Dining"), filled.indexOf("Dining") + 400));
   assert.ok(filled.includes("Date of Occasion: N/A"), "an empty line on a signed copy says so (Mark 2026-10-31: N/A, never both wordings)");
