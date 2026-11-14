@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Luckiest+Guy&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/group-page.css?v=20261110a">
+<link rel="stylesheet" href="/css/group-page.css?v=20261114b">
 </head>
 <body>
 <div class="wrap">
@@ -117,6 +117,7 @@
     preview:'VISTA PREVIA — solo usted puede ver esta página hasta que la apruebe.',
     hosts:'Sus anfitriones', insetsNote:'Recuadros: imágenes ilustrativas', other:'English', title:'Crucero en grupo',
     welcome_h:'¡Bienvenidos!',
+    sig_lead:'Bienvenidos a bordo, ',
     ask_h:'¡Vamos allá!', ask_p:'Díganos quién viene y cómo comunicarnos con usted… eso es todo. Nada que pagar, nada que firmar todavía, ¡y Mark se encarga del resto!',
     f_name:'Su nombre', ph_name:'Nombre y apellido', f_contact:'Correo electrónico o teléfono', ph_contact:'El que prefiera que usemos', f_guests:'¿Cuántos son?',
     default_cta:'¡Aparte mi lugar!',
@@ -138,6 +139,7 @@
     preview:'PREVIEW — only you can see this page until you approve it.',
     hosts:'Your hosts', insetsNote:'Insets: illustrative imagery', other:'Español', title:'Group Cruise',
     welcome_h:'Welcome!',
+    sig_lead:'Welcome Aboard, ',
     ask_h:"Let's get going!", ask_p:"Tell us who's coming and how to reach you… that's all it takes. Nothing to pay, nothing to sign yet, and Mark takes it from there!",
     f_name:'Your name', ph_name:'First and last', f_contact:'Email or phone', ph_contact:"Whichever you'd rather we use", f_guests:'How many of you',
     default_cta:'Save my spot!',
@@ -285,7 +287,7 @@
 
     // 1. The welcome: the hosts' note, signed. A group whose copy has none opens straight on the plan.
     var welcome = typeof c.welcome === 'string' ? c.welcome.trim() : '';
-    if(welcome){ $('gp-welcome').innerHTML = welcomeHtml(welcome); $('gp-sig').textContent = look.hostNames || 'Mark'; show('sec-welcome'); }
+    if(welcome){ $('gp-welcome').innerHTML = welcomeHtml(welcome); $('gp-sig').textContent = T.sig_lead + (look.hostNames || 'Mark'); /* Mark 2026-11-14: the note closes "Welcome Aboard, Mark & Ceci" */ show('sec-welcome'); }
     if(c.organizer_note){ $('gp-org').textContent = c.organizer_note; show('sec-org'); }
 
     // 2. The plan: one row a day.

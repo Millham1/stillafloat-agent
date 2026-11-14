@@ -290,7 +290,8 @@ test("the page opens on the welcome, a paragraph per line with the capitals-and-
     assert.deepEqual(p.requested, [`/api/group-page/abcdefghjk?lang=${lang}`]);
     assert.equal(p.el("gp-welcome").innerHTML,
       "<p>You tapped, so you are curious…" + " great!</p><p>We have wanted to sail this one together for a long time…</p><p class=\"payoff\">ONE CRUISE, AND WE WANT YOU ON IT!</p><p>So come along, and say you are in!</p>");
-    assert.equal(p.el("gp-sig").textContent, "Mark & Ceci");
+    // Mark 2026-11-14: the note closes "Welcome Aboard, Mark & Ceci" (its Spanish twin on the Spanish page)
+    assert.equal(p.el("gp-sig").textContent, lang === "es" ? "Bienvenidos a bordo, Mark & Ceci" : "Welcome Aboard, Mark & Ceci");
     assert.equal(p.el("sec-welcome").hidden, false);
     assert.equal(p.el("gp-main").hidden, false);
     // the button is the group's own words, the phone line under it is the copy's blurb
@@ -347,7 +348,7 @@ test("a group with no welcome (copy written before it existed) opens straight on
   assert.equal(es.el("gp-submit").textContent, "¡Aparte mi lugar!");
   const alone = visit("en", answerFor("en"));
   await alone.ready();
-  assert.equal(alone.el("gp-sig").textContent, "Mark");
+  assert.equal(alone.el("gp-sig").textContent, "Welcome Aboard, Mark");
 });
 
 test("the plan is one sentence a day built from the itinerary, with the weekday and short date beside it (the brief's itinerary, English)", async () => {
