@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Luckiest+Guy&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/group-page.css?v=20261110a">
+<link rel="stylesheet" href="/css/group-page.css?v=20261114a">
 </head>
 <body>
 <div class="wrap">
@@ -28,6 +28,10 @@
 
   <div id="gp-state"></div>
   <main id="gp-main" hidden>
+    <!-- Mark 2026-11-14 ("PC gets the wide format, mobile devices get the mobile format"): the page is two groups of sections. On a
+         phone they stack in this order, as before. On a wide screen they sit side by side: the invitation and the plan on the left, the
+         cabins, the dates and getting there on the right, and the ask LAST, across the bottom (css/group-page.css, the wide-screen block). -->
+    <div class="gp-col gp-col-story">
 
     <!-- 1. The welcome: the hosts' note, one paragraph per line, signed. Hidden for a group whose copy was written before the welcome existed. -->
     <section class="welcome" id="sec-welcome" hidden>
@@ -46,6 +50,9 @@
       <div id="gp-itin"></div>
       <p class="small" style="margin-top:10px" data-t="itin_note"></p>
     </section>
+
+    </div>
+    <div class="gp-col gp-col-facts">
 
     <!-- 3. Your cabin: a picture band, the categories and what each starts at, the price note, FlexPay, the upgrade offer, what is planned for the group.
          The prices are said here, once: nothing after this page repeats them (Mark 2026-10-24). -->
@@ -75,6 +82,8 @@
       <div id="gp-travel"></div>
       <p class="small" style="margin-top:10px" data-t="travel_note"></p>
     </section>
+
+    </div>
 
     <!-- 6. The ask, LAST (Mark 2026-10-24: the pitch first, the ask at the bottom): who is coming and how to reach them. The page asks one thing, no cabin picker, no
          availability, no cabin count (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
