@@ -141,7 +141,7 @@ test("group figures for the fixture", () => {
   assert.equal(g.travelersOnFile, 3, "the traveler on the released cabin is not counted");
   assert.equal(g.formsSent, 2);
   assert.equal(g.formsReturned, 1);
-  assert.equal(g.fullySigned, 2, "the lead signed everything, and the lead signs for the other traveler on the cabin (Mark 2026-11-06)");
+  assert.equal(g.fullySigned, 1, "the lead signed everything; the other adult on the cabin signs their own documents and has not (Mark 2026-11-14)");
   assert.equal(g.paymentsPaid, 1);
   assert.equal(g.paymentsOpen, 3);
   assert.equal(g.paymentsOverdue, 1);
@@ -184,13 +184,22 @@ test("payment status: paid, due, overdue, no date; days out are counted from tod
 
 // ── Paperwork ──
 
-test("paperwork: the lead signs for everyone on the cabin, so the others owe no documents and are done when the lead is", () => {
+test("paperwork: the lead signs for a minor on the cabin; another adult owes their own terms, insurance document and waiver (Mark 2026-11-14)", () => {
+  // an adult (no date of birth on the file counts as one): three documents of their own, done only when they sign them
   const a = built();
-  assert.deepEqual(a.paperwork.filter((p) => p.travelerId === "t2"), []);
-  const t2 = a.travelers.find((t) => t.id === "t2")!;
+  assert.deepEqual(a.paperwork.filter((p) => p.travelerId === "t2").map((p) => p.docKey), ["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
+  const adult = a.travelers.find((t) => t.id === "t2")!;
+  assert.deepEqual([adult.docsRequired, adult.docsSigned, adult.fullySigned], [3, 0, false]);
+  // a minor: nothing of their own, done when the lead is
+  const kid = fixture();
+  kid.travelers[1]!["dob"] = "2015-01-01";
+  const k = buildAnalytics(kid, NOW);
+  assert.deepEqual(k.paperwork.filter((p) => p.travelerId === "t2"), []);
+  const t2 = k.travelers.find((t) => t.id === "t2")!;
   assert.deepEqual([t2.docsRequired, t2.docsSigned, t2.fullySigned], [0, 0, true]);
-  // the lead has not finished: neither has the traveler the lead signs for
+  // the lead has not finished: neither has the minor the lead signs for
   const raw = fixture();
+  raw.travelers[1]!["dob"] = "2015-01-01";
   raw.signatures = raw.signatures.filter((s) => !(s["traveler_id"] === "t1" && s["doc_key"] === "05-liability-waiver"));
   const b = buildAnalytics(raw, NOW);
   assert.deepEqual(["t1", "t2"].map((id) => b.travelers.find((t) => t.id === id)!.fullySigned), [false, false]);

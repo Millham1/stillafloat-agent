@@ -26,7 +26,7 @@
 
 import {
   amountText, bookingReference, cabinTotal, cleanValue, depositPerPerson, destinationText, fee, finalPaymentDays,
-  fmtLong, fmtMoney, fullName, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
+  fmtLong, fmtMoney, fullName, isAdultOn, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
   type Answers, type Block, type DocCtx, type DocSpec, type EntryRequirement, type FieldSpec, type Option, type Row, type VaccineLine,
 } from "./group-document-kit";
 import { displayName } from "./group-marketing";
@@ -215,6 +215,7 @@ const mateFields = (i: number): FieldSpec[] => {
   const expiry = (c: DocCtx) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined);
   // Mark 2026-11-14 ("it's missing the issue date"): kept on their own file, where the lead's own issue date is kept (form_data.passport.issue_date)
   const issue = (c: DocCtx) => { const v = m(c)?.form_data?.passport?.issue_date; return typeof v === "string" ? v.slice(0, 10) : undefined; };
+  const email = (c: DocCtx) => cleanValue(m(c)?.email).toLowerCase() || undefined;
   return [
     text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: name, fileValue: name }),
     { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: dob, fileValue: dob },
@@ -224,6 +225,9 @@ const mateFields = (i: number): FieldSpec[] => {
     text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: country, fileValue: country }),
     { name: `m${i}_passport_issue`, label: `${n}: passport issue date`, kind: "date", date: "past", prefill: issue, fileValue: issue },
     { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: expiry, fileValue: expiry },
+    // Mark 2026-11-14 ("the cornerstone document requires the second adult traveler to sign"): another adult on the cabin signs their own
+    // terms, insurance document and waiver on a link of their own, emailed to the address the lead gives here
+    { name: `m${i}_email`, label: `${n}: email address. We send them their own link to sign their documents`, kind: "email", required: (a) => isAdultOn(a[`m${i}_dob`]), prefill: email, fileValue: email },
   ];
 };
 const MATE_FIELDS_15 = MATE_SLOTS.flatMap(mateFields);
@@ -238,6 +242,8 @@ const mateBlocks15 = (blocks: Block[], ctx: DocCtx): Block[] => {
     extra.push({ t: "p", text: `**Gender:** ${GENDER.map((o) => `{{ch:m${i}_gender:${o.value}}} ${o.label}`).join(" ")}` });
     extra.push({ t: "p", text: `**Citizenship:** {{in:m${i}_citizenship}}` });
     extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Issue Date:** {{in:m${i}_passport_issue}} **Expiration Date:** {{in:m${i}_passport_expiry}}` });
+    // only an adult signs for themselves: a minor's block has no email line
+    if (isAdultOn(mateOf(ctx, i)?.dob, ctx.group.sail_date)) extra.push({ t: "p", text: `**Email:** {{in:m${i}_email}}` });
   }
   if (!extra.length) return blocks;
   const at = blocks.findIndex((b) => b.t === "h" && /loyalty/i.test(b.text));
@@ -264,6 +270,7 @@ const MATE_DERIVE_15: NonNullable<DocSpec["mateDerive"]> = (a, ctx) => MATE_SLOT
   if (typeof a[`m${i}_citizenship`] === "string") patch["citizenship"] = a[`m${i}_citizenship`];
   if (typeof a[`m${i}_passport_country`] === "string") patch["passport_country"] = a[`m${i}_passport_country`];
   if (typeof a[`m${i}_passport_expiry`] === "string") patch["passport_expiry"] = a[`m${i}_passport_expiry`];
+  if (!cleanValue(m.email) && typeof a[`m${i}_email`] === "string" && a[`m${i}_email`]) patch["email"] = String(a[`m${i}_email`]).trim().toLowerCase();
   if (typeof a[`m${i}_passport_issue`] === "string") {
     const fd = (m.form_data && typeof m.form_data === "object" ? m.form_data : {}) as Record<string, any>;
     patch["form_data"] = { ...fd, passport: { ...(fd["passport"] ?? {}), issue_date: a[`m${i}_passport_issue`] } };

@@ -28,7 +28,7 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
+  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, isAdultOn, leadOfCabin, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
@@ -150,16 +150,28 @@ async function travelChecks(deps: Pick<FormsDeps, "advisories" | "entry">, group
   return { advisories, entry };
 }
 
+/** Mark 2026-11-14: another adult on the lead's cabin signs their own terms, insurance document and waiver. Those documents carry the
+ *  LEAD's decisions (the plan chosen once, on the quote; the trip that was priced), so the companion's row is read with them laid over
+ *  it. Only in memory: nothing of the lead's is written on the companion's file. */
+function withLeadsChoices(traveler: Row, travelers: Row[]): Row {
+  const lead = leadOfCabin(travelers, traveler);
+  if (!lead) return traveler;
+  const own = traveler.form_data && typeof traveler.form_data === "object" ? traveler.form_data : {};
+  const from = lead.form_data && typeof lead.form_data === "object" ? lead.form_data : {};
+  return { ...traveler, form_data: { ...own, ...(from.insurance ? { insurance: from.insurance } : {}), ...(from.trip ? { trip: from.trip } : {}) } };
+}
+
 export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories" | "entry">, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
   const { store } = deps;
-  const traveler = await store.travelerByTokenHash(hash);
+  const found = await store.travelerByTokenHash(hash);
   const now = deps.now();
-  if (traveler) {
-    const group = await store.group(traveler.group_id);
+  if (found) {
+    const group = await store.group(found.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
+    const traveler = withLeadsChoices(found, travelers);
     const checks = await travelChecks(deps, group);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, ...checks });
     const packet = packetFor({ group, cabin: ctx.cabin, traveler, travelers });
@@ -543,6 +555,12 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     deps.warn({ err: err instanceof Error ? err.message : String(err), signature: saved.id }, "paperwork: the signed copy could not be saved (the signature itself is recorded)");
   }
 
+  // Mark 2026-11-14: the lead's traveler information form names the cabin's other adults and their email; each gets a link of their own
+  if (traveler && loaded.kind === "traveler" && traveler.is_lead && docKey === "15-emergency-contact-form") {
+    try { await sendCompanionLinks(deps, loaded.group, traveler); } catch (err) {
+      deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the second adult's link could not be sent (the signature is recorded)");
+    }
+  }
   if (complete) {
     // One notice per signer, on the last signature. The organizer's contract also waits for Mark's countersignature.
     const card = cardOf(traveler);
@@ -744,12 +762,13 @@ export async function getChecklistPdf(deps: FormsDeps, token: unknown): Promise<
 async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
-  const t = await deps.store.travelerByCopiesHash(hash);
+  const owner = await deps.store.travelerByCopiesHash(hash);
   const now = deps.now();
-  if (t) {
-    const group = await deps.store.group(t.group_id);
+  if (owner) {
+    const group = await deps.store.group(owner.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+    const t = withLeadsChoices(owner, travelers);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now });
     const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: t.id });
     return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t, travelers }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
@@ -949,7 +968,7 @@ export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Ro
     const required = packetFor({ group: input.group, cabin, traveler: t, travelers: input.travelers });
     const signed = required.filter((k) => input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === k));
     const card = cardOf(t);
-    const lead = cabinLead(input.travelers, t);
+    const lead = cabinLead(input.travelers, t, input.group);
     out[t.id] = {
       required, signed, complete: required.length > 0 && signed.length === required.length,
       ...(lead ? { covered_by: String(lead.id) } : {}),
@@ -986,6 +1005,41 @@ export function cardLinkEmail(input: { name: string; leadName: string; groupName
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">${lines
     .map((l) => (l === input.url ? `<p><a href="${esc(l)}">${esc(l)}</a></p>` : `<p>${esc(l)}</p>`)).join("")}<p>${sign.map(esc).join("<br>")}</p></div>`;
   return { subject: `Credit card authorization for ${input.leadName ? `${input.leadName}'s` : "a"} cruise booking`, text, html };
+}
+
+/** Mark 2026-11-14: another adult on the lead's cabin signs their own documents. Their link goes to the address the lead gave on the
+ *  traveler information form, once, when the lead signs that form. A companion who already has a link, has no address, or owes
+ *  nothing (a minor) is left alone. A refused email leaves the link stored, marks it unsent and tells Mark where to send it from. */
+export async function sendCompanionLinks(deps: FormsDeps, group: Row, lead: Row): Promise<number> {
+  if (!lead.is_lead || !lead.cabin_id) return 0;
+  const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+  const cabin = cabins.find((c) => c.id === lead.cabin_id) ?? null;
+  let sent = 0;
+  for (const mate of travelers) {
+    if (leadOfCabin(travelers, mate)?.id !== lead.id || !isAdultOn(mate.dob, group.sail_date)) continue;
+    if (mate.form_token_hash || mate.form_sent_at || mate.form_submitted_at) continue;
+    if (!packetFor({ group, cabin, traveler: mate, travelers }).length) continue;
+    const to = String(mate.email ?? "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) continue;
+    const now = deps.now().toISOString();
+    const { token, hash } = issueToken();
+    await deps.store.updateTraveler(mate.id, { form_token_hash: hash, form_sent_at: now });
+    const mail = linkEmail({ firstName: String(mate.first_name ?? ""), groupName: guestGroupName(group), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(deps.publicSite, token) });
+    const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
+    await deps.store.logMessage({
+      group_id: group.id, cabin_id: mate.cabin_id ?? null, traveler_id: mate.id, audience: "client", template: "paperwork-link",
+      to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
+    });
+    if (ok) { sent++; continue; }
+    await deps.store.updateTraveler(mate.id, { form_sent_at: null });
+    deps.warn({ group: group.id, traveler: mate.id }, "paperwork: the second adult's link email did not go out (the link itself is stored)");
+    await deps.notify({
+      title: `Paperwork link to send: ${personName(mate) || "the second adult"}`,
+      body: `${guestGroupName(group)} — ${personName(mate) || "The second adult"} on ${personName(lead) || "the lead"}'s cabin signs their own terms, insurance document and waiver, and the email with their link did not go out (the mail sender refused it, or this box emails only its test addresses). Send it from Group details, Travelers, "Email link".`,
+      groupId: group.id,
+    }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the second adult's link notice failed"));
+  }
+  return sent;
 }
 
 /** A new link for the card's owner, emailed to the address the lead gave. The old link stops working the moment the new one is

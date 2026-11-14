@@ -12,7 +12,7 @@ import { resolvePublicDir } from "../lib/public-dir";
 import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
-import { DOC_SPECS } from "../lib/group-documents";
+import { DOC_SPECS, isAdultOn } from "../lib/group-documents";
 import { advisoriesForGroup } from "../lib/travel-advisories";
 import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 import { entryRequirementsForGroup } from "../lib/entry-requirements";
@@ -464,19 +464,22 @@ router.get("/forms/copies/:token/:sid", async (req: Request, res: Response) => {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 async function travelerInGroup(groupId: string, tid: string): Promise<Row | null> {
-  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, email, lang, form_token_hash, form_sent_at, form_data, card_link_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
+  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, email, lang, form_token_hash, form_sent_at, form_data, card_link_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   return data ?? null;
 }
 
-/** The lead signs for everyone on the cabin (Mark 2026-11-06): a traveler on a lead's cabin has no paperwork link of their own. */
+/** The lead signs for a minor on the cabin (Mark 2026-11-06), who has no paperwork link of their own. Mark 2026-11-14: another
+ *  adult on the cabin signs their own terms, insurance document and waiver, so an adult is not refused. */
 async function leadSignsFor(t: Row): Promise<string | null> {
   if (t.is_lead || !t.cabin_id) return null;
   const { data, error } = await db().from("group_travelers").select("first_name, last_name").eq("cabin_id", t.cabin_id).eq("is_lead", true).neq("id", t.id).limit(1);
   if (error) throw new Error(error.message);
   const lead = data?.[0];
   if (!lead) return null;
-  return `${[lead.first_name, lead.last_name].filter(Boolean).join(" ") || "The cabin's lead"} signs the paperwork for everyone on this cabin. This traveler has nothing of their own to sign.`;
+  const group = await store.group(String(t.group_id));
+  if (isAdultOn(t.dob, group?.sail_date)) return null;
+  return `${[lead.first_name, lead.last_name].filter(Boolean).join(" ") || "The cabin's lead"} signs the paperwork for this traveler, who is under 18. This traveler has nothing of their own to sign.`;
 }
 
 router.post("/groups/:id/travelers/:tid/form-link", requireToken, async (req: Request, res: Response) => {

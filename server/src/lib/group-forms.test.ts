@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, requestInsuranceQuote, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, sendCompanionLinks, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -125,7 +125,7 @@ const GOOD_15 = {
   passport_number: "A12345678", passport_country: "United States", passport_expiry: "2031-02-03", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   health_note: "ignored",
   // the cabin's other traveler (Mark 2026-11-03: the lead fills them in)
-  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States",
+  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States", m1_email: "john@example.com",
 };
 // the booking document needs the insurance choice (Mark 2026-10-29)
 const BOOK = { answers: {} };
@@ -211,10 +211,10 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
   assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30); a cabin-mate is not asked for the lead's details (Mark 2026-11-03)");
   assert.deepEqual(p.mates, [], "on a cabin of their own for this test");
-  // on the lead's cabin the lead signs for everyone (Mark 2026-11-06): the second traveler's own link carries no documents
+  // on the lead's cabin another adult signs their own terms, insurance document and waiver (Mark 2026-11-14)
   const covered = setup();
   const mine = pkt(await getPacket(covered.deps, covered.link("t2")));
-  assert.deepEqual([mine.docs.length, mine.complete, mine.mates], [0, false, ["Jane Public"]]);
+  assert.deepEqual([mine.docs.map((d) => d.key), mine.complete, mine.mates], [["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], false, ["Jane Public"]]);
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
   const raw = JSON.stringify(r.json);
@@ -754,9 +754,13 @@ test("each traveler's progress is the documents asked for against the ones signe
   const s = packetStatuses({ group: g, cabins, travelers, signatures });
   assert.equal(s.travelers["t1"]!.required.length, 6);
   assert.equal(s.travelers["t1"]!.signed.length, 0);
-  // the lead signs for everyone on the cabin (Mark 2026-11-06): the second traveler owes nothing and is done when the lead is
-  assert.deepEqual([s.travelers["t2"]!.required, s.travelers["t2"]!.signed, s.travelers["t2"]!.complete, s.travelers["t2"]!.covered_by], [[], [], false, "t1"]);
-  const leadDone = packetStatuses({ group: g, cabins, travelers, signatures: s.travelers["t1"]!.required.map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "lead" })) });
+  // another adult on the lead's cabin signs their own three (Mark 2026-11-14); the traveler form is the lead's
+  assert.deepEqual([s.travelers["t2"]!.required, s.travelers["t2"]!.signed, s.travelers["t2"]!.complete, s.travelers["t2"]!.covered_by], [["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], ["01-terms-and-conditions"], false, undefined]);
+  // the lead signs for a minor on the cabin (Mark 2026-11-06): the minor owes nothing and is done when the lead is
+  const withKid = [travelers[0]!, { ...travelers[1]!, dob: "2015-01-01" }];
+  const k = packetStatuses({ group: g, cabins, travelers: withKid, signatures });
+  assert.deepEqual([k.travelers["t2"]!.required, k.travelers["t2"]!.signed, k.travelers["t2"]!.complete, k.travelers["t2"]!.covered_by], [[], [], false, "t1"]);
+  const leadDone = packetStatuses({ group: g, cabins, travelers: withKid, signatures: k.travelers["t1"]!.required.map((d) => ({ traveler_id: "t1", doc_key: d, signer_role: "lead" })) });
   assert.deepEqual([leadDone.travelers["t1"]!.complete, leadDone.travelers["t2"]!.complete], [true, true]);
   // on a cabin with no lead each traveler signs their own four
   const alone = packetStatuses({ group: g, cabins, travelers: [{ id: "t2", cabin_id: "c1", is_lead: false }], signatures });
@@ -1114,4 +1118,43 @@ test("Mark 2026-11-13: a choice made on the quote is done: the paperwork states 
   assert.deepEqual([tried.json["choice"], tried.json["plan"]], ["quote", made.plan]);
   const kept = t.state.travelers.find((x: any) => x.id === "t2")!.form_data.insurance;
   assert.deepEqual([kept.choice, kept.plan, kept.from_quote, kept.amount], ["quote", made.plan, true, 265]);
+});
+
+test("the second adult on the lead's cabin gets a link of their own when the lead signs the traveler form, and signs their own three (Mark 2026-11-14)", async () => {
+  const t = setup();
+  const john = t.state.travelers[1]!;
+  const r = await signKey(t, t.link("t1"), "15-emergency-contact-form", { answers: GOOD_15 });
+  assert.equal(r.status, 200);
+  const mail = t.mails.find((m) => m.to === "john@example.com");
+  assert.ok(mail, "the second adult is emailed their own link");
+  assert.ok(john.form_token_hash && john.form_sent_at, "and the link is on their row");
+  const johnToken = /forms\.html\?t=([\w-]+)/.exec(mail!.text)![1]!;
+  const p = pkt(await getPacket(t.deps, johnToken));
+  assert.deepEqual(p.docs.map((d) => d.key), ["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
+  assert.equal(p.docs.some((d) => d.fields.some((f) => /^m\d_/.test(f.name))), false, "they are not asked about the cabin's other travelers");
+  const mine: Record<string, Row> = { "01-terms-and-conditions": {}, "07-travel-insurance-declination": { decline_reasons: ["premium"] }, "05-liability-waiver": { health_ack: true } };
+  let last: Awaited<ReturnType<typeof signKey>> | null = null;
+  for (const [key, answers] of Object.entries(mine)) {
+    last = await signKey(t, johnToken, key, { answers }, "John Public");
+    assert.equal(last.status, 200, `${key}: ${JSON.stringify(last.json)}`);
+  }
+  assert.equal((last!.json["packet"] as any).complete, true);
+  assert.deepEqual(t.state.signatures.filter((x) => x.traveler_id === "t2").map((x) => x.doc_key), Object.keys(mine));
+  // the lead signing the form again (after Mark takes the signature off) does not send a second link
+  const before = t.mails.filter((m) => m.to === "john@example.com" && /forms\.html\?t=/.test(m.text)).length;
+  await sendCompanionLinks(t.deps, t.state.group, t.state.travelers[0]!);
+  assert.equal(t.mails.filter((m) => m.to === "john@example.com" && /forms\.html\?t=/.test(m.text)).length, before);
+});
+
+test("the second adult's insurance document is the one the lead's choice calls for; a refused email tells Mark where to send the link from (Mark 2026-11-14)", async () => {
+  const t = setup({ mail: async () => false });
+  t.state.travelers[0]!.form_data = { ...t.state.travelers[0]!.form_data, insurance: { choice: "quote", plan: "OneTrip Prime", amount: 265, from_quote: true } };
+  const p = pkt(await getPacket(t.deps, t.link("t2")));
+  assert.deepEqual(p.docs.map((d) => d.key), ["01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver"]);
+  assert.ok(p.docs[1]!.html.includes("OneTrip Prime"), "the plan the lead chose is on the companion's document");
+  assert.equal(t.state.travelers[1]!.form_data?.insurance, undefined, "nothing of the lead's is written on the companion's file by opening the link");
+  t.state.travelers[1]!.form_token_hash = null;
+  assert.equal(await sendCompanionLinks(t.deps, t.state.group, t.state.travelers[0]!), 0);
+  assert.ok(t.state.travelers[1]!.form_token_hash && !t.state.travelers[1]!.form_sent_at, "the link is stored and marked unsent");
+  assert.ok(t.notices.some((n) => n.title.startsWith("Paperwork link to send") && n.body.includes("Email link")));
 });

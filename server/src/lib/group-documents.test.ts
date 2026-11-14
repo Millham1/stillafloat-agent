@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, splitCityStateZip, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
-  normalizePhone } from "./group-documents";
+  normalizePhone, cabinLead, isAdultOn } from "./group-documents";
 import { BUSINESS } from "./group-secure";
 import { CLIENT_DOCUMENTS } from "../content/client-documents";
 
@@ -292,7 +292,7 @@ test("the traveler form's blanks and boxes become the inputs its spec names, and
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 29 + 8 * ctxFor({}, TRAVELERS[0]!).mates.length);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
+  assert.equal(f15.fields.length, 29 + 9 * ctxFor({}, TRAVELERS[0]!).mates.length);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -370,7 +370,7 @@ const GOOD_15 = {
   phone: "(919) 555-0100", email: "jane@example.com", passport_number: "a1234-5678", passport_country: "United States", passport_expiry: "2031-02-03",
   passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   trusted_programs: ["tsa"], ktn: "TT1234567", loyalty_1_program: "Delta", loyalty_1_number: "123456", notes: "Window seat please.",
-  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States",
+  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States", m1_email: "john@example.com",
 };
 const doc15 = () => renderDocument("15-emergency-contact-form", ctxFor());
 
@@ -588,7 +588,7 @@ test("an answer that differs from the file is a correction: it is reported, with
   assert.ok(!("dob" in r.travelerPatch) && !("gender" in r.travelerPatch), "the corrected lines are Mark's to change");
   assert.ok("phone" in r.travelerPatch, "a line the file did not have is written as before");
   const john = r.mates!.find((m) => m.index === 1)!.patch;
-  assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
+  assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada", email: "john@example.com" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
   assert.equal(r.answers["dob"], "1960-05-05", "the signed document keeps exactly what was entered");
 });
 
@@ -598,4 +598,22 @@ test("the booking agreement's dining line takes the group's dining from the crui
   assert.equal(prefillValue(field(bare), bare), "early");
   const none = buildCtx({ business: BUSINESS, group: { ...GROUP, terms: {} }, cabins: CABINS.map((c: Record<string, unknown>) => ({ ...c, dining: null })), travelers: TRAVELERS, traveler: TRAVELERS[0]!, now: NOW });
   assert.equal(prefillValue(field(none), none), "none", "nothing on the cabin or the group: No Preference is ticked");
+});
+
+test("another adult on the lead's cabin signs their own terms, insurance document and waiver; a minor signs nothing (Mark 2026-11-14)", () => {
+  const lead = { ...TRAVELERS[0]!, form_data: { ...TRAVELERS[0]!.form_data, insurance: { choice: "quote" } } };
+  const adult = { ...TRAVELERS[1]!, is_lead: false };
+  const travelers = [lead, adult];
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: adult, travelers }), ["01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver"], "the insurance document is the one the lead's choice calls for");
+  assert.equal(cabinLead(travelers, adult, GROUP), null, "the lead does not sign for another adult");
+  const kid = { ...adult, dob: "2015-06-01" };
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: kid, travelers: [lead, kid] }), []);
+  assert.equal(cabinLead([lead, kid], kid, GROUP)?.id, "t1");
+  assert.equal(isAdultOn("2009-03-14", "2027-03-14"), true, "18 on the sailing date");
+  assert.equal(isAdultOn("2009-03-15", "2027-03-14"), false, "a day short of 18 on the sailing date");
+  assert.equal(isAdultOn(null, "2027-03-14"), true, "no date of birth on the file counts as an adult");
+  // the lead's traveler form asks the adult's email and not a minor's
+  const names = (ts: Array<Record<string, unknown>>) => renderDocument("15-emergency-contact-form", buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: ts, traveler: ts[0]!, now: NOW })).fields.map((f) => f.name);
+  assert.ok(names(travelers).includes("m1_email"));
+  assert.ok(!names([lead, kid]).includes("m1_email"));
 });

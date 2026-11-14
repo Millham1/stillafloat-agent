@@ -31,12 +31,12 @@ import { CLIENT_DOCUMENTS } from "../content/client-documents";
 import { BUSINESS, last4, normalizePassport, passportLooksValid, sha256Hex } from "./group-secure";
 import { looksLikeCardNumber } from "./group-file";
 import {
-  TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, fullName, normalizeFees,
+  TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, fullName, isAdultOn, normalizeFees,
   type Answers, type Block, type DocCtx, type DocSpec, type FeeLine, type FieldSpec, type Lang, type Row, type SignerRole,
 } from "./group-document-kit";
 import { DOC_SPECS, insuranceDocFor } from "./group-document-specs";
 
-export { DOC_SPECS, TEMPLATE_VERSION_DATE, buildCtx, normalizeFees };
+export { DOC_SPECS, TEMPLATE_VERSION_DATE, buildCtx, isAdultOn, normalizeFees };
 export type { Answers, Block, DocCtx, DocSpec, FeeLine, FieldSpec, Lang, Row, SignerRole };
 
 // ── 1. The connector's escaping ───────────────────────────────────────────────
@@ -557,19 +557,32 @@ export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" |
  *  signed; it is prepared from the file and emailed on its own (CHECKLIST_DOCUMENT). Not in any packet: 04 (cancellation
  *  policy), 06 (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14
  *  (questionnaires), 20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
-/** The lead of a traveler's cabin when the traveler is someone else on it (Mark 2026-11-06: the lead signs for everyone on the
- *  cabin; the lead's documents already name the others). null for the lead, for a cabin without a lead and for no cabin. */
-export function cabinLead(travelers: Row[], traveler: Row | null | undefined): Row | null {
+/** The lead of a traveler's cabin when the traveler is someone else on it. null for the lead, for a cabin without a lead and for no cabin. */
+export function leadOfCabin(travelers: Row[], traveler: Row | null | undefined): Row | null {
   if (!traveler || traveler.is_lead || !traveler.cabin_id) return null;
   return travelers.find((x) => x.is_lead && x.cabin_id === traveler.cabin_id && x.id !== traveler.id) ?? null;
+}
+
+/** The lead who signs FOR a traveler (Mark 2026-11-06: the lead signs for everyone on the cabin; the lead's documents already name
+ *  the others). Mark 2026-11-14: only for a minor. Another adult on the cabin signs their own terms, insurance document and waiver,
+ *  so for an adult this is null. */
+export function cabinLead(travelers: Row[], traveler: Row | null | undefined, group?: Row | null): Row | null {
+  const lead = leadOfCabin(travelers, traveler);
+  return lead && !isAdultOn(traveler?.dob, group?.sail_date) ? lead : null;
 }
 
 export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean; travelers?: Row[] }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
   if (input.cardholder) return [CARD_DOCUMENT];
-  // the cabin's lead signs for everyone on it: the others owe no documents of their own
-  if (input.travelers && cabinLead(input.travelers, input.traveler)) return [];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
+  const lead = input.travelers ? leadOfCabin(input.travelers, input.traveler) : null;
+  if (lead) {
+    // a minor: the cabin's lead signs for them, and they owe no documents of their own
+    if (!isAdultOn(input.traveler?.dob, input.group?.sail_date)) return [];
+    // another adult on the lead's cabin (Mark 2026-11-14): their own terms, the insurance document the lead's choice calls for, and the
+    // waiver. The traveler information form, the booking agreement and the card authorization stay the lead's: they already name everyone.
+    return ["01-terms-and-conditions", ...(hasFees ? FEE_DOCUMENTS : []), insuranceDocFor(lead), "05-liability-waiver"];
+  }
   const keys: string[] = TRAVELER_PACKET.map((k) => (k === "insurance" ? insuranceDocFor(input.traveler) : k));
   if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
   if (input.traveler?.is_lead && input.cabin) {

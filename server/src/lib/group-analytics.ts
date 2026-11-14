@@ -299,7 +299,7 @@ export function buildAnalytics(raw: AnalyticsRaw, now: Date = new Date()): Group
       for (const x of signatures) if (x["traveler_id"] === t["id"] && !signedAt.has(String(x["doc_key"]))) { signedAt.set(String(x["doc_key"]), iso(x["signed_at"])); sigOf.set(String(x["doc_key"]), x); }
       const docsSigned = required.filter((k) => signedKeys.has(k)).length;
       // the lead signs for the cabin (Mark 2026-11-06): a traveler the lead covers is done when the lead is
-      const coveredBy = cabinLead(liveTravelers, t);
+      const coveredBy = cabinLead(liveTravelers, t, g);
       const leadOwes = coveredBy ? packetFor({ group: g, cabin, traveler: coveredBy, travelers: liveTravelers }) : [];
       const complete = coveredBy
         ? leadOwes.length > 0 && leadOwes.every((k) => signatures.some((x) => x["traveler_id"] === coveredBy["id"] && x["doc_key"] === k))
