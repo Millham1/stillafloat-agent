@@ -737,6 +737,22 @@ export default [
           L.check(post.status === 200 && post.json?.success === true && post.json.post?.status === "published",
             `the ${lang} issue links commentary ${commentary.searchParams.get("id")}, which is not a published post (${post.describe()})`);
           if (lang === "es") L.check(post.json?.post?.title_es && post.json?.post?.body_es, "the Spanish issue links a commentary with no Spanish title or text");
+        } else {
+          // 2026-11-14: an issue with no commentary is right only when no published commentary is under 30 days old (lib/newsletter.ts
+          // COMMENTARY_MAX_AGE_DAYS). The list is read to hold the issue to that, and the newest post's page in this language is opened
+          // so the commentary page and its post are still walked in a week whose letter carries none.
+          const list = await t.get("/api/commentary?limit=5");
+          L.check(list.status === 200 && list.json?.success === true && Array.isArray(list.json.posts), `the commentary list did not answer (${list.describe()})`);
+          const newest = (list.json?.posts || []).filter((x) => x && x.status === "published").sort((a, b) => String(b.published_at ?? "").localeCompare(String(a.published_at ?? "")))[0];
+          const ageDays = newest ? (Date.now() - Date.parse(String(newest.published_at))) / 86_400_000 : Infinity;
+          L.check(!(ageDays <= 29), `the ${lang} issue carries no commentary although one was published ${Math.round(ageDays)} days ago (the letter carries any under 30 days old)`);
+          if (newest) {
+            const path = `${lang === "es" ? "/es" : ""}/commentary-post.html?id=${encodeURIComponent(newest.id)}`;
+            const page = t.html(await t.get(path), { mustContain: ["/api/commentary?id="] });
+            L.check(H.htmlLang(page).slice(0, 2) === lang, `${path} is not in ${lang}`);
+            const post = await t.get(`/api/commentary?id=${encodeURIComponent(newest.id)}`);
+            L.check(post.status === 200 && post.json?.success === true && post.json.post?.status === "published", `the newest commentary ${newest.id} does not open as a published post (${post.describe()})`);
+          }
         }
         // video → its thumbnail loads (the picture the email shows; a deleted video's is gone)
         if (video) {

@@ -1433,14 +1433,13 @@ export default [
         siteKey = pub.turnstileSiteKey || siteKey;
       }
       t.observe("live group pages", live.length, "info");
-      // Last, so every assertion above runs first. Two conditions this box must provide:
-      //  • a live page in Spanish — otherwise the Spanish copy path above was only a fallback to English
-      //    (dev's test group is English-only);
-      //  • a Turnstile site key — the interest form's bot check (dev has no Turnstile keys; prod does).
-      // Dev carries these on purpose (Mark's 2026-10-04 mirror ruling: a Spanish test group; Cloudflare test keys).
-      // On prod, whether Mark's live group is Spanish is his choice, and the key is held by audience.turnstile-*.
+      // Last, so every assertion above runs first. One condition this box must provide:
+      //  • a Turnstile site key — the interest form's bot check (dev carries Cloudflare test keys by Mark's 2026-10-04 mirror ruling).
+      // Mark 2026-11-14 ("Yes, drop it"): a live page in Spanish is NO LONGER required of dev. Dev's Spanish test group was deleted on
+      // 2026-11-12 on his ruling that the database holds no test files; whether a live group is Spanish is his choice on dev as on
+      // prod. With none, the Spanish copy of a live page is not read here (only the /es/ page's fallback to the group's own language,
+      // above); the count is observed so the report shows it, and every Spanish group that does exist is held to the checks above.
       const missing = [];
-      if (spanishLive === 0) missing.push("no live group page is in Spanish, so the Spanish copy and the /es/ page's own answer cannot be checked");
       if (!siteKey) missing.push("the group page offers no Turnstile site key, so the interest form's bot check cannot be exercised");
       t.observe("live group pages in Spanish", spanishLive, "info");
       if (t.mode === "dev") t.require(missing.length === 0, missing.join("; "));

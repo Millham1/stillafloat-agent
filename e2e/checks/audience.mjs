@@ -818,6 +818,21 @@ export default [
             if (stories.includes(p)) t.ok(H.h1s(page).some((h) => h.length > 10), `the story ${pathOf(p)} linked from the ${lang.toUpperCase()} newsletter has no headline`);
           }
         }
+        // 2026-11-14 (dev sweep red for a week): the letter carries Mark's commentary only while the newest published one is under
+        // 30 days old (lib/newsletter.ts COMMENTARY_MAX_AGE_DAYS). A letter without one is right when nothing is that fresh, and
+        // wrong when something is: so with no commentary link followed above, the commentary list itself is read and held to that rule.
+        if (![...followed].some((p) => /commentary-post\.html/.test(p))) {
+          const list = t.success(await t.get("/api/commentary?limit=5"));
+          t.ok(Array.isArray(list.posts), "the commentary list has no posts array");
+          const newest = list.posts.filter((x) => x && x.status === "published").sort((a, b) => String(b.published_at ?? "").localeCompare(String(a.published_at ?? "")))[0];
+          const ageDays = newest ? (Date.now() - Date.parse(String(newest.published_at))) / 86_400_000 : Infinity;
+          if (issue && issue.commentary) {
+            t.ok(newest && issue.commentary.id === newest.id, `the ${lang.toUpperCase()} newsletter carries commentary ${issue.commentary.id}, which is not the newest published one`);
+          } else {
+            t.ok(!(ageDays <= 29), `the ${lang.toUpperCase()} newsletter carries no commentary although one was published ${Math.round(ageDays)} days ago (the letter carries any under 30 days old)`);
+          }
+          t.observe(`newsletter ${lang} carries commentary`, issue && issue.commentary ? "yes" : `no (newest published ${Number.isFinite(ageDays) ? Math.round(ageDays) + " days ago" : "never"})`, "info");
+        }
         // our own images in the email
         for (const img of H.images(html).filter((s) => H.sameSite(s, PROD_HOST)).slice(0, 2)) {
           const r = await t.get(H.onBase(img, t.bases.site));
