@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { blocksFor, buildCtx, type Answers, type Block } from "./group-documents";
 import { BUSINESS } from "./group-secure";
-import { markSignature, pieces, renderFormPdf } from "./group-form-pdf";
+import { markSignature, pieces, renderFormPdf, signAgent } from "./group-form-pdf";
 
 const NOW = new Date("2026-10-28T15:00:00Z");
 const GROUP = {
@@ -72,4 +72,22 @@ test("Mark 2026-10-30: on a document shown with the client's answers, a line lef
   assert.deepEqual(withAnswers.filter((p) => p.k === "answer").map((p) => (p as { text: string }).text), ["none", "N/A"]);
   const blankForm = pieces("**Dietary Restrictions:** {{in:dietary}}", { answers: {}, today: "October 30, 2026", signer: undefined });
   assert.ok(blankForm.some((p) => p.k === "blank") && !blankForm.some((p) => p.k === "answer"));
+});
+
+test("the advisor's signature goes on the agent's own lines of every form, and nowhere else (Mark 2026-11-14)", () => {
+  const who = { name: "Mark Millham", date: "November 14, 2026" };
+  const text = (blocks: Block[]) => blocks.map((b) => (b.t === "p" ? b.text : b.t === "hr" ? "-----" : "")).join("\n");
+  for (const key of ["01-terms-and-conditions", "05-liability-waiver", "12-cruise-booking-agreement"]) {
+    const { blocks } = blocksFor(key, ctx(), { paper: true });
+    const before = text(blocks), after = text(signAgent(blocks, who));
+    assert.ok(after.includes("/s/ Mark Millham"), `${key}: the advisor's signature line is filled`);
+    assert.ok(after.includes("November 14, 2026"), `${key}: with the date`);
+    const agentAt = after.search(/Travel Agent|Agent Signature/);
+    assert.ok(agentAt > 0 && !after.slice(0, agentAt).includes("/s/"), `${key}: nothing is written on the client's, co-traveler's or parent's lines`);
+    assert.equal(after.slice(0, agentAt), before.slice(0, agentAt), `${key}: the text before the agent's block is unchanged`);
+    assert.equal(text(signAgent(blocks, null)), before, "with no advisor signature the form is as before");
+  }
+  // a form with no agent block is untouched
+  const card = blocksFor("22-card-authorization", ctx(), { paper: true }).blocks;
+  assert.equal(text(signAgent(card, who)), text(card));
 });

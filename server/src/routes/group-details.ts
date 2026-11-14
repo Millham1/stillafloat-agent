@@ -1367,6 +1367,18 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    // Mark 2026-11-14 ("I never was offered a way to sign the documents where the advisor signs. this should be done before they are sent
+    // to the client"): sending IS the advisor's signing. The name is typed in the send box and kept on the lead's file with the time, and
+    // every form the client is shown, and every signed copy, carries it on the agent's signature lines.
+    const typedName = typeof req.body?.advisor_name === "string" ? req.body.advisor_name.replace(/\s+/g, " ").trim() : "";
+    if (typedName.toLowerCase() !== BUSINESS.agentName.toLowerCase()) {
+      return res.status(400).json({ success: false, code: "advisor-sign", error: `The documents carry your signature as the advisor, so type your full name, ${BUSINESS.agentName}, to sign them before they go to the guest.` });
+    }
+    const { data: fdRow, error: fe } = await db().from("group_travelers").select("form_data").eq("id", lead.id).maybeSingle();
+    if (fe) throw new Error(fe.message);
+    const fd = fdRow?.form_data && typeof fdRow.form_data === "object" ? fdRow.form_data : {};
+    const { error: ae } = await db().from("group_travelers").update({ form_data: { ...fd, advisor: { name: BUSINESS.agentName, signed_at: new Date().toISOString() } } }).eq("id", lead.id);
+    if (ae) throw new Error(ae.message);
     let paperwork: Quote["paperwork"];
     try { paperwork = await sendPaperwork(group, lead); }
     catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the paperwork link could not be sent after Booked"); paperwork = "failed"; }

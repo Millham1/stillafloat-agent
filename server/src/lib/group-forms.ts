@@ -32,7 +32,7 @@ import {
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
-import { renderFormPdf, type FormMark } from "./group-form-pdf";
+import { renderFormPdf, signAgent, type FormMark } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong, type Advisory, type EntryRequirement } from "./group-document-kit";
@@ -153,12 +153,18 @@ async function travelChecks(deps: Pick<FormsDeps, "advisories" | "entry">, group
 /** Mark 2026-11-14: another adult on the lead's cabin signs their own terms, insurance document and waiver. Those documents carry the
  *  LEAD's decisions (the plan chosen once, on the quote; the trip that was priced), so the companion's row is read with them laid over
  *  it. Only in memory: nothing of the lead's is written on the companion's file. */
+/** The advisor's signature on a booking's documents (Mark 2026-11-14): typed when the paperwork is sent, kept on the lead's file. */
+export function advisorOf(traveler: Row | null | undefined): { name: string; signedAt: string } | null {
+  const a = traveler?.form_data?.advisor;
+  return a && typeof a === "object" && typeof a.name === "string" && a.name && typeof a.signed_at === "string" ? { name: a.name, signedAt: a.signed_at } : null;
+}
+
 function withLeadsChoices(traveler: Row, travelers: Row[]): Row {
   const lead = leadOfCabin(travelers, traveler);
   if (!lead) return traveler;
   const own = traveler.form_data && typeof traveler.form_data === "object" ? traveler.form_data : {};
   const from = lead.form_data && typeof lead.form_data === "object" ? lead.form_data : {};
-  return { ...traveler, form_data: { ...own, ...(from.insurance ? { insurance: from.insurance } : {}), ...(from.trip ? { trip: from.trip } : {}) } };
+  return { ...traveler, form_data: { ...own, ...(from.insurance ? { insurance: from.insurance } : {}), ...(from.trip ? { trip: from.trip } : {}), ...(from.advisor ? { advisor: from.advisor } : {}) } };
 }
 
 export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories" | "entry">, token: unknown): Promise<Loaded | null> {
@@ -532,7 +538,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     const base = {
       businessName: BUSINESS.legalName, title: doc.title, blocks: fillBlocks(doc, stored, now),
       signerName, signerRole: spec.signerRole, signedAt: now, docVersion: doc.version, contentSha256: doc.sha256,
-      signatureId: saved.id, agentCountersignPending: !!spec.agentCountersign, logo: deps.logo,
+      signatureId: saved.id, agentCountersignPending: !!spec.agentCountersign, advisor: advisorOf(loaded.traveler), logo: deps.logo,
     };
     const audit = auditFor(loaded, { ip: meta.ip, ua: meta.ua, at: now, seal: deps.seal });
     let bytes = await deps.renderPdf({ ...base, audit });
@@ -817,7 +823,9 @@ function previewInput(raw: unknown): Answers {
 
 /** The clean printed form of one document (lib/group-form-pdf.ts) with these answers, this date and, once typed, this name. */
 async function formPdf(deps: Pick<FormsDeps, "logo">, key: string, ctx: DocCtx, answers: Answers, today: string, signer: string, onMark?: (m: FormMark) => void): Promise<Uint8Array> {
-  const { spec, blocks } = blocksFor(key, ctx, { paper: true });
+  const { spec, blocks: plain } = blocksFor(key, ctx, { paper: true });
+  const advisor = advisorOf(ctx.traveler);
+  const blocks = signAgent(plain, advisor ? { name: advisor.name, date: fmtLong(advisor.signedAt) } : null);
   return renderFormPdf({ title: spec.title, businessName: BUSINESS.legalName, blocks, answers, today, ...(signer ? { signer } : {}), logo: deps.logo, ...(onMark ? { onMark } : {}) });
 }
 

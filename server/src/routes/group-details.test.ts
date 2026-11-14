@@ -1231,7 +1231,11 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   const plainDoc = (await call("GET", pricePage)).json["doc"] as Row;
   assert.ok(plainDoc["matrix"] === null && JSON.stringify(plainDoc["cruise"]).includes("Premium Extra drinks"), "guest lines that no longer add up to the saved total are not shown: the cabin and the extras are");
   mails.length = 0;
-  const done = await call("POST", path, { token: true });
+  // Mark 2026-11-14: sending is the advisor's signing; without the advisor's own name typed, nothing goes out
+  const unsigned = await call("POST", path, { token: true });
+  assert.deepEqual([unsigned.status, unsigned.json["code"]], [400, "advisor-sign"]);
+  assert.equal((await call("POST", path, { token: true, body: { advisor_name: "Someone Else" } })).status, 400);
+  const done = await call("POST", path, { token: true, body: { advisor_name: "mark  millham" } });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
   assert.equal(mails.length, 1);
   assert.equal(mails[0]!["to"], "mmillham1@gmail.com");

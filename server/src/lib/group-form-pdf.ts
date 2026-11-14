@@ -124,6 +124,25 @@ export function markSignature(blocks: Block[]): Block[] {
   });
 }
 
+/** Mark 2026-11-14 ("I never was offered a way to sign the documents where the advisor signs. this should be done before they are sent
+ *  to the client"): the advisor signs when the paperwork is sent, so the agent's own block (Travel Agent / Agent Signature) carries
+ *  that name and date on every form the client is shown. The other blocks are left as they are. */
+export function signAgent(blocks: Block[], advisor: { name: string; date: string } | null | undefined): Block[] {
+  if (!advisor?.name) return blocks;
+  let mine = false, dated = false;
+  return blocks.map((b) => {
+    if (b.t === "hr") { if (dated) mine = false; return b; }
+    if (b.t !== "p") return b;
+    if (/^\**Travel Agent\b/i.test(b.text) || /Agent Signature/i.test(b.text)) { mine = true; dated = false; }
+    else if (/^\**(Primary Traveler|Primary Guest|Co-Traveler|Parent|Client|Cardholder|Group Organizer)\b/i.test(b.text)) mine = false;
+    if (!mine) return b;
+    const text = b.text.replace(/(Signature:\**\s*)_{3,}/i, `$1/s/ ${advisor.name}`).replace(/(Date:\**\s*)_{3,}/, `$1${advisor.date}`).replace(/(Print Name:\**\s*)_{3,}/, `$1${advisor.name}`);
+    if (/Date:/.test(b.text)) dated = true;
+    if (/Print Name:/.test(b.text)) mine = false;
+    return text === b.text ? b : { ...b, text };
+  });
+}
+
 export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({

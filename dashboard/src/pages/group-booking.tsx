@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ask } from "@/components/confirm";
+import { ask, askTyped } from "@/components/confirm";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react";
@@ -330,10 +330,12 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const send = async () => {
     const why = dirty ? UNSAVED : !data.ready ? `Finish the booking confirmation first: ${data.missing.join("; ")}.` : !approved ? "The guest has not approved the price yet. Email the price to them (or record their yes), then send the paperwork." : null;
     setStop(why ? { at: "paperwork", text: why } : null); if (why) return;
-    if (!await ask(`Send the paperwork link to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}?`)) return;
+    // Mark 2026-11-14: the advisor signs before the documents go to the client; the name typed here goes on the agent's signature lines
+    const advisor = await askTyped(`Sign the documents as the advisor and send them to ${data.guest.name}${data.guest.email ? ` (${data.guest.email})` : ""}? Your name and today's date go on the advisor's signature lines of every document. Type your full name to sign.`);
+    if (advisor === null) return;
     setBusy(true);
     try {
-      await api(`/groups/${groupId}/interests/${guest.id}/booked`, "POST");
+      await api(`/groups/${groupId}/interests/${guest.id}/booked`, "POST", { advisor_name: advisor });
       toast({ title: "Paperwork sent" });
       qc.invalidateQueries({ queryKey: ["group-pipeline", groupId] });
       qc.invalidateQueries({ queryKey: key });
