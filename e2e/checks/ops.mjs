@@ -1890,7 +1890,20 @@ export default [
           // Mark 2026-11-06: the cabin's lead signs for everyone on it; another traveler on a lead's cabin owes no documents of their own
           const lead = !tr.is_lead && tr.cabin_id ? file.travelers.find((x) => x.is_lead && x.cabin_id === tr.cabin_id && x.id !== tr.id) : null;
           if (lead) {
-            t.equal(JSON.stringify([p.required, p.covered_by]), JSON.stringify([[], lead.id]), `group ${g.id}: traveler ${tr.id} is on lead ${lead.id}'s cabin, so the lead signs for them and they are asked for nothing (Mark 2026-11-06)`);
+            // Mark 2026-11-14: only a minor is signed for by the lead. Another adult on the cabin (18 or older on the sailing date; no date
+            // of birth on the file counts as an adult) signs their own terms, any fee agreements, the insurance document the lead's choice
+            // calls for, and the waiver: the lead's own list without the traveler form, the booking agreement and the card authorization.
+            const dob = typeof tr.dob === "string" ? tr.dob.slice(0, 10) : "";
+            const on = String(file.group?.sail_date ?? file.sail_date ?? g.sail_date ?? new Date().toISOString()).slice(0, 10);
+            const adult = !/^\d{4}-\d{2}-\d{2}$/.test(dob) || (Number(on.slice(0, 4)) - Number(dob.slice(0, 4)) - (on.slice(5) < dob.slice(5) ? 1 : 0)) >= 18;
+            if (adult) {
+              const own = (body.packets[lead.id]?.required ?? []).filter((k) => /^(01|02|03|07|23|05)-/.test(k));
+              t.equal(JSON.stringify(p.required), JSON.stringify(own), `group ${g.id}: traveler ${tr.id} is another adult on lead ${lead.id}'s cabin, so they sign their own terms, insurance document and waiver (Mark 2026-11-14)`);
+              t.ok(!p.covered_by, `group ${g.id}: traveler ${tr.id} is an adult but is marked as signed for by the lead`);
+              t.equal(p.complete, p.required.length > 0 && p.signed.length === p.required.length, `group ${g.id}: traveler ${tr.id} is done exactly when their own documents are signed`);
+              continue;
+            }
+            t.equal(JSON.stringify([p.required, p.covered_by]), JSON.stringify([[], lead.id]), `group ${g.id}: traveler ${tr.id} is a minor on lead ${lead.id}'s cabin, so the lead signs for them and they are asked for nothing (Mark 2026-11-06)`);
             t.equal(p.complete, body.packets[lead.id]?.complete === true, `group ${g.id}: traveler ${tr.id} is done exactly when the lead who signs for them is`);
             continue;
           }
