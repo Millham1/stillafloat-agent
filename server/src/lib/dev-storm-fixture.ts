@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { getSupabase } from "./persistence";
 import type { Sailing } from "./storm-sailings";
+import { isProductionUrl } from "./site-kind";
 
 // A permanent, labelled TEST storm for the DEV mirror (Mark 2026-10-12: "build the never-ending dev storm fixture").
 //
@@ -24,7 +25,6 @@ export const FIXTURE_SOURCE = "dev-fixture";
 export const FIXTURE_GROUND = "bermuda";
 /** The sailings' own region tag: no real storm's grounds ever overlap it, so the fixture ships never leak into a real storm. */
 export const FIXTURE_REGION = "dev-fixture";
-const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
 
 export const FIXTURE_SHIPS = [
   { name: "MSC Meraviglia", line: "MSC", port: "Port Canaveral, Florida" },
@@ -35,7 +35,7 @@ export const FIXTURE_SHIPS = [
 export function devStormFixtureEnabled(env: Record<string, string | undefined> = process.env): boolean {
   if (env["DEV_STORM_FIXTURE"] !== "1") return false;
   const url = env["PUBLIC_URL"] ?? "";
-  return url.length > 0 && !PRODUCTION_HOST.test(url);
+  return url.length > 0 && !isProductionUrl(url); // lib/site-kind.ts: the dev mirror's own name is not production
 }
 
 /** Is this the fixture alert? (Only ever true on a box that has the fixture switched on.) */
