@@ -7,6 +7,13 @@
 // turns that row into what the page draws: four tiles, each with its value in
 // words a reader does not have to decode, and how it moved since the last run.
 //
+// The synopsis lines are the FACTS (written by rule so a count is never misstated).
+// What they MEAN is the model's reading — it reasons over the searches, pages, missing
+// pages, earlier readings and the work done, and the worker refuses any answer that
+// carries a figure not in its evidence. Mark, 2026-11-15: "I want the model to reason
+// the results to provide feedback. if the last sentence about 'what this means' is …
+// written off pre-established rules it means nothing."
+//
 // Rules held here (and tested):
 //   · a number that could not be measured is shown as "not measured", never as 0;
 //   · "X of Y" tiles carry both numbers, so 0 of 24 is not mistaken for nothing checked;
@@ -27,6 +34,15 @@ export interface SeoWorkerState {
   history?: ScoreCard[];
   previous?: ScoreCard | null;
   synopsis?: string[];
+  reading?: {
+    reading?: string[];
+    next?: string[];
+    unsure?: string;
+    by?: string;
+    at?: string;
+    flags?: string[];
+    failed?: string;
+  } | null;
   lastRun?: {
     at?: string;
     openAfter?: number;
@@ -59,6 +75,8 @@ export interface ScorecardView {
   periodDays: number;
   tiles: Tile[];
   synopsis: string[];
+  /** The model's reasoned reading. `sentences` is empty when it could not be written; `note` then says so. */
+  reading: { sentences: string[]; next: string[]; unsure: string; by: string | null; at: string | null; note: string };
   /** One sentence on what the worker did and what is waiting. */
   status: string;
   sortedBy: string | null;
@@ -97,12 +115,31 @@ export function statusLine(last: SeoWorkerState["lastRun"]): string {
   return parts.join(" ");
 }
 
+const strings = (v: unknown, max: number): string[] =>
+  Array.isArray(v) ? v.filter((s): s is string => typeof s === "string" && s.trim() !== "").slice(0, max) : [];
+
+export function readingView(r: SeoWorkerState["reading"]): ScorecardView["reading"] {
+  const sentences = strings(r?.reading, 5);
+  const note = sentences.length
+    ? ""
+    : (typeof r?.failed === "string" && r.failed.trim()) || "No reading has been written yet. It is written at each three-day run.";
+  return {
+    sentences,
+    next: sentences.length ? strings(r?.next, 3) : [],
+    unsure: sentences.length && typeof r?.unsure === "string" ? r.unsure.trim() : "",
+    by: r?.by ?? null,
+    at: r?.at ?? null,
+    note,
+  };
+}
+
 export function scorecardView(state: SeoWorkerState | null | undefined): ScorecardView {
   const history = Array.isArray(state?.history) ? state!.history!.filter((c) => c && typeof c === "object") : [];
   const card = history.at(-1);
   if (!card) {
     return {
       ready: false, measuredAt: null, previousAt: null, periodDays: 28, tiles: [], synopsis: [],
+      reading: readingView(null),
       status: "The search worker has not run yet. It runs every three days.", sortedBy: null, history: [],
     };
   }
@@ -121,6 +158,7 @@ export function scorecardView(state: SeoWorkerState | null | undefined): Scoreca
       tile("stories", "Newest story pages Google has fetched", card.recentStoriesFetched, card.recentStoriesChecked, prev?.recentStoriesFetched, has),
     ],
     synopsis: Array.isArray(state?.synopsis) ? state!.synopsis!.filter((s) => typeof s === "string" && s.trim() !== "") : [],
+    reading: readingView(state?.reading),
     status: statusLine(state?.lastRun),
     sortedBy: state?.lastRun?.sortedBy ?? null,
     history: history.slice(-20).map((c) => ({
