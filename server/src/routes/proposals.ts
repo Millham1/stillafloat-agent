@@ -21,6 +21,14 @@ import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { resolveActionsForSource } from "../lib/actions";
 import { applySeoOverride, isSeoOverridePayload } from "../lib/seo-executor";
+import {
+  isSeoBatchPayload,
+  planItem,
+  batchApprovalNote,
+  itemNote,
+  type SeoBatchPayload,
+  type ItemOutcome,
+} from "../lib/seo-batch";
 import { runNewsPrerender } from "../lib/prerender-news";
 import { logger } from "../lib/logger";
 
@@ -36,6 +44,119 @@ async function setProposalStatus(taskId: string, next: "open" | "dismissed"): Pr
   await resolveActionsForSource("site_proposal", taskId, next === "open" ? "done" : "dismissed");
 }
 
+interface BatchTaskRow {
+  id: string;
+  status?: string | null;
+  detail?: string | null;
+  payload?: Record<string, unknown> | null;
+}
+
+const appendNote = (detail: string | null | undefined, note: string): string =>
+  [detail?.trim(), note].filter(Boolean).join("\n\n");
+
+/**
+ * Approve a search batch (lib/seo-batch.ts): one decision from Mark covering several
+ * of the search loop's tasks. Story-page overrides are applied now and their tasks
+ * closed; every other task stays open, stamped approved by Mark, to be built. A task
+ * that moved on since the batch was filed is skipped and named in the note.
+ */
+async function approveBatch(
+  batchId: string,
+  batch: { title?: string | null; detail?: string | null },
+  payload: SeoBatchPayload,
+): Promise<{ implemented: boolean; note: string }> {
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+  const day = now.slice(0, 10);
+  const batchTitle = batch.title?.trim() || "Search batch";
+  const ids = payload.items.map((i) => i.taskId);
+  const { data, error } = await supabase.from("tasks").select("id, status, detail, payload").in("id", ids);
+  if (error) throw new Error(error.message);
+  const rows = new Map(((data ?? []) as BatchTaskRow[]).map((r) => [r.id, r]));
+  const outcomes: ItemOutcome[] = [];
+  let anyApplied = false;
+
+  for (const item of payload.items) {
+    const task = rows.get(item.taskId);
+    const plan = planItem(item, task);
+    if (plan.step === "skip" || !task) {
+      outcomes.push({ title: item.title, result: "skipped", note: plan.step === "skip" ? plan.reason : undefined });
+      continue;
+    }
+    if (plan.step === "apply") {
+      const result = await applySeoOverride(plan.action);
+      if (result.applied && result.auditNote) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: e } = await (supabase.from("tasks") as any)
+          .update({
+            status: "done",
+            done_at: now,
+            updated_at: now,
+            detail: appendNote(task.detail, `[auto-implemented ${day}, approved in "${batchTitle}"] ${result.auditNote}`),
+          })
+          .eq("id", task.id)
+          .eq("status", "open");
+        if (e) throw new Error(e.message);
+        anyApplied = true;
+        outcomes.push({ title: item.title, result: "applied", note: result.auditNote });
+        continue;
+      }
+      logger.warn({ taskId: task.id, reason: result.reason }, "batch override not applicable — approved to build instead");
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: e } = await (supabase.from("tasks") as any)
+      .update({
+        updated_at: now,
+        payload: { ...(task.payload ?? {}), approved_at: now, approved_in: batchId },
+        detail: appendNote(task.detail, itemNote("approved", day, batchTitle)),
+      })
+      .eq("id", task.id)
+      .eq("status", "open");
+    if (e) throw new Error(e.message);
+    outcomes.push({ title: item.title, result: "approved" });
+  }
+
+  const note = batchApprovalNote(outcomes, day);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: upErr } = await (supabase.from("tasks") as any)
+    .update({ status: "done", done_at: now, updated_at: now, detail: appendNote(batch.detail, note) })
+    .eq("id", batchId)
+    .eq("status", "proposed");
+  if (upErr) throw new Error(upErr.message);
+  await resolveActionsForSource("site_proposal", batchId, "done");
+  if (anyApplied) {
+    void runNewsPrerender().catch((err) =>
+      logger.error({ err }, "post-batch prerender failed (hourly tick will retry)"),
+    );
+  }
+  return { implemented: anyApplied, note };
+}
+
+/**
+ * Dismiss a search batch: the batch and every still-open task in it are closed, so
+ * the worker does not offer the same work again at its next run.
+ */
+async function dismissBatch(batchId: string, batchTitle: string, payload: SeoBatchPayload): Promise<void> {
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+  const ids = payload.items.map((i) => i.taskId);
+  const { data, error } = await supabase.from("tasks").select("id, status, detail").in("id", ids);
+  if (error) throw new Error(error.message);
+  for (const task of (data ?? []) as BatchTaskRow[]) {
+    if (task.status !== "open") continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: e } = await (supabase.from("tasks") as any)
+      .update({
+        status: "dismissed",
+        updated_at: now,
+        detail: appendNote(task.detail, itemNote("dismissed", now.slice(0, 10), batchTitle)),
+      })
+      .eq("id", task.id)
+      .eq("status", "open");
+    if (e) throw new Error(e.message);
+  }
+}
+
 /**
  * Approve one proposal. If it carries an actionable seo-override payload, apply
  * it and close the task 'done' with an audit note; otherwise (or if applying
@@ -46,7 +167,7 @@ async function approveProposal(taskId: string): Promise<{ implemented: boolean; 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, status, detail, payload")
+    .select("id, status, title, detail, payload")
     .eq("id", taskId)
     .single();
   if (error || !data) {
@@ -54,8 +175,10 @@ async function approveProposal(taskId: string): Promise<{ implemented: boolean; 
     await setProposalStatus(taskId, "open");
     return { implemented: false };
   }
-  const row = data as { status?: string; detail?: string | null; payload?: unknown };
+  const row = data as { status?: string; title?: string | null; detail?: string | null; payload?: unknown };
   if (row.status !== "proposed") return { implemented: false }; // re-click → no-op
+
+  if (isSeoBatchPayload(row.payload)) return approveBatch(taskId, row, row.payload);
 
   if (isSeoOverridePayload(row.payload)) {
     const result = await applySeoOverride(row.payload);
@@ -97,7 +220,15 @@ router.post("/proposals/:id/approve", requireToken, async (req: Request, res: Re
 
 router.post("/proposals/:id/dismiss", requireToken, async (req: Request, res: Response) => {
   try {
-    await setProposalStatus(req.params["id"] ?? "", "dismissed");
+    const taskId = req.params["id"] ?? "";
+    // A search batch carries tasks of its own: close those too (while the batch is
+    // still 'proposed', so a re-click does nothing).
+    const { data } = await getSupabase().from("tasks").select("status, title, payload").eq("id", taskId).maybeSingle();
+    const row = data as { status?: string; title?: string | null; payload?: unknown } | null;
+    if (row?.status === "proposed" && isSeoBatchPayload(row.payload)) {
+      await dismissBatch(taskId, row.title?.trim() || "Search batch", row.payload);
+    }
+    await setProposalStatus(taskId, "dismissed");
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "proposal dismiss failed");
