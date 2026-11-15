@@ -81,7 +81,9 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const [, go] = useLocation();
   // Mark 2026-11-13: "the summary should be closed. If I want to see it I will select it": a booking opens with every tab closed (status, steps and
   // buttons only); pressing a tab opens it, pressing the open tab closes it
-  const [tab, setTab] = useState<BookingTab | null>(initialTab ?? null);
+  // Mark 2026-11-14 (refreshed, saw no choices because every tab was closed; asked "open with the Summary showing?": "Yes, open it"): the booking
+  // now opens ON the Summary. Pressing the open tab still closes it.
+  const [tab, setTab] = useState<BookingTab | null>(initialTab ?? "summary");
   // Mark 2026-11-13 (opening the Cruise tab into a form of boxes: "the presentation is wrong. we fixed this yesterday"): every detail tab opens as a
   // clean read page in the confirmation layout, like the Summary. The boxes appear only after "Edit" on that tab.
   const [editing, setEditing] = useState<BookingTab | null>(null);
