@@ -21,7 +21,8 @@ type TripLine = { kind: string; direction: string | null; provider: string | nul
 // Mark 2026-11-12 ("I need information at my fingertips"): everything about the customer in one block, for the booking's first screen
 type Review = {
   travelers: Array<{ name: string; dob: string | null; age: number | null; lead: boolean }>; email: string | null; phone: string | null; lang: "en" | "es"; home: string | null; note: string | null;
-  chose: Array<{ label: string; detail: string | null }>; flexpay: boolean; toPrice: string[]; happened: Array<{ at: string; label: string }>;
+  chose: Array<{ label: string; detail: string | null; amount?: string | null; toPrice?: boolean }>; flexpay: boolean;
+  asked?: Array<{ q: string; a: string }>; pick?: { category: string; where: string; why: string } | null; toPrice: string[]; happened: Array<{ at: string; label: string }>;
 };
 /** Where this person stands, from the group's levels (GET /groups/:id/pipeline). */
 export type BookingStage = { key: string; status: string; next: string; on: "mark" | "guest" | "done"; since: string | null };
@@ -503,6 +504,27 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               <div className="mt-3">
                 {kv("Email", rv?.email)}{kv("Phone", rv?.phone ?? <span className="font-normal text-[#4a5a7a]">not on file</span>)}{kv("Home", rv?.home)}{rv?.flexpay ? kv("FlexPay", "they asked for it") : null}
               </div>
+
+              {/* Mark 2026-11-14 ("i dont see any choices. how do I see what she actually checked on the form"): every answer the guest gave, in one list */}
+              {((rv?.chose ?? []).length > 0 || (rv?.asked ?? []).length > 0) && (
+                <div data-testid="guest-chose">
+                  <H>What the guest chose</H>
+                  {(rv?.chose ?? []).map((c, n) => (
+                    <div key={n} className="grid gap-4 border-b border-[#dde5f1] py-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                      <p className="text-lg font-extrabold">{c.label}</p>
+                      <p className="text-base">{c.toPrice ? <b className="text-[#8a5f00]">Asked for it. Waiting for your price.</b> : <><span className="text-[#4a5a7a]">Price they saw:</span> <b>{c.amount ?? "none shown"}</b></>}</p>
+                    </div>
+                  ))}
+                  <div className="mt-3">{kv("FlexPay", rv?.flexpay ? "Yes, they asked for it" : "No")}</div>
+                  {(rv?.asked ?? []).length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-base font-extrabold">Their answers to the four cabin questions</p>
+                      {(rv?.asked ?? []).map((x, n) => <p key={n} className="text-base leading-7"><span className="text-[#4a5a7a]">{x.q}</span> <b>{x.a}</b></p>)}
+                      {rv?.pick ? <p className="text-base leading-7"><span className="text-[#4a5a7a]">Our pick for them:</span> <b>{rv.pick.category}, {rv.pick.where}</b> <span className="text-[#4a5a7a]">({rv.pick.why})</span></p> : null}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <H edit="travel">Getting there</H>
               {data.trip.length === 0 && <p className="text-base text-[#4a5a7a]">No flights, hotels or transfers on this booking.</p>}

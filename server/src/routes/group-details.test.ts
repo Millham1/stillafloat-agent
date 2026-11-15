@@ -1086,6 +1086,9 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual((review["travelers"] as Row[]).map((t) => [t["name"], t["lead"]]).slice(0, 1), [[(review["travelers"] as Row[])[0]!["name"], true]], "the lead is first");
   assert.equal((review["travelers"] as Row[]).length, 2, "everyone on the booking");
   assert.ok(Array.isArray(review["chose"]) && (review["chose"] as Row[]).length > 0 && Array.isArray(review["happened"]) && (review["happened"] as Row[]).some((h) => h["label"] === "Sent their choices"));
+  // Mark 2026-11-14: each thing the guest chose says whether it has a price or waits for Mark's; the cabin answers and our pick ride along
+  assert.ok((review["chose"] as Row[]).every((c) => typeof c["toPrice"] === "boolean" && "amount" in c), "each choice says priced or to price");
+  assert.ok(Array.isArray(review["asked"]) && "pick" in review, "the four cabin answers and our pick are on the review");
   assert.ok(!JSON.stringify(review).includes("passport"), "no passport data in the review");
   // Mark 2026-11-12 ("we need to build it into a PDF for download"): the same quote as a PDF, for Mark and behind the guest's own link
   const pdfMark = await call("GET", `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote-pdf`, { token: true });

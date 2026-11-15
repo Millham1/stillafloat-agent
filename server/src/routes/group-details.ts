@@ -660,7 +660,7 @@ router.post("/protection-plans/pull", requireToken, async (req: Request, res: Re
 });
 
 async function loadBooking(groupId: string, iid: string) {
-  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
+  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email, phone, lang, note, created_at, concierge, pick").eq("id", iid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!reply || !reply.quote_requested_at || !reply.traveler_id) return null;
   const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, phone, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
@@ -892,6 +892,18 @@ function pricePath(iid: string, lang: Lang, open?: "book" | "changes"): string |
  * about the customer the file already holds, in one block for the booking's first screen: who is travelling (with ages), how to reach them, where they
  * live, what they chose, what they asked Mark to price, and what has happened so far with its dates. Nothing here is worked out or guessed.
  */
+// The four cabin questions and their answers exactly as the details page words them (public/details.html, the list Q). "No" on the last one covers
+// both of the page's no answers: only yes or no is kept.
+const ASKED: Array<{ k: "room" | "priority" | "budget" | "motion"; q: string; a: Record<string, string> }> = [
+  { k: "room", q: "How do you picture using your room?", a: { inside: "Crash and recharge", oceanview: "Wake up to daylight and water", balcony: "Coffee outside in my pajamas", suite: "The room is part of the vacation" } },
+  { k: "priority", q: "What matters most once you're aboard?", a: { ocean: "Waking up to the ocean", quiet: "Peace and quiet", action: "Being near the action", space: "Room to spread out" } },
+  { k: "budget", q: "How does the trip budget work, honestly?", a: { lean: "There's a number, and we respect it", middle: "Comfortable, but every dollar should earn its spot", treat: "For the right room, the budget moves", sky: "The budget is whatever makes it perfect" } },
+  { k: "motion", q: "Does anyone get seasick?", a: { yes: "Yes", no: "No" } },
+];
+function askedOf(v: unknown): Array<{ q: string; a: string }> {
+  const c = storedConcierge(v);
+  return c ? ASKED.map((x) => ({ q: x.q, a: x.a[c[x.k]] ?? c[x.k] })) : [];
+}
 function reviewOf(b: BookingFile) {
   const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
   const today = new Date().toISOString().slice(0, 10);
@@ -912,7 +924,9 @@ function reviewOf(b: BookingFile) {
     email: text(b.lead.email ?? b.reply.email, 200), phone: text(b.lead.phone ?? b.reply.phone, 40), lang: b.lead.lang === "es" ? "es" : "en",
     home: [text(fd["address"], 200), text(fd["city_state_zip"], 120)].filter(Boolean).join(", ") || null,
     note: text(b.reply.note, 2000),
-    chose: (b.quote?.lines ?? []).map((l) => ({ label: l.label, detail: l.detail })),
+    chose: (b.quote?.lines ?? []).map((l) => ({ label: l.label, detail: l.detail, amount: l.amountText ?? null, toPrice: l.toQuote === true })),
+    // Mark 2026-11-14 ("how do I see what she actually checked on the form"): the four cabin questions in the page's own words, and our pick
+    asked: askedOf(b.reply.concierge), pick: storedPick(b.reply.pick),
     flexpay: b.quote?.flexpay === true, toPrice: b.quote?.toQuote ?? [],
     happened: happened.filter((h) => h.at).sort((x, y) => String(x.at).localeCompare(String(y.at))),
   };
