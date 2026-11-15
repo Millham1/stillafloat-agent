@@ -583,7 +583,7 @@ export default [
       const anon = await t.get("/api/search-scorecard");
       t.ok(anon.status === 401 || anon.status === 403, `the search scorecard answered HTTP ${anon.status} without the dashboard token`);
       const v = t.success(await t.get("/api/search-scorecard", { auth: true }));
-      t.fields(v, ["ready", "tiles", "synopsis", "status", "history"], "the search scorecard");
+      t.fields(v, ["ready", "tiles", "synopsis", "reading", "status", "history"], "the search scorecard");
       // The worker has run on this box at least once: a page that says "has not run yet" forever is the
       // failure this check exists for (the loop filed tasks for six weeks with nothing reading them).
       t.ok(v.ready === true, `the search scorecard is not ready: "${String(v.status).slice(0, 120)}"`);
@@ -598,6 +598,21 @@ export default [
         "the synopsis has a line that is not a plain sentence");
       // a synopsis exists whenever the worker ran (it also says so when Search Console could not be read)
       t.atLeast(v.synopsis.length, 1, "sentences in the synopsis");
+      // What it means is the model's reasoned reading (Mark 2026-11-15: a conclusion written off preset
+      // rules "means nothing"). Either there is a reading of at least two plain sentences, or the page
+      // says in a sentence that none could be written; never a blank, never both.
+      const R = t.fields(v.reading, ["sentences", "next", "unsure", "note"], "the scorecard's reading");
+      t.ok(Array.isArray(R.sentences) && Array.isArray(R.next), "the reading's sentences or next steps are not lists");
+      if (R.sentences.length) {
+        t.atLeast(R.sentences.length, 2, "sentences in the model's reading");
+        t.ok(R.sentences.concat(R.next).every((line) => typeof line === "string" && line.length > 20 && !/[{}\[\]]|null|undefined|NaN/.test(line)), "the reading has a line that is not a plain sentence");
+        t.ok(R.note === "", "the reading has both sentences and a could-not-be-written note");
+        t.ok(typeof R.by === "string" && R.by.length > 2, "the reading does not say which model reasoned it");
+      } else {
+        t.ok(typeof R.note === "string" && R.note.length > 20, "there is no reading and no sentence saying why");
+        t.equal(R.next.length, 0, "next steps shown without a reading");
+      }
+      t.observe("search scorecard reading written", R.sentences.length > 0);
       t.matches(String(v.measuredAt || ""), /^\d{4}-\d{2}-\d{2}T/, "when the scorecard was measured");
       t.atLeast(v.history.length, 1, "readings in the scorecard history");
       t.ok(typeof v.status === "string" && v.status.length > 10, "the scorecard has no line saying what is waiting");

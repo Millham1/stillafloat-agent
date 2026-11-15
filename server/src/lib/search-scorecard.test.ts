@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { scorecardView, statusLine } from "./search-scorecard";
+import { scorecardView, statusLine, readingView } from "./search-scorecard";
 
 const first = {
   at: "2026-11-15T15:00:00+00:00", periodDays: 28, impressions: 125, clicks: 3,
@@ -69,6 +69,29 @@ describe("search-scorecard: the dashboard's four tiles", () => {
       "The last run could not finish: sorting. 10 task(s) are on the search list.");
     assert.equal(statusLine({ batchId: null, failed: [] }), "No batch was filed this run.");
     assert.equal(statusLine(undefined), "");
+  });
+
+  it("passes the model's reading through, and says so plainly when there is none", () => {
+    const r = readingView({
+      reading: ["The guides are the pages worth getting found.", "Google has not fetched the newest stories.", " "],
+      next: ["Link the guides from the homepage.", "b", "c", "d"], unsure: " Why Google is slow. ", by: "AI box", at: "2026-11-15T20:00:00+00:00",
+    });
+    assert.deepEqual(r.sentences, ["The guides are the pages worth getting found.", "Google has not fetched the newest stories."]);
+    assert.deepEqual(r.next, ["Link the guides from the homepage.", "b", "c"]);
+    assert.equal(r.unsure, "Why Google is slow.");
+    assert.equal(r.by, "AI box");
+    assert.equal(r.note, "");
+
+    const failed = readingView({ reading: [], next: ["should not show"], unsure: "nor this", by: "AI box",
+      failed: "The reading could not be written this run; the numbers above are still correct." });
+    assert.deepEqual(failed.sentences, []);
+    assert.deepEqual(failed.next, []);
+    assert.equal(failed.unsure, "");
+    assert.equal(failed.note, "The reading could not be written this run; the numbers above are still correct.");
+
+    assert.match(readingView(null).note, /No reading has been written yet/);
+    assert.match(scorecardView({ history: [first] }).reading.note, /No reading has been written yet/);
+    assert.deepEqual(scorecardView({ history: [first], reading: { reading: ["A.", "B."], by: "Claude" } }).reading.sentences, ["A.", "B."]);
   });
 
   it("keeps at most the last 20 readings for the page", () => {

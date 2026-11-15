@@ -56,6 +56,7 @@ type Scorecard = {
   previousAt: string | null;
   tiles: ScoreTile[];
   synopsis: string[];
+  reading: { sentences: string[]; next: string[]; unsure: string; by: string | null; at: string | null; note: string };
   status: string;
   sortedBy: string | null;
 };
@@ -97,10 +98,50 @@ function ScorecardPanel({ data, loading }: { data: Scorecard | undefined; loadin
               </div>
             ))}
           </div>
+          {/* What it means: the model reasons over the searches, pages and history. Never a preset rule. */}
+          <div className="mt-5">
+            <h4 className="text-base font-semibold">
+              What this means
+              {data.reading?.by && data.reading.sentences.length > 0 && (
+                <span className="text-sm font-normal text-muted-foreground"> · reasoned by the {data.reading.by}</span>
+              )}
+            </h4>
+            {data.reading?.sentences.length ? (
+              <>
+                <div className="mt-2 space-y-2">
+                  {data.reading.sentences.map((line, i) => (
+                    <p key={i} className="text-base leading-relaxed">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                {data.reading.next.length > 0 && (
+                  <>
+                    <h4 className="text-base font-semibold mt-4">What it would do next</h4>
+                    <ol className="mt-2 space-y-1 list-decimal pl-6">
+                      {data.reading.next.map((line, i) => (
+                        <li key={i} className="text-base leading-relaxed">
+                          {line}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+                {data.reading.unsure && (
+                  <p className="text-base leading-relaxed mt-4">
+                    <span className="font-semibold">What these numbers cannot tell us: </span>
+                    {data.reading.unsure}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-base text-muted-foreground mt-2">{data.reading?.note}</p>
+            )}
+          </div>
           {data.synopsis.length > 0 && (
             <div className="mt-5">
-              <h4 className="text-base font-semibold">What this means</h4>
-              <ul className="mt-2 space-y-2">
+              <h4 className="text-base font-semibold">The numbers, in words</h4>
+              <ul className="mt-2 space-y-1 list-disc pl-6">
                 {data.synopsis.map((line, i) => (
                   <li key={i} className="text-base leading-relaxed">
                     {line}
