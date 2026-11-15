@@ -1275,6 +1275,17 @@ test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking c
     addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [], guests: [], option_until: null, option_until_time: null,
   });
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] ?? null, null, "nothing is saved until Mark has checked it and saved");
+  // Mark 2026-11-14: a quote made in someone else's name supplies figures only; the names are this booking's travelers, the lead first
+  const own = (view.json["review"]["travelers"] as Row[]).map((t) => String(t["name"]));
+  const line = (name: string) => ({ name, cruise: 437, packaging: 0, addons: 40, insurance: 0, taxes: 145.39, total: 622.39, items: ["Premium Extra drinks"] });
+  const strangers = ["ZED QUOTER", "YAN OTHER", "X THIRD", "W FOURTH"].slice(0, own.length);
+  tables["group_intakes"]!.push({ id: "in-2", filename: "own quote.pdf", status: "ready", error: null, extracted: {
+    total_price: 1244.78, cabin_categories: [{ category: "Balcony Aurea" }], addons: [{ name: `${strangers[0]}: Premium Extra drinks`, total: 40 }], guest_prices: strangers.map(line) } });
+  replyRow()["quote"] = { ...replyRow()["quote"], carrier_intake_id: "in-2" };
+  const renamed = (await call("GET", booking, { token: true })).json["carrier"]["read"];
+  assert.deepEqual((renamed["guests"] as Row[]).map((x) => x["name"]), own, "the quote's guests carry this booking's names");
+  assert.deepEqual([(renamed["guests"] as Row[])[0]!["total"], renamed["addons"][0]["name"]], [622.39, `${own[0]}: Premium Extra drinks`], "figures untouched; the add-on is named for the traveler");
+  replyRow()["quote"] = { ...replyRow()["quote"], carrier_intake_id: "in-1" };
   const g = await call("GET", `/group-details/${LINK}`);
   assert.ok(!("carrier_intake_id" in g.json["quote"]), "the guest never gets the read's id");
   // not complete before the paperwork is out, nor before the signatures are back
