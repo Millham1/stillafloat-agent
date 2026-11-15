@@ -966,7 +966,9 @@ function sheetOf(b: BookingFile, lang: Lang) {
       port: text(x["port"], 120) ?? "", arrive: clockTime(text(x["arrive"], 10), lang) || null, depart: clockTime(text(x["depart"], 10), lang) || null,
     };
   });
-  const optionDay = text(read?.["option_until"], 10);
+  // Mark 2026-11-14 ("change the hold date to 12/15", then "Add it now"): the day Mark typed on the Cruise tab wins over the day read off the quote
+  const typedDay = text(((b.lead.form_data as Record<string, any> | null)?.["trip"] ?? {})["option_until"], 10);
+  const optionDay = typedDay && /^\d{4}-\d{2}-\d{2}$/.test(typedDay) ? typedDay : text(read?.["option_until"], 10);
   return {
     bookingNumber: text(b.cabin?.["booking_number"], 60),
     // an optioned booking: the day (and hour) the cruise line holds the cabin until, as its quote prints it
@@ -1273,6 +1275,16 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
       if (fe) throw new Error(fe.message);
       const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), guest_prices: guestPriceRows(body["guest_prices"]) } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
+    if (body["option_until"] !== undefined) {
+      // the hold date typed on the Cruise tab: a real day (yyyy-mm-dd), or empty to go back to the day on the cruise line's quote
+      const raw = body["option_until"] === null ? "" : String(body["option_until"]).trim();
+      if (raw && (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T12:00:00Z`)))) return bad("The hold date is not a date.");
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), option_until: raw || null } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
     if (body["extras"] !== undefined) {

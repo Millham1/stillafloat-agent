@@ -109,6 +109,8 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
   const UNSAVED = 'The current quote has not been saved. Press "Save the confirmation" at the bottom of the screen, then press this again.';
   const [preview, setPreview] = useState<{ html: string; subject: string; to: string } | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Mark 2026-11-14: the day the cruise line holds the cabin until, typed here when it differs from the uploaded quote's (yyyy-mm-dd)
+  const [hold, setHold] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!data || dirty) return;   // a refresh never overwrites what is typed and not yet saved
@@ -117,6 +119,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     setTrip(data.trip.map((r) => (r.per === "person" ? { ...r, price: r.unit_price ?? r.price } : r)));   // a per-person line shows the price for one traveler
     setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setGuestPrices(data.guestPrices ?? []);
+    setHold(data.sheet?.optionUntil?.day ?? "");
     setPlans((data.protection ?? []).map((x) => ({ name: x.name, price: String(x.total ?? x.per_person ?? ""), party: x.total != null, line: x.line })));
     setDirty(false);
     // Mark 2026-11-10: the quote's add-ons (the dining and drink packages) belong in the Cruise extras section. When the quote has been read with
@@ -245,7 +248,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
     setBusy(true);
     try {
       const clean = (v: unknown) => (v === null || v === "" ? null : String(v).replace(/[$,\s]/g, ""));
-      const body: Record<string, unknown> = { guest_prices: guestPrices, trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })),
+      const body: Record<string, unknown> = { guest_prices: guestPrices, ...(hold !== (data.sheet?.optionUntil?.day ?? "") ? { option_until: hold } : {}), trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })),
         protection: plans.filter((x) => x.name.trim() || x.price.trim()).map((x) => ({ name: x.name.trim(), ...(x.party ? { total: clean(x.price) } : { per_person: clean(x.price) }), line: x.line })) };
       // the cabin row keeps the whole cruise price: the cabin fare and the cruise line's extras together
       if (data.cabin) { const { fare, ...rest } = cabin; body["cabin"] = { ...rest, price_total: fare === "" && !extras.length ? "" : String(cruiseSum) }; }
@@ -649,6 +652,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
           <Field label="Cabin type as booked"><input className={input} value={cabin["category"] ?? ""} onChange={(e) => setC("category", e.target.value)} disabled={sent} /></Field>
           <Field label="Cabin fare ($, without the extras)"><input className={input} inputMode="decimal" value={cabin["fare"] ?? ""} onChange={(e) => setC("fare", e.target.value)} disabled={sent} /></Field>
           <Field label="Deposit ($)"><input className={input} inputMode="decimal" value={cabin["deposit_amount"] ?? ""} onChange={(e) => setC("deposit_amount", e.target.value)} disabled={sent} /></Field>
+          <Field label="Cruise line holds the cabin until"><input type="date" className={input} value={hold} onChange={(e) => { setHold(e.target.value); setDirty(true); }} disabled={sent} /></Field>
         </div>
       )}
 
