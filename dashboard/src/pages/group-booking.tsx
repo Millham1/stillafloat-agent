@@ -467,6 +467,16 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         const pkey = price?.protection?.key ?? "";
         const pplan = /^p\d+$/.test(pkey) ? (data.protection ?? [])[Number(pkey.slice(1))] : undefined;
         const pcost = pplan ? (pplan.total != null ? Number(pplan.total) : pplan.per_person != null ? Number(pplan.per_person) * party : null) : null;
+        // Mark 2026-11-14 ("i cannot see anything ... not hotel, transfers, insurance options"): a thing the guest asked for shows the price now on the
+        // booking (a travel line's saved price; a drink package once the cruise line's quote carries one), and says "waiting" only while it has none
+        const tripPrice = (r: (typeof data.trip)[number]): string | null => (r.price == null || r.price === "" ? null : r.per === "person" && r.unit_price != null && party > 1 ? `${usd(Number(r.unit_price))} per person × ${party} = ${usd(Number(r.price))}` : usd(Number(r.price)));
+        const drinkLines = (data.extras ?? []).filter((x) => /drink/i.test(x.name));
+        const pricedNow = (label: string): string | null => {
+          const line = data.trip.find((r) => r.label === label);
+          if (line) return tripPrice(line);
+          return /drink/i.test(label) && drinkLines.length ? `on the cruise line's quote (${usd(drinkLines.reduce((n, x) => n + Number(x.total), 0))} in cruise extras, with what comes with it)` : null;
+        };
+        const quoted = data.allianz?.status === "ready" ? data.allianz.plans : [];
         const act = "text-base px-4 py-2.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-2";
         return (
           <div className="space-y-4">
@@ -517,7 +527,9 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
                   {(rv?.chose ?? []).map((c, n) => (
                     <div key={n} className="grid gap-4 border-b border-[#dde5f1] py-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
                       <p className="text-lg font-extrabold">{c.label}</p>
-                      <p className="text-base">{c.toPrice ? <b className="text-[#8a5f00]">Asked for it. Waiting for your price.</b> : <><span className="text-[#4a5a7a]">Price they saw:</span> <b>{c.amount ?? "none shown"}</b></>}</p>
+                      <p className="text-base">{!c.toPrice ? <><span className="text-[#4a5a7a]">Price they saw:</span> <b>{c.amount ?? "none shown"}</b></>
+                        : pricedNow(c.label) ? <><span className="text-[#4a5a7a]">Asked for it. Your price:</span> <b>{pricedNow(c.label)}</b></>
+                        : <b className="text-[#8a5f00]">Asked for it. Waiting for your price.</b>}</p>
                     </div>
                   ))}
                   <div className="mt-3">{kv("FlexPay", rv?.flexpay ? "Yes, they asked for it" : "No")}</div>
@@ -536,12 +548,21 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
               {data.trip.map((r, n) => (
                 <div key={n} className="grid gap-4 border-b border-[#dde5f1] py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
                   <div><p className="text-lg font-extrabold">{r.kind === "package" ? `Air and hotel package, ${r.direction === "post" ? "after" : "before"} the cruise` : r.label}</p>{r.provider && <p className="text-base text-[#4a5a7a]">{r.provider}</p>}</div>
-                  <p className="text-base"><span className="text-[#4a5a7a]">Confirmation:</span> <b>{r.confirmation ?? missing}</b></p>
+                  <div>
+                    <p className="text-base"><span className="text-[#4a5a7a]">Price:</span> <b>{tripPrice(r) ?? <span className="text-red-600">no price yet</span>}</b></p>
+                    <p className="text-base"><span className="text-[#4a5a7a]">Confirmation:</span> <b>{r.confirmation ?? missing}</b></p>
+                  </div>
                 </div>
               ))}
 
               <H edit="protection">Travel protection</H>
               <p className="text-base">{picked ? <>The guest chose: <b>{picked}</b></> : (data.protection ?? []).length ? <><b>{(data.protection ?? []).length} plan{(data.protection ?? []).length === 1 ? "" : "s"}</b> offered on the quote. The guest has not chosen yet.</> : <span className="font-bold text-red-600">No plans are offered on this quote yet.</span>}</p>
+              {!picked && (data.protection ?? []).length === 0 && quoted.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-base">Allianz priced <b>{quoted.length} plan{quoted.length === 1 ? "" : "s"}</b> for this trip. None is ticked yet: press Edit and tick the ones to offer.</p>
+                  {quoted.map((x, n) => <p key={n} className="text-base leading-7"><span className="text-[#4a5a7a]">{x.name}:</span> <b>{usd(x.total)}</b> <span className="text-[#4a5a7a]">for the whole party</span></p>)}
+                </div>
+              )}
 
               <H>Payment details</H>
               {doc?.matrix ? doc.matrix.names.map((name, n) => (
