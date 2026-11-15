@@ -721,6 +721,24 @@ function signedFrom(sets: SignSets, lead: Row): SignedView {
 }
 const signedFor = async (groupId: string, lead: Row): Promise<SignedView> => signedFrom(await loadSignSets(groupId), lead);
 
+/**
+ * Mark 2026-11-14 (he uploaded a quote made in his own name on a guest's booking: "the names should change to Susan and Michael. I only wanted the
+ * numbers brought over. this will be sent to them"): a quote supplies FIGURES; the names on a booking are always the booking's own travelers. Each
+ * guest on the quote is matched to a traveler by name; the ones that match nobody take the travelers left over, in order (the lead first). The
+ * same swap is made at the front of an add-on's name ("MARK MILLHAM: drink package").
+ */
+function onThisBooking<T extends ReturnType<typeof carrierView>>(view: T, b: BookingFile): T {
+  if (!view?.read || view.read.guests.length === 0) return view;
+  const key = (s: string) => s.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  const travelers = [...b.party].sort((x, y) => Number(y["id"] === b.lead.id) - Number(x["id"] === b.lead.id)).map((t) => nameOf(t)).filter(Boolean);
+  const left = [...travelers];
+  const to = new Map<string, string>();
+  for (const g of view.read.guests) { const i = left.findIndex((t) => key(t) === key(g.name)); if (i >= 0) to.set(key(g.name), left.splice(i, 1)[0]!); }
+  for (const g of view.read.guests) if (!to.has(key(g.name)) && left.length) to.set(key(g.name), left.shift()!);
+  const named = (n: string) => to.get(key(n)) ?? n;
+  const addon = (n: string) => { const m = /^([^:]+):(.*)$/s.exec(n); return m && to.has(key(m[1]!)) ? `${to.get(key(m[1]!))}:${m[2]}` : n; };
+  return { ...view, read: { ...view.read, guests: view.read.guests.map((g) => ({ ...g, name: named(g.name) })), addons: view.read.addons.map((x) => ({ ...x, name: addon(x.name) })) } };
+}
 /** What the reader found on the cruise line's quote, in the booking confirmation's own fields. Mark checks every line before he saves it. */
 function carrierView(intake: Row | null) {
   if (!intake) return null;
@@ -1017,7 +1035,7 @@ function bookingView(b: BookingFile) {
     // the Allianz quote the agent fetched for THIS trip (the whole trip cost, each traveler's age): each plan with its one price for the party
     allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: offeredTripPlans(a.plans), hidden: a.plans.length - offeredTripPlans(a.plans).length, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
-    carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
+    carrier: onThisBooking(carrierView(b.carrier), b), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
     confirmWith: ["The cruise line", ...chosen.map((r) => [r.label, r.provider].filter(Boolean).join(" · "))],
     flexpay: b.quote?.answers?.flexpay === true ? { call: callView(storedCall(b.reply.quote), "en") } : null,
