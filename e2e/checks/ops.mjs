@@ -1733,6 +1733,31 @@ export default [
     },
   },
   {
+    id: "ops.paper-trail-is-marks-alone",
+    basis: "ruling: Mark 2026-11-14 — 'any time we have an interaction with someone there should be a paper trail, so the contact record should stay in the DB for retrieval if necessary': the trail of every person is kept and can be pulled up, by Mark only",
+    title: "The paper trail lists people for Mark alone, one person's trail is well formed, and a request that names no real address is refused",
+    covers: ["GET /api/trail", "POST /api/trail/refresh"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends a POST request (refusal paths only: no token, and something that is not an email address; the mailbox is never asked and nothing is written); prod sweeps are read-only",
+    run: async (t) => {
+      unauthorized(t, await t.send("GET", "/api/trail", { auth: false }), "GET /api/trail");
+      const list = await t.send("GET", "/api/trail", { auth: true });
+      t.ok(list.status === 200 && list.json?.success === true && Array.isArray(list.json?.people), `the paper trail should list people for Mark: ${list.describe()}`);
+      for (const p of (list.json?.people ?? []).slice(0, 50)) {
+        t.ok(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(p.email || "") && p.count > 0 && !Number.isNaN(Date.parse(p.last_at)) && Array.isArray(p.groups), `a person on the trail has an address, a count and a latest time: ${JSON.stringify(p).slice(0, 160)}`);
+      }
+      const first = (list.json?.people ?? [])[0];
+      if (first) {
+        const one = await t.send("GET", `/api/trail?email=${encodeURIComponent(first.email)}`, { auth: true });
+        t.ok(one.status === 200 && Array.isArray(one.json?.rows) && one.json.rows.length === first.count, `one person's trail should hold as many lines as the list says (${first.count}): ${one.describe()}`);
+        for (const r of one.json?.rows ?? []) t.ok(["site-email", "gmail", "event"].includes(r.kind) && ["out", "in", "note"].includes(r.direction) && !Number.isNaN(Date.parse(r.at)) && typeof r.source_id === "string", `a line of the trail says what it is, which way it went and when: ${JSON.stringify(r).slice(0, 160)}`);
+      }
+      refused(t, await t.send("GET", "/api/trail?email=not-an-address", { auth: true }), 400, "a trail asked for something that is not an address", /not an email address/i);
+      unauthorized(t, await t.send("POST", "/api/trail/refresh", { auth: false, body: { email: "nobody@example.com" } }), "POST /api/trail/refresh");
+      refused(t, await t.send("POST", "/api/trail/refresh", { auth: true, body: { email: "not-an-address" } }), 400, "a mailbox refresh for something that is not an address", /not an email address/i);
+    },
+  },
+  {
     id: "ops.flexpay-call-writes-refuse",
     basis: "ruling: Mark 2026-11-05 — the guest picks the FlexPay video call on our own scheduler, 'M-S 10-8 and doesn't conflict with any meetings on my schedule already'; only the guest Mark emailed can book, so a link that does not exist books nothing",
     title: "Booking a FlexPay video call refuses a link that does not exist, and the bot trap books nothing",

@@ -41,3 +41,35 @@ export async function opsBook(o: { start: string; minutes: number; title: string
     return { ok: false, reason: "unreachable" };
   }
 }
+
+/** Take an appointment the site booked off Mark's calendar (Mark 2026-11-14: a guest he deletes must not leave their planning call on his schedule).
+ *  true: it is off the calendar (or was already gone). false: the calendar could not be asked, or the event is not one the site booked. */
+export async function opsCancel(eventId: string): Promise<boolean> {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key || !eventId) return false;
+  try {
+    const r = await fetch(`${base()}/schedule/cancel`, { method: "POST", headers: { "x-api-key": key, "content-type": "application/json" }, signal: AbortSignal.timeout(30_000), body: JSON.stringify({ event_id: eventId }) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** One message of Mark's mailbox to or from a person, as the ops-manager reports it (agent/mail_trail.py): never the body, only Gmail's preview line. */
+export interface MailboxMessage { id: string; address: string; direction: "in" | "out"; from: string; to: string; subject: string; snippet: string; at: string }
+
+/** The mailbox's messages to and from these addresses, or null when the mailbox could not be asked. */
+export async function opsMailTrail(addresses: string[], since?: string): Promise<MailboxMessage[] | null> {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key || !addresses.length) return null;
+  try {
+    const r = await fetch(`${base()}/mail/trail`, { method: "POST", headers: { "x-api-key": key, "content-type": "application/json" }, signal: AbortSignal.timeout(60_000), body: JSON.stringify({ addresses, ...(since ? { since } : {}) }) });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { messages?: unknown };
+    if (!Array.isArray(j.messages)) return null;
+    return j.messages.filter((m): m is MailboxMessage => !!m && typeof (m as MailboxMessage).id === "string" && typeof (m as MailboxMessage).address === "string" && typeof (m as MailboxMessage).at === "string"
+      && ((m as MailboxMessage).direction === "in" || (m as MailboxMessage).direction === "out"));
+  } catch {
+    return null;
+  }
+}

@@ -17,12 +17,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
+import { keepOnTrail, pullMailboxFor } from "./contact-trail";
+import { trailEmail, trailEvent } from "../lib/contact-trail";
 import {
   SELLER_OF_TRAVEL, WHEN_WORD, callBookedEmail, callEmail, decisionEmail, planBookedEmail, priceEmail, type QuoteDoc, callerPhone, detailsFacts, detailsTokenFresh, firstWord,  pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
-import { opsBook, opsBusy } from "../lib/ops-schedule";
+import { opsBook, opsBusy, opsCancel } from "../lib/ops-schedule";
 import { ageOnDay, fetchAllianzTripQuote, offeredTripPlans, planBenefits, planLabel, plansFromText, type PlanBenefit, type TripPlan, type TripQuoteInput } from "../lib/allianz-quote";
 import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
@@ -1068,6 +1070,22 @@ router.get("/groups/:id/bookings", requireToken, async (req: Request, res: Respo
 // put on the file, the uploaded cruise line quote, Mark's open items; the cabin goes back to held.
 const RECORD_ACTIONS = ["group-interest", "group-call", "group-hold", "group-quote", "group-price-ok", "group-price-change"];
 const DOCS_BUCKET = "group-docs";
+/** A deleted guest's planning call and FlexPay call come off Mark's calendar. Answers how many were on it and how many came off. */
+async function cancelCallsOf(quote: unknown): Promise<{ calls: number; removed: number }> {
+  const ids = (["plan", "flexpay"] as const).map((k) => storedCall(quote, k)?.event_id).filter((x): x is string => !!x);
+  let removed = 0;
+  for (const id of ids) if (await opsCancel(id)) removed++;
+  return { calls: ids.length, removed };
+}
+/** The person's line on the paper trail when they leave a group, and what the mailbox holds for them (asked in the background: a slow mailbox must not hold up the delete). */
+async function leaveOnTrail(reply: Row, groupId: string, groupName: string | null, what: string): Promise<void> {
+  const email = trailEmail(reply["email"]);
+  if (!email) return;
+  const since = text(reply["created_at"], 40);
+  await keepOnTrail([trailEvent({ email, name: nameOf(reply) || null, what, groupId, groupName, key: `left:${reply["id"]}`,
+    detail: [since ? `Signed up ${since.slice(0, 10)}` : null, reply["guests"] ? `party of ${reply["guests"]}` : null].filter(Boolean).join(", ") || null })]);
+  void pullMailboxFor(email, nameOf(reply) || null).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "paper trail: the mailbox could not be read for a deleted guest"));
+}
 async function closeItemsOf(replyId: string): Promise<void> {
   for (const k of RECORD_ACTIONS) await resolveActionsForSource("lead", `${k}-${replyId}`, "dismissed").catch(() => undefined);
 }
@@ -1084,7 +1102,7 @@ router.post("/groups/:id/interests/:iid/delete", requireToken, async (req: Reque
   try {
     const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
     if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
-    const { data: reply, error } = await db().from("group_interests").select("id, traveler_id, quote, first_name, last_name").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    const { data: reply, error } = await db().from("group_interests").select("id, traveler_id, quote, first_name, last_name, email, guests, created_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
     let cabinNote: string | null = null, travelersGone = 0;
@@ -1124,9 +1142,16 @@ router.post("/groups/:id/interests/:iid/delete", requireToken, async (req: Reque
     }
     await dropIntake(text((reply.quote as Row | null)?.["carrier_intake_id"], 60));
     await closeItemsOf(iid);
+    // Mark 2026-11-14 (paper trail): the person leaves the group's lists, their trail stays. Their emails are on it already (the email log's
+    // trigger); here go what the mailbox holds for them, and a line saying they were removed. Their calls come off Mark's calendar: a call
+    // with someone who is no longer on the group is not an appointment any more.
+    const { data: grp } = await db().from("groups").select("name, marketing").eq("id", groupId).maybeSingle();
+    const groupName = text((grp?.marketing as Row | null)?.["page_label"], 120) ?? text(grp?.name, 120);
+    const callsOff = await cancelCallsOf(reply.quote);
     const { error: de } = await db().from("group_interests").delete().eq("id", iid).eq("group_id", groupId);
     if (de) throw new Error(de.message);
-    return res.json({ success: true, deleted: { name: nameOf(reply) || "Guest", travelers: travelersGone }, cabin: cabinNote });
+    await leaveOnTrail(reply as Row, groupId, groupName, `Removed from ${groupName ?? "the group"}`);
+    return res.json({ success: true, deleted: { name: nameOf(reply) || "Guest", travelers: travelersGone }, cabin: cabinNote, calendar: callsOff });
   } catch (err) {
     return fail(req, res, err, "group person delete failed");
   }
@@ -1147,9 +1172,12 @@ router.delete("/groups/:id", requireToken, async (req: Request, res: Response) =
     const { data: paid, error: ye } = await db().from("group_payments").select("id, paid_at").eq("group_id", groupId);
     if (ye) throw new Error(ye.message);
     if (((paid ?? []) as Row[]).some((x) => x["paid_at"])) return res.status(409).json({ success: false, error: "This group has a recorded payment. Payments are records and are kept, so the group cannot be deleted. Set its stage to closed or cancelled instead." });
-    const { data: replies, error: re } = await db().from("group_interests").select("id").eq("group_id", groupId);
+    const { data: replies, error: re } = await db().from("group_interests").select("id, quote, first_name, last_name, email, guests, created_at").eq("group_id", groupId);
     if (re) throw new Error(re.message);
     for (const r of (replies ?? []) as Row[]) await closeItemsOf(String(r["id"]));
+    // Mark 2026-11-14 (paper trail): the group's email log goes with the group, the trail does not (it holds its own copy of every email).
+    // Each person gets a line saying their group was deleted, and their calls come off the calendar.
+    for (const r of (replies ?? []) as Row[]) { await cancelCallsOf(r["quote"]); await leaveOnTrail(r, groupId, text(group.name, 120), `Their group was deleted: ${text(group.name, 120) ?? "group"}`); }
     // the uploaded documents of the group would otherwise stay behind with no group (their rows are not removed with it)
     const { data: intakes, error: ie } = await db().from("group_intakes").select("id").eq("group_id", groupId);
     if (ie) throw new Error(ie.message);
