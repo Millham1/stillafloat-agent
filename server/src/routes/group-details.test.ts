@@ -1229,6 +1229,11 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   for (const piece of ["Cruise fare", "Add-ons", "Add-ons for each guest", "Dining package", "Drink package", "$100.00", "$76.79", "Total per guest", "$576.79"]) assert.ok(printed.includes(piece), `the per-guest quote says ${piece}`);
   assert.ok(!printed.includes("$200.00"), "the two guests' add-ons are never shown as one doubled figure");
   assert.equal(mails.length, 3, "a preview sends nothing");
+  // Mark 2026-11-14: the hold date can be typed on the Cruise tab; a real day only, and empty goes back to the quote's own day
+  assert.equal((await call("PUT", booking, { token: true, body: { option_until: "12/15" } })).status, 400, "not a date");
+  const held = await call("PUT", booking, { token: true, body: { option_until: "2026-12-15" } });
+  assert.deepEqual([held.status, held.json["sheet"]["optionUntil"]["day"]], [200, "2026-12-15"], "the typed hold date shows on the booking");
+  assert.equal((await call("PUT", booking, { token: true, body: { option_until: "" } })).status, 200);
   const off = await call("PUT", booking, { token: true, body: { guest_prices: [{ ...perGuest[0], total: 500 }, perGuest[1]] } });
   assert.equal(off.status, 200);
   const plainDoc = (await call("GET", pricePage)).json["doc"] as Row;
