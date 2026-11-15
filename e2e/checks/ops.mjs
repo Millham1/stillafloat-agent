@@ -601,8 +601,10 @@ export default [
       // What it means is the model's reasoned reading (Mark 2026-11-15: a conclusion written off preset
       // rules "means nothing"). Either there is a reading of at least two plain sentences, or the page
       // says in a sentence that none could be written; never a blank, never both.
-      const R = t.fields(v.reading, ["sentences", "next", "unsure", "note"], "the scorecard's reading");
+      // (note and unsure are legitimately empty strings, so they are checked by type, not as required fields)
+      const R = t.fields(v.reading, ["sentences", "next"], "the scorecard's reading");
       t.ok(Array.isArray(R.sentences) && Array.isArray(R.next), "the reading's sentences or next steps are not lists");
+      t.ok(typeof R.note === "string" && typeof R.unsure === "string", "the reading's note or 'cannot tell' line is not text");
       if (R.sentences.length) {
         t.atLeast(R.sentences.length, 2, "sentences in the model's reading");
         t.ok(R.sentences.concat(R.next).every((line) => typeof line === "string" && line.length > 20 && !/[{}\[\]]|null|undefined|NaN/.test(line)), "the reading has a line that is not a plain sentence");
