@@ -1120,6 +1120,24 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal((await call("POST", allianzPath)).status, 401, "Mark's token only");
   const { setAllianzFetchForTests } = await import("./group-details");
   const sentToAllianz: Row[] = [];
+  // Mark 2026-11-14: Allianz is asked from his Mac. The request waits; the Mac reads it, and its answer lands on the booking.
+  const macList = "/allianz/requests", leadId = String(tables["group_travelers"]![0]!["id"]);
+  assert.equal((await call("GET", macList)).status, 401, "Mark's token only");
+  delete process.env["ALLIANZ_RUNS_ON"];
+  const queued = await call("POST", allianzPath, { token: true });
+  assert.deepEqual([queued.status, queued.json["status"], queued.json["on"]], [202, "pending", "mac"], "the box does not ask Allianz itself");
+  const waiting = (await call("GET", macList, { token: true })).json["requests"] as Row[];
+  assert.deepEqual([waiting.length, waiting[0]!["id"], waiting[0]!["input"]["total_trip_cost"]], [1, leadId, 1425.98], "the Mac is handed the trip to quote");
+  const answer = `/allianz/requests/${leadId}/result`;
+  assert.equal((await call("POST", answer, { token: true, body: { requested_at: "another time", status: "ready", plans: [{ name: "Classic Plan", total: 265 }] } })).status, 409, "an answer to an older request is refused");
+  assert.equal((await call("POST", answer, { token: true, body: { requested_at: waiting[0]!["requested_at"], status: "ready", plans: [] } })).status, 400, "no plans, no answer");
+  const landed = await call("POST", answer, { token: true, body: { requested_at: waiting[0]!["requested_at"], status: "ready", plans: [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }] } });
+  assert.deepEqual([landed.status, landed.json["plans"]], [200, 2]);
+  const fromMac = (await call("GET", booking, { token: true })).json["allianz"];
+  assert.deepEqual([fromMac["on"], fromMac["status"], fromMac["plans"].length], ["mac", "ready", 2], "the Mac's answer shows on the booking");
+  assert.equal(((await call("GET", macList, { token: true })).json["requests"] as Row[]).length, 0, "an answered request is not handed out again");
+  const lead0 = tables["group_travelers"]![0]!; delete lead0["form_data"]["trip"]["allianz"];
+  process.env["ALLIANZ_RUNS_ON"] = "box";   // the rest of this test covers the old way: this process asks
   setAllianzFetchForTests(async (input) => { sentToAllianz.push(input as unknown as Row); return { status: "ready", plans: [{ name: "Classic Plan", total: 265 }, { name: "Basic Plan", total: 189 }] }; });
   try {
     const askedA = await call("POST", allianzPath, { token: true });
@@ -1138,7 +1156,7 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
     await new Promise((r) => setTimeout(r, 20));
     const down = (await call("GET", booking, { token: true })).json["allianz"];
     assert.deepEqual([down["status"], down["reason"], down["plans"]], ["unavailable", "the Allianz sign-in is not on this box yet", []], "when Allianz cannot be quoted the card is told why, and no price is made up");
-  } finally { setAllianzFetchForTests(null); }
+  } finally { setAllianzFetchForTests(null); delete process.env["ALLIANZ_RUNS_ON"]; }
   const asTotal = await call("PUT", booking, { token: true, body: { protection: [{ name: "Classic Plan (Allianz)", total: "265", line: false }] } });
   assert.deepEqual(asTotal.json["protection"], [{ name: "Classic Plan (Allianz)", per_person: null, total: 265, line: false }]);
   assert.deepEqual((await call("GET", pricePage)).json["doc"]["protection"]["plans"], [{ key: "p0", name: "Classic Plan (Allianz)", price: "$265.00 total for 2 travelers", note: null, withTotal: { label: "Trip total with Classic Plan (Allianz)", value: "$1,690.98" } }], "Allianz's one price for the party shows as that total");

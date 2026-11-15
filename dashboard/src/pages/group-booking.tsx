@@ -48,7 +48,7 @@ export type Booking = {
   guestPrices?: GuestPrice[];
   protection?: Array<{ name: string; per_person: number | null; total: number | null; line: boolean }>;
   // the Allianz quote the agent fetched for this trip: each plan with its one price for the party
-  allianz?: null | { status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: Array<{ name: string; total: number }>; hidden?: number; reason: string | null; travelers: number | null; trip_cost: number | null };
+  allianz?: null | { on?: "mac" | "box"; status: "pending" | "ready" | "unavailable"; requested_at: string; quoted_at: string | null; plans: Array<{ name: string; total: number }>; hidden?: number; reason: string | null; travelers: number | null; trip_cost: number | null };
   protectionOnFile?: Array<{ name: string; per_person: number; line: boolean }>;
   price?: { protection?: { key: string; label: string } | null; sent: string | null; sent_at: string | null; approved_at: string | null; approved_how: "guest" | "mark" | null; changes: Array<{ at: string; text: string }>; changes_open: boolean };
   quote: { category: string; party: number; total: string; deposit: string | null } | null;
@@ -719,7 +719,7 @@ export function BookingForm({ groupId, iid, initialTab, stage }: { groupId: stri
         <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
           <p className="text-sm text-muted-foreground">
             {data.allianz?.status === "ready" ? <>Allianz priced this trip {when(data.allianz.quoted_at)}: {usd(data.allianz.trip_cost ?? 0)}, {data.allianz.travelers} traveler{data.allianz.travelers === 1 ? "" : "s"}. Tick the plans to offer.</>
-              : data.allianz?.status === "pending" ? <span className="inline-flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Getting the Allianz prices… (about a minute)</span>
+              : data.allianz?.status === "pending" ? <span className="inline-flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> {data.allianz.on === "mac" ? "Waiting for your Mac to ask Allianz. It checks every minute and must be on and awake; the prices land here about 2 minutes after." : "Getting the Allianz prices… (about a minute)"}</span>
               : data.allianz?.status === "unavailable" ? <span className="font-semibold text-red-600">Allianz could not be priced: {data.allianz.reason ?? "no reason given"}. Nothing was made up.</span>
               : "Allianz has not been asked yet. Save the booking with the cruise and travel costs in, and the agent asks."}
           </p>
