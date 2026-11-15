@@ -38,8 +38,10 @@ const trim = (s, n = 180) => {
 
 /** A response as every check sees it. `json` is null when the body is not JSON. */
 export class Res {
-  constructor({ url, status, headers, text, ms }) {
+  constructor({ url, status, headers, text, ms, finalUrl }) {
     this.url = url; this.status = status; this.headers = headers; this.text = text; this.ms = ms;
+    // Where the request ended after any redirects (the address that actually answered).
+    this.finalUrl = finalUrl || "";
     try { this.json = text && /^[\s]*[{[]/.test(text) ? JSON.parse(text) : null; } catch { this.json = null; }
   }
   /** Short, secret-free description for failure messages. */
@@ -139,7 +141,7 @@ export class Ctx {
       throw new CheckFailure(`${method} ${redactUrl(url)} did not answer (${trim(e?.message || e, 100)})`);
     }
     const text = await r.text().catch(() => "");
-    return new Res({ url, status: r.status, headers: r.headers, text, ms: this.now() - t0 });
+    return new Res({ url, status: r.status, headers: r.headers, text, ms: this.now() - t0, finalUrl: r.url });
   }
 
   // ── assertions (each counts; a check with zero assertions fails) ────────────
