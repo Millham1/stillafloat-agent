@@ -39,6 +39,9 @@ let seq = 0;
 let opsMeetings: Array<{ start: string; end: string }> = [];
 let opsUp = true, opsTaken = false;
 let opsBooked: Array<Record<string, any>> = [];
+/** What the ops-manager was asked to take off the calendar, and what its mailbox holds for an address (agent/mail_trail.py). */
+let opsCancelled: string[] = [];
+let opsMailbox: Array<Record<string, any>> = [];
 
 function group(over: Row = {}): Row {
   return {
@@ -102,6 +105,8 @@ before(async () => {
         opsBooked.push(json);
         return send(200, { ok: true, event_id: "ev-1", meet_link: "https://meet.google.com/abc-defg-hij", html_link: "https://calendar.google.com/x" });
       }
+      if (url.pathname === "/schedule/cancel") { opsCancelled.push(String(json?.event_id)); return send(200, { ok: true, gone: false }); }
+      if (url.pathname === "/mail/trail") return send(200, { ok: true, messages: opsMailbox.filter((m) => (json?.addresses ?? []).includes(m["address"])) });
       if (url.pathname.startsWith("/storage/v1/")) { storageCalls.push(`${req.method} ${url.pathname}`); return send(200, []); }
       const table = url.pathname.replace(/^\/rest\/v1\//, "");
       log.push({ method: req.method ?? "", table, query: url.search, body: json });
@@ -1525,9 +1530,22 @@ test("Mark 2026-11-12: a person can be deleted (the reply, its travelers, its it
   tables["group_payments"] = [];
   // nothing signed, nothing paid: the person goes
   tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] = "MSC-1";
+  // Mark 2026-11-14 (paper trail): the person leaves the group, their trail stays; their planning call comes off the calendar
+  const leaving = tables["group_interests"]![0]!;
+  leaving["quote"] = { ...(leaving["quote"] ?? {}), plan_call: { start: "2026-12-01T15:00:00.000Z", minutes: 30, meet_link: null, event_id: "ev-plan-1", booked_at: "2026-11-14T22:49:00.000Z" } };
+  tables["group_messages"] = [{ id: "m-1", group_id: GROUP_ID, to_email: "mmillham1@gmail.com", subject: "Your quote", status: "sent", audience: "client", template: "price-confirmation" }];
+  tables["prospects"] = [{ id: "prospect-secret", email: "mmillham1@gmail.com" }];
+  tables["contact_trail"] = []; opsCancelled = [];
+  opsMailbox = [{ id: "g-1", address: "mmillham1@gmail.com", direction: "in", from: "Mark <mmillham1@gmail.com>", to: "mark@stillafloatcruising.com", subject: "Re: the cruise", snippet: "count us in", at: "2026-11-14T23:00:00Z" }];
   const gone = await call("POST", del, { token: true });
   assert.equal(gone.status, 200);
   assert.deepEqual(gone.json["deleted"], { name: "Mark Millham", travelers: 2 });
+  assert.deepEqual([opsCancelled, gone.json["calendar"]], [["ev-plan-1"], { calls: 1, removed: 1 }], "the planning call is taken off the calendar");
+  assert.deepEqual([tables["group_messages"]!.length, tables["prospects"]!.length], [1, 1], "the email log and the contact record are kept");
+  await new Promise((r) => setTimeout(r, 30));
+  const trail = tables["contact_trail"]!;
+  assert.deepEqual(trail.filter((r) => r["kind"] === "event").map((r) => [r["email"], r["name"], r["subject"], r["group_name"]]), [["mmillham1@gmail.com", "Mark Millham", "Removed from Friends and Family 2027", "Friends and Family 2027"]], "a line says they were removed");
+  assert.deepEqual(trail.filter((r) => r["kind"] === "gmail").map((r) => [r["source_id"], r["direction"], r["subject"]]), [["gmail:g-1", "in", "Re: the cruise"]], "what the mailbox holds for them goes on the trail");
   assert.equal(tables["group_interests"]!.length, 0);
   assert.equal(tables["group_travelers"]!.length, 0);
   const cabin = tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!;

@@ -52,6 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/ai-visibility", label: "AI Visibility", icon: Bot },
     { href: "/ratings",      label: "Ratings",      icon: PartyPopper },
     { href: "/groups",       label: "Group Bookings", icon: Ship },
+    { href: "/trail",        label: "Paper Trail",    icon: Archive },
     { href: "/affiliate",    label: "Affiliate Manager", icon: ShoppingBag },
     { href: "/favorites",    label: "Favorites",         icon: Heart },
     { href: "/commentary",   label: "Commentary",        icon: MessageSquare },
