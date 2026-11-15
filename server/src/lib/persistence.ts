@@ -72,6 +72,9 @@ export const PATHS = {
   // forum questions and prompt tests (filled by a separate job), plus the agent's
   // activity log (appended by routes/ai-visibility.ts) — lib/ai-visibility.ts.
   aiVisibility: "ai-visibility",
+  // Written by the ops-manager's search worker (saf-ops-manager agent/seo_worker.py):
+  // scorecard history, the plain synopsis and the last run. Read-only here.
+  seoWorker: "seo-worker",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {

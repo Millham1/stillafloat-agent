@@ -30,6 +30,7 @@ import trackSignupRouter from "./track-signup";
 import cabinsRouter from "./cabins";
 import congaLineRouter from "./conga-line";
 import aiVisibilityRouter from "./ai-visibility";
+import searchScorecardRouter from "./search-scorecard";
 import groupsRouter from "./groups";
 import groupIntakeRouter from "./group-intake";
 import groupMarketingRouter from "./group-marketing";
@@ -74,6 +75,7 @@ router.use(trackSignupRouter);
 router.use(cabinsRouter);
 router.use(congaLineRouter);
 router.use(aiVisibilityRouter);
+router.use(searchScorecardRouter);
 router.use(groupIntakeRouter);
 router.use(groupMarketingRouter);
 router.use(groupDetailsRouter); // the guest's own "Your details" page (public, by private link)
