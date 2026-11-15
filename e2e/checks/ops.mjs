@@ -1711,6 +1711,28 @@ export default [
     },
   },
   {
+    id: "ops.allianz-asked-from-the-mac",
+    basis: "ruling: Mark 2026-11-14 — 'you need to code this into the process, to use my local to connect to Allianz. we will need it for future quotes': the box does not sign in to Allianz; a request waits for Mark's Mac, which reads the waiting list and sends the plans back",
+    title: "The list of Allianz requests waiting for Mark's Mac is his alone and well formed, and an answer for a request that is not waiting is refused",
+    covers: ["GET /api/allianz/requests", "POST /api/allianz/requests/:id/result"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: no token, and an answer for a traveler that does not exist; no plan is kept and Allianz is never asked); prod sweeps are read-only",
+    run: async (t) => {
+      unauthorized(t, await t.send("GET", "/api/allianz/requests", { auth: false }), "GET /api/allianz/requests");
+      const list = await t.send("GET", "/api/allianz/requests", { auth: true });
+      t.ok(list.status === 200 && list.json?.success === true, `the waiting list should answer Mark: ${list.describe()}`);
+      t.ok(list.json?.on === "mac" || list.json?.on === "box", `the waiting list says where Allianz is asked from (mac or box), got ${JSON.stringify(list.json?.on)}`);
+      t.ok(Array.isArray(list.json?.requests), "the waiting list carries its requests as a list");
+      for (const r of list.json?.requests ?? []) {
+        t.ok(typeof r.id === "string" && r.id && typeof r.requested_at === "string" && !Number.isNaN(Date.parse(r.requested_at)), `a waiting request names its traveler and when it was asked: ${JSON.stringify(r).slice(0, 200)}`);
+        t.ok(r.input && /^[A-Z]{2}$/.test(r.input.state) && r.input.total_trip_cost > 0 && Array.isArray(r.input.ages) && r.input.ages.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.input.depart_date) && /^\d{4}-\d{2}-\d{2}$/.test(r.input.return_date),
+          `a waiting request carries the whole trip to quote (state, cost, ages, dates): ${JSON.stringify(r.input).slice(0, 200)}`);
+      }
+      unauthorized(t, await t.send("POST", `/api/allianz/requests/${ZERO}/result`, { auth: false, body: { status: "ready", plans: [{ name: "x", total: 1 }] } }), "POST /api/allianz/requests/:id/result");
+      refused(t, await t.send("POST", `/api/allianz/requests/${ZERO}/result`, { auth: true, body: { requested_at: "never", status: "ready", plans: [{ name: "x", total: 1 }] } }), 409, "an answer for a request that is not waiting", /no longer waiting/i);
+    },
+  },
+  {
     id: "ops.flexpay-call-writes-refuse",
     basis: "ruling: Mark 2026-11-05 — the guest picks the FlexPay video call on our own scheduler, 'M-S 10-8 and doesn't conflict with any meetings on my schedule already'; only the guest Mark emailed can book, so a link that does not exist books nothing",
     title: "Booking a FlexPay video call refuses a link that does not exist, and the bot trap books nothing",

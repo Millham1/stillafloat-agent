@@ -1035,7 +1035,7 @@ function bookingView(b: BookingFile) {
       ...plansFromText(b.file?.["insurance_plans"]).map((q) => ({ name: q.name, per_person: q.price_per_person, line: false })),
     ],
     // the Allianz quote the agent fetched for THIS trip (the whole trip cost, each traveler's age): each plan with its one price for the party
-    allianz: ((a) => (a ? { status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: offeredTripPlans(a.plans), hidden: a.plans.length - offeredTripPlans(a.plans).length, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
+    allianz: ((a) => (a ? { on: allianzOnMac() ? "mac" : "box", status: a.status, requested_at: a.requested_at, quoted_at: a.quoted_at, plans: offeredTripPlans(a.plans), hidden: a.plans.length - offeredTripPlans(a.plans).length, reason: a.reason, travelers: a.input?.ages.length ?? null, trip_cost: a.input?.total_trip_cost ?? null } : null))(allianzRecord(b.lead.form_data)),
     cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: onThisBooking(carrierView(b.carrier), b), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
@@ -1368,20 +1368,71 @@ router.post("/groups/:id/interests/:iid/protection-quote", requireToken, async (
     };
     const base: AllianzRecord = { status: "pending", requested_at: now.toISOString(), quoted_at: null, plans: [], reason: null, input };
     await saveRecord(base);
+    // Mark 2026-11-14 ("you need to code this into the process, to use my local to connect to Allianz"): the box does not sign in to Allianz.
+    // The request waits here as "pending"; the worker on Mark's Mac takes it (GET /allianz/requests), asks Allianz in the Mac's own browser and
+    // sends the answer back (POST /allianz/requests/:id/result). ALLIANZ_RUNS_ON=box keeps the old way (this process asks), for the local preview.
+    if (allianzOnMac()) return res.status(202).json({ success: true, status: "pending", on: "mac" });
     res.status(202).json({ success: true, status: "pending" });
     void allianzFetch(input, { chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"] })
       .then(async (out) => {
         await saveRecord(out.status === "ready" ? { ...base, status: "ready", quoted_at: new Date().toISOString(), plans: out.plans } : { ...base, status: "unavailable", reason: out.reason });
-        // Mark 2026-11-13: every plan's coverages, as Allianz listed them, are kept for the state they were quoted for (reused by any later quote)
-        if (out.status === "ready") for (const p of out.plans) {
-          if (p.benefits?.length) await saveCoverage(db(), { provider: "allianz", cruise_line: null, plan_name: p.name, product_code: null, state: input.state, about: p.about ?? null, source_en: ALLIANZ_SOURCE.en, source_es: ALLIANZ_SOURCE.es, source_url: "https://www.agentmaxonline.com", benefits: p.benefits })
-            .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e), plan: p.name }, "group booking: an Allianz plan's coverages could not be kept"));
-        }
+        if (out.status === "ready") await keepAllianzCoverages(out.plans, input.state);
       })
       .catch((e: unknown) => saveRecord({ ...base, status: "unavailable", reason: e instanceof Error ? e.message.slice(0, 300) : String(e) }).catch(() => undefined));
     return;
   } catch (err) {
     return fail(req, res, err, "group protection quote failed");
+  }
+});
+/** Where Allianz is asked from: Mark's Mac (the default: Allianz lets his own computer in, not the box), or this process when ALLIANZ_RUNS_ON=box. */
+const allianzOnMac = (): boolean => process.env["ALLIANZ_RUNS_ON"] !== "box";
+// Mark 2026-11-13: every plan's coverages, as Allianz listed them, are kept for the state they were quoted for (reused by any later quote)
+async function keepAllianzCoverages(plans: TripPlan[], state: string): Promise<void> {
+  for (const p of plans) {
+    if (p.benefits?.length) await saveCoverage(db(), { provider: "allianz", cruise_line: null, plan_name: p.name, product_code: null, state, about: p.about ?? null, source_en: ALLIANZ_SOURCE.en, source_es: ALLIANZ_SOURCE.es, source_url: "https://www.agentmaxonline.com", benefits: p.benefits })
+      .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e), plan: p.name }, "group booking: an Allianz plan's coverages could not be kept"));
+  }
+}
+/** The Allianz requests waiting for Mark's Mac: one a lead traveler, with the trip to quote. Mark's token only. */
+router.get("/allianz/requests", requireToken, async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await db().from("group_travelers").select("id, form_data").eq("is_lead", true);
+    if (error) throw new Error(error.message);
+    const waiting = ((data ?? []) as Row[]).map((t) => ({ id: String(t["id"]), rec: allianzRecord(t["form_data"]) }))
+      .filter((x) => x.rec?.status === "pending" && x.rec.input)
+      .map((x) => ({ id: x.id, requested_at: x.rec!.requested_at, input: x.rec!.input }));
+    return res.json({ success: true, on: allianzOnMac() ? "mac" : "box", requests: allianzOnMac() ? waiting : [] });
+  } catch (err) {
+    return fail(req, res, err, "allianz requests failed");
+  }
+});
+/** The Mac's answer for one request: the plans Allianz showed, or why it could not be quoted. Kept only while that same request is still waiting. */
+router.post("/allianz/requests/:id/result", requireToken, async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params["id"]);
+    if (!/^[\w-]{1,64}$/.test(id)) return res.status(404).json({ success: false, error: "Request not found" });
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as Row;
+    const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", id).maybeSingle();
+    if (fe) throw new Error(fe.message);
+    const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+    const have = allianzRecord(fd);
+    if (!have || have.status !== "pending" || have.requested_at !== body["requested_at"]) return res.status(409).json({ success: false, error: "That request is no longer waiting (it was answered, or asked again)." });
+    let rec: AllianzRecord;
+    if (body["status"] === "ready") {
+      const plans: TripPlan[] = (Array.isArray(body["plans"]) ? body["plans"] : []).filter((p: unknown): p is Row => !!p && typeof p === "object")
+        .map((p: Row) => ({ name: text(p["name"], 160) ?? "", total: Number(p["total"]), ...(Array.isArray(p["benefits"]) ? { benefits: planBenefits(p["benefits"]) } : {}), ...(text(p["about"], 4000) ? { about: text(p["about"], 4000)! } : {}) }))
+        .filter((p: TripPlan) => p.name && Number.isFinite(p.total) && p.total > 0);
+      if (!plans.length) return res.status(400).json({ success: false, error: "No plan with a name and a price came with that answer." });
+      rec = { ...have, status: "ready", quoted_at: new Date().toISOString(), plans };
+    } else if (body["status"] === "unavailable") {
+      rec = { ...have, status: "unavailable", reason: text(body["reason"], 300) ?? "no reason given" };
+    } else return res.status(400).json({ success: false, error: "The answer must say ready or unavailable." });
+    const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), allianz: rec } } }).eq("id", id);
+    if (error) throw new Error(error.message);
+    if (rec.status === "ready" && have.input) await keepAllianzCoverages(rec.plans, have.input.state);
+    return res.json({ success: true, status: rec.status, plans: rec.plans.length });
+  } catch (err) {
+    return fail(req, res, err, "allianz result failed");
   }
 });
 /** The fetch itself, swappable in tests (no browser, no sign-in there). */
