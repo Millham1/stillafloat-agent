@@ -62,6 +62,7 @@
 //   · A page that loads the menu script must hold the container it draws into, must not load a
 //     script twice, and an English page and its Spanish twin both have the menu or both do not.
 import vm from "node:vm";
+import { readFileSync } from "node:fs";
 import * as H from "../lib/html.mjs";
 
 const PROD = "https://stillafloatcruising.com";
@@ -923,6 +924,68 @@ export default [
         if (r.status !== 404) problems.push(`${p} answered HTTP ${r.status} instead of 404${r.status === 200 && H.title(r.text) === H.title(home) ? " — the home page is served for an address that does not exist" : ""}`);
       }
       t.ok(problems.length === 0, `${problems.length} address(es) that do not exist did not answer 'not found': ${problems.join(" | ")}`);
+    },
+  },
+
+  {
+    id: "pages.favicon",
+    basis: "incident: 2026-11-15 — /favicon.ico answered 404 on prod: about 76,000 browsers asked for it from Microsoft's new-tab page in one day and got nothing, and Google's crawler asks for it too; the site must serve its own icon at the address every browser and search engine tries first",
+    title: "The site's icon (the small picture in a browser tab, a bookmark and next to a search result) is served at /favicon.ico",
+    covers: ["ext:file /favicon.ico"],
+    modes: ["dev", "prod"],
+    incident: "2026-11-15: no page named an icon and no file sat at /favicon.ico, so every tab, bookmark, new-tab tile and search listing showed a blank placeholder.",
+    run: async (t) => {
+      const r = await t.get("/favicon.ico");
+      t.equal(r.status, 200, "/favicon.ico HTTP status");
+      const type = String(r.headers?.get?.("content-type") || "");
+      t.ok(/image\/(x-icon|vnd\.microsoft\.icon)/i.test(type), `/favicon.ico is served as "${type || "no content type"}", not as an icon`);
+      t.atLeast(r.text.length, 1000, "/favicon.ico size (an icon holding the 16, 32, 48 and 96 pixel pictures)");
+      t.observe("favicon content type", type);
+    },
+  },
+
+  {
+    id: "pages.www-redirect",
+    basis: "incident: 2026-11-15 — https://www.stillafloatcruising.com answered 200 with a second full copy of the site; infra/nginx/site.prod.conf now sends www to the one canonical name every page declares (https://stillafloatcruising.com)",
+    title: "The www address sends visitors and search engines to the one real address instead of serving a second copy of the site",
+    covers: ["flow:www-redirect"],
+    modes: ["dev", "prod"],
+    incident: "2026-11-15: the canonical server block in site.prod.conf listed both names, so the same pages were reachable under two addresses.",
+    run: async (t) => {
+      const problems = [];
+      // positive control: the box under test serves the real home page
+      const home = t.html(await t.get("/"), { mustContain: ["Still Afloat"] });
+      t.atLeast(H.title(home).length, 5, "the home page title length");
+      if (t.mode === "dev") {
+        // The www name exists only for the production domain, so on dev the thing to check is the nginx file
+        // this release ships to production (the suite runs from the checkout under test): every server block
+        // that answers for www must be a redirect to the canonical name, and none may serve pages.
+        let conf = "";
+        try { conf = readFileSync(new URL("../../infra/nginx/site.prod.conf", import.meta.url), "utf8"); } catch (e) { t.ok(false, `infra/nginx/site.prod.conf could not be read (${String(e?.message || e).slice(0, 100)})`); }
+        const blocks = conf.replace(/^\s*#.*$/gm, "").split(/^server\s*\{/m).slice(1);
+        const www = blocks.filter((b) => /server_name[^;]*\bwww\.stillafloatcruising\.com\b/.test(b));
+        t.atLeast(www.length, 2, "server blocks in site.prod.conf that answer for www (one for https, one for http)");
+        t.ok(www.some((b) => /listen\s+443\s+ssl/.test(b)), "site.prod.conf has no https server block for www — https://www would fall to the catch-all");
+        for (const b of www) {
+          const name = (/server_name\s+([^;]+);/.exec(b) || [])[1] || "?";
+          if (/^\s*root\s/m.test(b) && /listen\s+443/.test(b)) problems.push(`the https server block "${name.trim()}" serves pages under the www name`);
+          const targets = [...b.matchAll(/return\s+301\s+(\S+);/g)].map((m) => m[1]);
+          if (!targets.length) problems.push(`the server block "${name.trim()}" has no redirect`);
+          for (const target of targets) if (target !== "https://stillafloatcruising.com$request_uri") problems.push(`the server block "${name.trim()}" redirects to ${target}, not to the canonical name`);
+        }
+        t.observe("www server blocks in site.prod.conf", www.length);
+        t.ok(problems.length === 0, `${problems.length} problem(s) in the www rules that ship to production: ${problems.join(" | ")}`);
+        return;
+      }
+      for (const path of ["/", "/robots.txt", "/news.html"]) {
+        const want = `https://stillafloatcruising.com${path}`;
+        for (const scheme of ["https", "http"]) {
+          const r = await t.get(`${scheme}://www.stillafloatcruising.com${path}`);
+          if (r.status !== 200) problems.push(`${scheme}://www…${path} ended in HTTP ${r.status}`);
+          else if (r.finalUrl !== want) problems.push(`${scheme}://www…${path} was answered at ${r.finalUrl || "an unknown address"}, not ${want}`);
+        }
+      }
+      t.ok(problems.length === 0, `${problems.length} www address(es) did not end at the canonical site: ${problems.join(" | ")}`);
     },
   },
 
