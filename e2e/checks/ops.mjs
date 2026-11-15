@@ -224,7 +224,7 @@ export default [
       // in its own check below. Paths exist on prod AND dev (group marketing is checked in its own
       // check because prod does not have it until the promotion).
       const gated = [
-        "/api/auth-check", "/api/ai-visibility", "/api/social-analytics", "/api/social/stats",
+        "/api/auth-check", "/api/ai-visibility", "/api/search-scorecard", "/api/social-analytics", "/api/social/stats",
         "/api/social/queue", "/api/social/media", "/api/social/config", "/api/social/schedule-config",
         "/api/social/schedule", "/api/social/upload", "/api/social/compose", "/api/social/review",
         "/api/ops/finance/summary", "/api/ops/finance/transactions", "/api/ops/finance/cashflow",
@@ -289,7 +289,7 @@ export default [
       // Groups). A stale or partial dashboard build on a box drops one of these while the API is fine.
       // (Group MARKETING's addresses are checked in ops.group-marketing-dashboard: dev-only until the
       // 2026-10-08 promotion.)
-      for (const needle of ["/api/auth-check", "x-affiliate-token", "/api/ai-visibility", "/api/social-analytics",
+      for (const needle of ["/api/auth-check", "x-affiliate-token", "/api/ai-visibility", "/api/search-scorecard", "/api/social-analytics",
         "/api/ops/finance/summary", "/api/ops/finance/cashflow", "/api/ops/finance/transactions", "/api/ops/finance/subscriptions",
         "/api/ops/youtube-analytics", "/api/ops/gsc/analytics", "/api/ops/seo-proposals", "/groups/intake", "/payment-schedule", "horizon=3650",
         "/groups/analytics", "/groups/workspace"]) {
@@ -573,6 +573,40 @@ export default [
   },
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: "ops.search-scorecard",
+    basis: "ruling: stillafloat-seo-worker.md — Mark 2026-11-15: 'put the scorecard on my dashboard and a synopsis of what the results mean'; the search worker writes four numbers and a plain synopsis every three days and the Search page shows them, with a number that could not be measured shown as not measured, never as zero",
+    title: "The dashboard's Search page has the search scorecard: four numbers in words, how each moved since the last run, a plain synopsis of what they mean, and what is waiting on Mark",
+    covers: ["GET /api/search-scorecard"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const anon = await t.get("/api/search-scorecard");
+      t.ok(anon.status === 401 || anon.status === 403, `the search scorecard answered HTTP ${anon.status} without the dashboard token`);
+      const v = t.success(await t.get("/api/search-scorecard", { auth: true }));
+      t.fields(v, ["ready", "tiles", "synopsis", "status", "history"], "the search scorecard");
+      // The worker has run on this box at least once: a page that says "has not run yet" forever is the
+      // failure this check exists for (the loop filed tasks for six weeks with nothing reading them).
+      t.ok(v.ready === true, `the search scorecard is not ready: "${String(v.status).slice(0, 120)}"`);
+      t.equal(v.tiles.length, 4, "tiles on the search scorecard");
+      t.equal(v.tiles.map((x) => x.key).join(","), "impressions,clicks,keyPages,stories", "the scorecard's tiles, in order");
+      for (const tile of v.tiles) {
+        t.ok(typeof tile.label === "string" && tile.label.length > 10, `the ${tile.key} tile has no label`);
+        t.ok(/^(\d+( of \d+)?|Not measured)$/.test(tile.value), `the ${tile.key} tile reads "${tile.value}" — neither a count nor 'Not measured'`);
+        t.ok(["up", "down", "same", "none"].includes(tile.direction), `the ${tile.key} tile has direction "${tile.direction}"`);
+      }
+      t.ok(Array.isArray(v.synopsis) && v.synopsis.every((line) => typeof line === "string" && line.length > 20 && !/[{}\[\]]|null|undefined|NaN/.test(line)),
+        "the synopsis has a line that is not a plain sentence");
+      // a synopsis exists whenever the worker ran (it also says so when Search Console could not be read)
+      t.atLeast(v.synopsis.length, 1, "sentences in the synopsis");
+      t.matches(String(v.measuredAt || ""), /^\d{4}-\d{2}-\d{2}T/, "when the scorecard was measured");
+      t.atLeast(v.history.length, 1, "readings in the scorecard history");
+      t.ok(typeof v.status === "string" && v.status.length > 10, "the scorecard has no line saying what is waiting");
+      t.observe("search scorecard keys", keysOf(v), "exact");
+      t.observe("search scorecard tile labels", v.tiles.map((x) => x.label).join(" | "), "exact");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
   {
     id: "ops.ai-visibility",
     basis: "ruling: stillafloat-ai-visibility-program.md — the AI-visibility dashboard reports a daily roll-up of AI-assistant lookups and crawler counts, plus the agent's activity log; Mark 10/8: dev gets no AI-assistant traffic and must be made a true mirror (known-failures.json); Mark 10/29 on two Waiting-on-you rows with nothing to press: 'There is nothing here that takes me to an action' — a waiting item carries buttons and is filed in the action queue (mark-approvals-go-to-dashboard-actions.md)",

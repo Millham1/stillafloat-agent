@@ -46,6 +46,79 @@ type Proposal = {
   created_at: string;
 };
 
+// The search worker's scorecard (GET /api/search-scorecard — server lib/search-scorecard.ts).
+// The server sends every value already in words ("40 of 59", "Not measured"); this page only draws.
+type ScoreTile = { key: string; label: string; value: string; change: string; direction: "up" | "down" | "same" | "none" };
+type Scorecard = {
+  success: boolean;
+  ready: boolean;
+  measuredAt: string | null;
+  previousAt: string | null;
+  tiles: ScoreTile[];
+  synopsis: string[];
+  status: string;
+  sortedBy: string | null;
+};
+
+const dayOf = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+};
+
+/** Where search stands: four numbers, what they mean, and what is waiting (Mark 2026-11-15). */
+function ScorecardPanel({ data, loading }: { data: Scorecard | undefined; loading: boolean }) {
+  const tone = (d: ScoreTile["direction"]) =>
+    d === "up" ? "text-green-600 dark:text-green-400" : d === "down" ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
+  return (
+    <Card className="p-5" data-testid="search-scorecard">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <h3 className="text-lg font-semibold">Where search stands</h3>
+        {data?.ready && (
+          <span className="text-sm text-muted-foreground">
+            Checked {dayOf(data.measuredAt)}
+            {data.previousAt ? ` · run before that: ${dayOf(data.previousAt)}` : ""} · checked every three days
+          </span>
+        )}
+      </div>
+      {loading && <p className="text-base text-muted-foreground mt-3">Loading the scorecard…</p>}
+      {!loading && (!data || !data.success) && (
+        <p className="text-base text-muted-foreground mt-3">The scorecard could not be read right now.</p>
+      )}
+      {!loading && data?.success && !data.ready && <p className="text-base text-muted-foreground mt-3">{data.status}</p>}
+      {!loading && data?.success && data.ready && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+            {data.tiles.map((t) => (
+              <div key={t.key} className="rounded-lg border p-4">
+                <div className="text-3xl font-bold leading-tight">{t.value}</div>
+                <div className="text-base mt-1">{t.label}</div>
+                {t.change && <div className={`text-sm mt-1 font-medium ${tone(t.direction)}`}>{t.change}</div>}
+              </div>
+            ))}
+          </div>
+          {data.synopsis.length > 0 && (
+            <div className="mt-5">
+              <h4 className="text-base font-semibold">What this means</h4>
+              <ul className="mt-2 space-y-2">
+                {data.synopsis.map((line, i) => (
+                  <li key={i} className="text-base leading-relaxed">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.status && <p className="text-base mt-4 pt-4 border-t">{data.status}</p>}
+          {data.sortedBy && (
+            <p className="text-sm text-muted-foreground mt-2">The search list was sorted by: {data.sortedBy}.</p>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
 const num = (n: number | undefined) => (n == null ? "—" : new Intl.NumberFormat("en-US").format(n));
 
 function useApi<T>(url: string, key: string[]) {
@@ -122,6 +195,7 @@ export default function Search() {
   const d28 = useApi<Gsc>("/api/ops/gsc/analytics?days=28", ["gsc-28"]);
   const d90 = useApi<Gsc>("/api/ops/gsc/analytics?days=90", ["gsc-90"]);
   const proposals = useApi<{ ok: boolean; proposals: Proposal[] }>("/api/ops/seo-proposals", ["seo-proposals"]);
+  const scorecard = useApi<Scorecard>("/api/search-scorecard", ["search-scorecard"]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -238,6 +312,9 @@ export default function Search() {
           panel below still works.
         </Card>
       )}
+
+      {/* 0 · The search worker's scorecard and what it means */}
+      <ScorecardPanel data={scorecard.data} loading={scorecard.isLoading} />
 
       {/* 1 · Headline strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
