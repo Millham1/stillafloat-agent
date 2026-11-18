@@ -23,8 +23,21 @@ import { plannedRouteFor } from "../lib/planned-route-service";
 import { staleForInquiry } from "../lib/position-provider";
 import { gapPaths, seaRoute } from "../lib/sea-route";
 import { clientIp } from "../lib/client-ip";
+import { isBotUA } from "../lib/affiliate-clicks";
 
 const router: IRouter = Router();
+
+// ── Search-engine crawlers never spend a paid position ──────────────────────
+// Each Live-AIS position costs a credit. In the two weeks to 2026-11-18, 100 of
+// the 175 positions bought for "request" on prod were bought for crawlers
+// (Baidu 82, Apple 10, Google 6, ByteDance 2) rendering ship pages, against 72
+// for people. A crawler still gets the full answer from the position on file;
+// it just never triggers a purchase.
+function crawlerAsking(req: Request, ship: string): boolean {
+  if (!isBotUA(req.get("user-agent"))) return false;
+  logger.info({ ship }, "wms: crawler inquiry, no paid position lookup");
+  return true;
+}
 
 // ── Rate limiting (same in-memory pattern as subscribe.ts) ───────────────────
 const rateMap = new Map<string, { count: number; resetAt: number }>();
@@ -111,7 +124,8 @@ router.post("/wms/request", async (req: Request, res: Response) => {
     // fix that on its own: she has to come within range of a shore receiver.
     // So when someone actually asks for a stale ship, buy one position. Every
     // guard (freshness, per-ship window, monthly cap) is inside the adapter.
-    const refreshed = await refreshStalePosition(ship, "request").catch(() => false);
+    const refreshed = crawlerAsking(req, ship) ? false
+      : await refreshStalePosition(ship, "request").catch(() => false);
     return res.json({ ok: true, state: refreshed ? "live" : state, refreshed });
   } catch (err) {
     logger.error({ err }, "wms: request failed");
@@ -132,7 +146,8 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     // that is stale — or there is no fix at all — buy ONE Live-AIS position and
     // project from it. Every guard (freshness bar, per-ship window, monthly cap,
     // allowlist) lives in the adapter, so asking twice is one call.
-    if (inRegistry(shipName) && staleForInquiry(getPosition(shipName)?.lastPosAt ?? null)) {
+    if (inRegistry(shipName) && staleForInquiry(getPosition(shipName)?.lastPosAt ?? null)
+        && !crawlerAsking(req, shipName)) {
       await refreshStalePosition(shipName, "request").catch(() => false);
     }
     const pos = getPosition(shipName);
