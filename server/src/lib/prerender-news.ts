@@ -630,7 +630,9 @@ function storyHref(story: NewsStory, lang: Lang): string {
 
 /** One story card. The FULL cliffnote, untruncated — Mark: the listing must
  *  carry the cliffnotes, not one-line teasers. Richer static text is also better
- *  SEO, so the goals align. Shared by the feed and the per-line hubs. */
+ *  SEO, so the goals align. Shared by the feed and the per-line hubs.
+ *  No outlet name on the card (Mark 2026-11-23): the credit and the link to the
+ *  original article live on the story page, not on the listing. */
 function storyCardHtml(story: NewsStory, lang: Lang, later = false): string {
   const t = L[lang];
   const href = storyHref(story, lang);
@@ -638,7 +640,7 @@ function storyCardHtml(story: NewsStory, lang: Lang, later = false): string {
   const date = fmtDate(story.approvedAt || story.generatedAt, lang);
   const desc = escapeHtml(cardTeaser(story, lang));
   return `<article class="story${later ? " is-later" : ""}">
-<div class="story-top"><div><span class="pill" style="${b.style}">${b.label}</span> <span class="src">${escapeHtml(sourceName(story))}</span></div>${date ? `<span class="when">${date}</span>` : ""}</div>
+<div class="story-top"><div><span class="pill" style="${b.style}">${b.label}</span></div>${date ? `<span class="when">${date}</span>` : ""}</div>
 <h2><a href="${href}">${escapeHtml(pick(story, "title", lang))}</a></h2>
 <p>${desc}</p>
 <a class="more" href="${href}">${t.openDetail}</a>

@@ -152,10 +152,6 @@ function renderHomepage(stories = []) {
           <span style="${badge.style}padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em;backdrop-filter:blur(8px);">
             ${badge.label}
           </span>
-
-          <span style="color:rgba(255,255,255,.62);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
-            ${story.source}
-          </span>
         </div>
 
         <a
@@ -191,10 +187,6 @@ function storyCard(story) {
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <span style="${badge.style}padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em;backdrop-filter:blur(8px);">
             ${badge.label}
-          </span>
-
-          <span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em;">
-            ${story.source}
           </span>
         </div>
 
