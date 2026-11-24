@@ -58,6 +58,14 @@ export async function sinkPost(post: SocialPost, nowMs = Date.now()): Promise<Pu
   }
 }
 
+/** How many posts still wait for a slot that has not come yet. */
+function postsAhead(batches: QueuedBatch[], nowMs: number): number {
+  return batches.reduce((n, b) => n + b.posts.filter((p) => {
+    const at = p.scheduledFor ? Date.parse(p.scheduledFor) : NaN;
+    return Number.isFinite(at) && at > nowMs && !p.postedAt && p.postState === "scheduled";
+  }).length, 0);
+}
+
 /**
  * Which pending batch the dev feeder approves next. Mark approves batches by hand on prod, so
  * prod's calendar always has posts coming; on dev nobody does, so the sink-mode poster would run
@@ -65,11 +73,31 @@ export async function sinkPost(post: SocialPost, nowMs = Date.now()): Promise<Pu
  * batch is approved (scheduled into the next free slots, like any approval). Pure.
  */
 export function pickBatchToFeed(batches: QueuedBatch[], nowMs: number, minAhead = 3): QueuedBatch | null {
-  const ahead = batches.reduce((n, b) => n + b.posts.filter((p) => {
-    const at = p.scheduledFor ? Date.parse(p.scheduledFor) : NaN;
-    return Number.isFinite(at) && at > nowMs && !p.postedAt && p.postState === "scheduled";
-  }).length, 0);
-  if (ahead >= minAhead) return null;
+  if (postsAhead(batches, nowMs) >= minAhead) return null;
   const pending = batches.filter((b) => b.status === "pending").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   return pending[0] ?? null;
+}
+
+/**
+ * Which FINISHED batch the dev feeder runs again when nothing is pending. Pending batches only
+ * appear when a new video is published (the daily scan drafts one per video), so a week with no
+ * upload left dev with nothing to feed and the release gate with no due post to judge
+ * (2026-11-18 and 2026-11-24: jobs.social-poster-handles-due-posts UNTESTABLE). When fewer than
+ * `minAhead` posts wait for a future slot and no batch is pending, the finished ("posted") batch
+ * that was decided longest ago and still has a post that can be scheduled is picked; approving it
+ * gives its posts new slots, and its new decision time sends it to the back of the line. Pure.
+ */
+export function pickBatchToReuse(
+  batches: QueuedBatch[],
+  nowMs: number,
+  canSchedule: (p: SocialPost) => boolean,
+  minAhead = 3,
+): QueuedBatch | null {
+  if (postsAhead(batches, nowMs) >= minAhead) return null;
+  if (batches.some((b) => b.status === "pending")) return null;
+  const last = (b: QueuedBatch): string => b.decidedAt ?? b.createdAt;
+  const finished = batches
+    .filter((b) => b.status === "posted" && b.posts.some(canSchedule))
+    .sort((a, b) => last(a).localeCompare(last(b)));
+  return finished[0] ?? null;
 }
