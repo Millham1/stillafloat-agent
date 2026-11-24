@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { sinkEnabled, sinkEntry, pickBatchToFeed } from "./social-sink";
+import { sinkEnabled, sinkEntry, pickBatchToFeed, pickBatchToReuse } from "./social-sink";
 import type { QueuedBatch, SocialPost } from "./social-agent";
 
 const NOW = Date.parse("2026-10-10T12:00:00Z");
@@ -54,5 +54,47 @@ describe("dev feeder: which pending batch gets approved", () => {
   });
   it("returns null when nothing is pending, and never touches rejected or approved batches", () => {
     assert.equal(pickBatchToFeed([batch("r", "rejected", "2026-09-09T10:00:00Z"), batch("a", "approved", "2026-09-09T10:00:00Z")], NOW), null);
+  });
+});
+
+describe("the dev feeder runs a finished batch again when nothing is pending", () => {
+  const any = (): boolean => true;
+  const finished = (id: string, decidedAt: string, posts: SocialPost[] = [post({ postState: "posted", postedAt: "2026-10-01T00:00:00Z" })]): QueuedBatch =>
+    ({ ...batch(id, "posted", "2026-09-09T10:00:00Z", posts), decidedAt } as QueuedBatch);
+  const waiting = (n: number): SocialPost[] => Array.from({ length: n }, (_, i) => post({ scheduledFor: new Date(NOW + (i + 1) * HOUR).toISOString(), postState: "scheduled" }));
+
+  it("picks the finished batch decided longest ago", () => {
+    const batches = [finished("newer", "2026-10-08T00:00:00Z"), finished("oldest", "2026-10-02T00:00:00Z"), finished("mid", "2026-10-05T00:00:00Z")];
+    assert.equal(pickBatchToReuse(batches, NOW, any)?.id, "oldest");
+  });
+  it("rotates: a batch just run again has the newest decision time and goes to the back", () => {
+    const batches = [finished("a", "2026-10-02T00:00:00Z"), finished("b", "2026-10-05T00:00:00Z")];
+    const first = pickBatchToReuse(batches, NOW, any)!;
+    first.decidedAt = new Date(NOW).toISOString();
+    assert.equal(pickBatchToReuse(batches, NOW, any)?.id, "b");
+  });
+  it("falls back to the creation time for a batch with no decision time", () => {
+    const noDecision = batch("never-decided", "posted", "2026-09-01T00:00:00Z");
+    assert.equal(pickBatchToReuse([finished("decided", "2026-10-02T00:00:00Z"), noDecision], NOW, any)?.id, "never-decided");
+  });
+  it("does nothing while a pending batch exists (the pending one is fed first)", () => {
+    const batches = [finished("done", "2026-10-02T00:00:00Z"), batch("p", "pending", "2026-10-09T00:00:00Z")];
+    assert.equal(pickBatchToReuse(batches, NOW, any), null);
+    assert.equal(pickBatchToFeed(batches, NOW)?.id, "p");
+  });
+  it("does nothing while 3 or more posts already wait", () => {
+    const batches = [batch("sched", "scheduled", "2026-10-01T00:00:00Z", waiting(3)), finished("done", "2026-10-02T00:00:00Z")];
+    assert.equal(pickBatchToReuse(batches, NOW, any), null);
+  });
+  it("skips a finished batch with no post that can be scheduled, and never touches rejected, approved or scheduled batches", () => {
+    const yt = post({ platform: "youtube" } as Partial<SocialPost>);
+    const canSchedule = (p: SocialPost): boolean => p.platform !== "youtube";
+    const batches = [
+      finished("youtube-only", "2026-10-01T00:00:00Z", [yt]),
+      batch("r", "rejected", "2026-09-01T00:00:00Z"), batch("a", "approved", "2026-09-01T00:00:00Z"), batch("s", "scheduled", "2026-09-01T00:00:00Z"),
+      finished("usable", "2026-10-06T00:00:00Z"),
+    ];
+    assert.equal(pickBatchToReuse(batches, NOW, canSchedule)?.id, "usable");
+    assert.equal(pickBatchToReuse(batches.slice(0, 4), NOW, canSchedule), null);
   });
 });
