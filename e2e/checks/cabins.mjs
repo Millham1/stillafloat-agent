@@ -857,11 +857,11 @@ export default [
   },
   {
     id: "cabins.genie-files-are-marks-only",
-    basis: "code: server/src/routes/genie.ts — GET /genie/leads and POST /genie/leads/:id answer only to Mark's token; the list gives each file its name, email, status and the file's rows; an unknown status or an unknown file is refused",
-    title: "The Vacation Genie files open only with Mark's token, each file carries the person and what they were shown, and a bad change is refused",
-    covers: ["GET /api/genie/leads", "POST /api/genie/leads/:id"],
+    basis: "code: server/src/routes/genie.ts — GET /genie/leads, POST and DELETE /genie/leads/:id answer only to Mark's token; the list gives each file its name, email, status and the file's rows; an unknown status or an unknown file is refused. Mark 2026-11-25: 'the contacts should always be deletable, i dont want to keep dead files'; 'Keep the trail'",
+    title: "The Vacation Genie files open only with Mark's token, each file carries the person and what they were shown, and a bad change or a delete of a file that is not there is refused",
+    covers: ["GET /api/genie/leads", "POST /api/genie/leads/:id", "DELETE /api/genie/leads/:id"],
     modes: ["dev"],
-    devOnlyBecause: "the refusal probes on the change route are POSTs and prod sweeps are read-only",
+    devOnlyBecause: "the refusal probes on the change and delete routes are POSTs and DELETEs, and prod sweeps are read-only",
     run: async (t) => {
       t.status(await t.get("/api/genie/leads"), 401);
       const list = t.success(await t.get("/api/genie/leads", { auth: true }));
@@ -881,6 +881,13 @@ export default [
       t.ok(badStatus.status === 400 && /status/i.test(badStatus.json?.error || ""), `setting a file back to "started" should be 400: ${badStatus.describe()}`);
       const nothing = await t.send("POST", "/api/genie/leads/00000000-0000-4000-8000-000000000000", { auth: true, body: {} });
       t.ok(nothing.status === 400 && /nothing to change/i.test(nothing.json?.error || ""), `a change with nothing in it should be 400: ${nothing.describe()}`);
+      // Deleting a file is Mark's alone. No real file is deleted here: the gate never invents a person to delete.
+      t.status(await t.send("DELETE", "/api/genie/leads/00000000-0000-4000-8000-000000000000"), 401);
+      const delBadId = await t.send("DELETE", "/api/genie/leads/not-a-file", { auth: true });
+      t.ok(delBadId.status === 400 && delBadId.json?.success === false, `deleting a file id that is not an id should be 400: ${delBadId.describe()}`);
+      const delGone = await t.send("DELETE", "/api/genie/leads/00000000-0000-4000-8000-000000000000", { auth: true });
+      t.ok(delGone.status === 404 && /not there/i.test(delGone.json?.error || ""), `deleting a file that does not exist should be 404 and say so: ${delGone.describe()}`);
+      t.equal(t.success(await t.get("/api/genie/leads", { auth: true })).leads.length, list.leads.length, "the refused deletes changed the number of files");
     },
   },
 ];

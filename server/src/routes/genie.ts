@@ -24,7 +24,7 @@ import { clientIp } from "../lib/client-ip";
 import { hourlyLimiter } from "../lib/hourly-limit";
 import { requireToken } from "../lib/http-auth";
 import { trailEvent, trailEmail } from "../lib/contact-trail";
-import { keepOnTrail } from "./contact-trail";
+import { keepOnTrail, pullMailboxFor } from "./contact-trail";
 import { suggestShips } from "./cabins";
 import { searchCruiseRows, shipCodes, shipNameKeys } from "../lib/cruise-api";
 import {
@@ -351,6 +351,44 @@ router.post("/genie/leads/:id", requireToken, async (req: Request, res: Response
   } catch (err) {
     logger.error({ err }, "genie/leads update failed");
     return res.status(500).json({ success: false, error: "Could not save that" });
+  }
+});
+
+/**
+ * Mark deletes a file he is done with (2026-11-25: "i dont want to keep dead files").
+ *
+ * The file goes; the person's paper trail stays (his ruling of 2026-11-14, confirmed for the Genie on
+ * 2026-11-25: "Keep the trail"). A line saying the file was deleted is written to the trail FIRST, and
+ * what his mailbox holds for them is pulled onto it, so the trail is whole before the row is gone. If the
+ * line cannot be written the file is not deleted: a delete that loses the record is worse than a dead file.
+ */
+router.delete("/genie/leads/:id", requireToken, async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params["id"] ?? "");
+    if (!UUID_RE.test(id)) return res.status(400).json({ success: false, error: "Unknown file" });
+    const { data, error } = await db().from("genie_sessions").select("*").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ success: false, error: "That file is not there any more. Reload the page." });
+    const row = data as Row;
+    const name = `${row.first_name} ${row.last_name}`.trim();
+    const detail = [
+      `Started ${String(row.created_at).slice(0, 10)}`,
+      `status when deleted: ${row.status}`,
+      row.ship_name ? `ship shown: ${row.ship_name}` : null,
+      row.sailing?.start ? `sailing ${row.sailing.start}` : null,
+    ].filter(Boolean).join(", ");
+    const line = trailEvent({ email: row.email, name, what: "Vacation Genie file deleted", detail, key: `genie-deleted:${id}` });
+    if (line && (await keepOnTrail([line])) === 0) {
+      return res.status(500).json({ success: false, error: "The file was not deleted, because the line for their contact trail could not be written. Try again." });
+    }
+    void pullMailboxFor(row.email, name || null).catch((e: unknown) =>
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, "paper trail: the mailbox could not be read for a deleted Vacation Genie file"));
+    const { error: de } = await db().from("genie_sessions").delete().eq("id", id);
+    if (de) throw new Error(de.message);
+    return res.json({ success: true, deleted: { name: name || "This person" } });
+  } catch (err) {
+    logger.error({ err }, "genie/leads delete failed");
+    return res.status(500).json({ success: false, error: "The file was not deleted. Try again." });
   }
 });
 
