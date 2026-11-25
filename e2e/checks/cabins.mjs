@@ -193,12 +193,22 @@ export default [
       }
 
       // The ship card (detail) for a spread of ships: first, middle, last.
+      let twoParts = 0;
       for (const r of spread(ratings)) {
         const en = t.success(await t.get(`/api/ships/${encodeURIComponent(r.ship_slug)}/rating`), "ok");
         t.equal(en.shipSlug, r.ship_slug, `the ship card for "${r.ship_slug}" answers for`);
         t.equal(en.rating, r.rating, `"${r.ship_slug}": the ship card's score and the list's score`);
         t.equal(en.ratingDisplay, r.rating_display, `"${r.ship_slug}": the ship card's score label and the list's`);
         t.equal(en.comment, r.comment, `"${r.ship_slug}": the ship card's comment and the list's`);
+        // Mark 2026-11-25: the Vacation Genie card shows the comment in two parts, the upside and the
+        // trade-off, so a score never sits on top of a slam. The upside must not carry the "but".
+        if (en.whyThisShip != null) {
+          twoParts++;
+          t.ok(en.whyThisShip.trim().length > 10, `"${r.ship_slug}": "Why this ship" is empty`);
+          t.ok(!/\bbut\b/i.test(en.whyThisShip), `"${r.ship_slug}": "Why this ship" still carries the trade-off ("but")`);
+          t.ok(en.watchFor == null || en.watchFor.trim().length > 10, `"${r.ship_slug}": the trade-off is empty`);
+          t.ok(!BANNED_COPY.test(en.whyThisShip) && !BANNED_COPY.test(en.watchFor || ""), `"${r.ship_slug}": the two parts use a banned word or name a review source`);
+        }
         t.nonEmpty(en.saltyMarkTake, `"${r.ship_slug}": the Salty Mark take`);
         const es = t.success(await t.get(`/api/ships/${encodeURIComponent(r.ship_slug)}/rating?lang=es`), "ok");
         t.equal(es.rating, r.rating, `"${r.ship_slug}": the Spanish ship card's score`);
@@ -212,6 +222,8 @@ export default [
           `"${r.ship_slug}": the Spanish ship card's copy does not read as Spanish`);
         t.equal(es.ratingDisplay, r.rating_display, `"${r.ship_slug}": the Spanish ship card's score label`);
       }
+
+      t.ok(twoParts > 0, 'no sampled ship card carries "Why this ship" and the trade-off: the Vacation Genie would show the whole comment under the score again');
 
       // A ship with no published rating is a clean "not found" (the page then shows no score).
       const none = await t.get(`/api/ships/${FIXTURE_SLUG}/rating`);
