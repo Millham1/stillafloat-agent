@@ -31,6 +31,7 @@ import Ratings from "@/pages/ratings";
 import Groups from "@/pages/groups";
 import GroupIntake from "@/pages/group-intake";
 import PaperTrail from "@/pages/paper-trail";
+import VacationGenie from "@/pages/vacation-genie";
 import { groupBookingsHref } from "@/lib/group-api";
 
 /** Old links to the dashboard's workspace page land in the Group Bookings app (Mark 2026-10-25: its own app at /groups/). */
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/ai-visibility" component={AiVisibility} />
         <Route path="/ratings" component={Ratings} />
         <Route path="/trail" component={PaperTrail} />
+        <Route path="/genie" component={VacationGenie} />
         <Route path="/groups" component={Groups} />
         <Route path="/groups/new" component={GroupIntake} />
         {/* before /groups/:id, or "workspace" would be read as a group id */}

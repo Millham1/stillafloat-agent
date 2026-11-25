@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vacation Genie | Still Afloat</title>
+<link rel="canonical" href="https://stillafloatcruising.com/vacation-genie.html">
+<link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/vacation-genie.html">
+<meta name="description" content="Answer a few questions and Mark names the ship, the room and the price for your sailing, then calls you to finish the quote. The Still Afloat Vacation Genie.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css?v=20260821-concierge">
+<style>
+/* Vacation Genie — same look as the Room Concierge (its styles, copied whole). Room Concierge — Mark's balcony hero (supplied 8/21). The art carries a painted
+   frosted panel; the whole app renders INSIDE it. Grid overlay so the panel can grow
+   past the art on long screens without breaking the composition. Light panel =>
+   navy text, exactly like the homepage frosted hero card. */
+html{background:#07183f}
+body{margin:0;background:transparent;min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#07183f;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,24,63,.72) 0%,rgba(7,24,63,.92) 46%,#07183f 100%),
+             url('/assets/images/Tropical beach with palm trees and ship.png') center top/cover no-repeat}
+
+.hero-wrap{display:grid;max-width:1536px;margin:0 auto;position:relative}
+.hero-art{grid-area:1/1;align-self:start;position:relative;width:100%}
+.hero-img{width:100%;height:auto;display:block}
+/* Mark 8/21: the butler overlays the app — that's the charm. He reaches to x=1246 of
+   the 1536-wide art and the painted panel ends at 1262, so he already crosses it. Our
+   glass therefore stops at 1240 (right margin 19.27%) and the painting's own layering
+   shows through untouched — no cutout, no seam, butler in front. */
+.hero-art::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;
+  background:linear-gradient(to bottom,rgba(7,24,63,0),#07183f);pointer-events:none}
+/* Mark 8/21: there must be ONE card — the one painted into the art. So the panel has
+   no border, no shadow and no edge of its own; it lays a feathered wash over the painted
+   glass purely so the type stays readable, and that wash dies out before it reaches any
+   edge. The only visible card edge is the painting's. */
+/* Mark 8/21: "the rooms should not bleed past the card and there should be a scroll bar
+   to the right to scroll down the choices." The painted panel is a FIXED box in the art
+   (718 of a 1536-wide frame = 46.74vw), so the card is now exactly that height and the
+   stage scrolls inside it. Nothing can run past the glass. */
+.panel{grid-area:1/1;position:relative;z-index:2;isolation:isolate;
+  margin:7.9% 19.27% 11.0% 17.9%;
+  padding:clamp(30.2px,3.78vw,65.5px) clamp(32.8px,4.03vw,68.0px);
+  color:#07183f;display:flex;flex-direction:column;box-sizing:border-box;
+  height:min(46.74vw,718px)}
+.re-topbar{flex:0 0 auto}
+/* overflow-y:scroll (not auto) + no `scrollbar-width` — the standard property makes
+   Chrome fall back to the macOS OVERLAY bar, which hides itself and reserves no width,
+   so Mark saw no scrollbar at all. This forces the classic always-visible bar. */
+/* Mark 8/21: "the top of the selection should stay static and the rooms scroll below
+   it" — and the landing must not scroll at all. The stage is a column: .stage-head is
+   pinned, .stage-body scrolls under it, and a screen with neither (landing, questions)
+   just fits and shows no bar. */
+#stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.stage-head{flex:0 0 auto}
+.stage-foot{flex:0 0 auto;padding-top:10px}
+.stage-body{flex:1 1 auto;min-height:170px;overflow-y:scroll;scrollbar-gutter:stable;padding-right:12px}
+.stage-body::-webkit-scrollbar{width:14px}
+.stage-body::-webkit-scrollbar-track{background:rgba(7,24,63,.16);border-radius:999px;margin:2px 0}
+.stage-body::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
+  border:3px solid transparent;background-clip:content-box}
+.stage-body::-webkit-scrollbar-thumb:hover{background:#07183f;background-clip:content-box}
+.panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+                     linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+             linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  mask-composite:intersect}
+
+/* ── type inside the panel (navy on frosted, homepage canon) ── */
+.re-topbar{display:flex;align-items:center;min-height:26px}
+.re-back{font-family:inherit;font-weight:800;font-size:clamp(16.4px,1.32vw,20.2px);color:#023e6e;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
+.re-back.show{display:inline-block}
+.re-back:hover{text-decoration:underline}
+/* Mark 8/21: the title pill sits ABOVE the app, on the hero, and reads large. */
+.hero-title{position:absolute;top:clamp(12.6px,2.65vw,50.4px);left:50%;transform:translateX(-50%);z-index:5;
+  background:linear-gradient(135deg,#023e6e,#07183f);color:#fff;border-radius:999px;white-space:nowrap;
+  padding:clamp(11.3px,1.45vw,25.2px) clamp(29.0px,3.78vw,66.8px);
+  font-size:clamp(20.2px,2.24vw,39.1px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  box-shadow:0 14px 34px rgba(4,17,46,.5)}
+h1{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;
+  font-size:clamp(26.5px,2.96vw,46.6px);line-height:1.14;letter-spacing:-.5px;margin:0 0 10px}
+h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing:-.5px;
+  font-size:clamp(22.7px,2.33vw,36.5px);line-height:1.2;margin:8px 0 12px}
+.re-kick{display:none}
+.re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(16.4px,1.41vw,22.7px)}
+.re-intro b{color:#07183f;font-weight:800}
+.hint{color:#023e6e;font-size:clamp(13.2px,1.11vw,17.6px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
+.hero-brand{display:block;margin:clamp(4px,.5vw,9px) auto 0}
+.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(58px,5.2vw,82px)}
+.re-progress{display:inline-block;background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;border-radius:999px;padding:5px 15px;
+  font-size:clamp(12.6px,1.06vw,16.4px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
+
+.land-grid{display:block}
+@media(max-width:900px){.land-grid{grid-template-columns:1fr}}
+
+/* ── cards on the light panel ── */
+/* Mark 8/21: the operators live on the HERO, spread horizontally across its bottom —
+   out of the app entirely, sitting in the fade where the deck goes dark. */
+.hero-lines{grid-area:1/1;align-self:end;z-index:4;width:100%;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(32.8px,3.78vw,65.5px) clamp(17.6px,3.78vw,60.5px) clamp(12.6px,1.51vw,25.2px);
+  background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
+  text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.hero-lines .lead{margin:0 0 clamp(6.3px,0.76vw,12.6px);text-align:center;color:rgba(255,255,255,.78);
+  font-size:clamp(12.0px,1.01vw,17.0px);font-weight:700;letter-spacing:.1em}
+.hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
+  gap:clamp(7.6px,1.01vw,17.6px);font-size:clamp(11.3px,0.98vw,16.4px);font-weight:800;letter-spacing:.13em;
+  text-transform:uppercase;color:rgba(255,255,255,.92)}
+.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(14px,1.7vw,27px)}
+
+/* Mark 8/21: the app's text sits centred in the glass. */
+.panel{text-align:center}
+.re-intro{margin-left:auto;margin-right:auto}
+.re-choices{justify-content:center}
+.re-opts{margin-left:auto;margin-right:auto}
+.re-opt{text-align:left}
+select,#cabinNum,input#shipSearch{margin-left:auto;margin-right:auto;display:block}
+.reveal-ship{text-align:left}
+.re-topbar{justify-content:flex-start}
+.lines-card{display:none}
+
+
+/* ── form controls ── */
+.re-lbl{display:block;margin:clamp(12.6px,1.39vw,20.2px) 0 5px;font-size:clamp(12.6px,1.03vw,16.4px);font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:#023e6e}
+select{width:100%;max-width:460px;padding:clamp(11.3px,1.13vw,17.6px) clamp(13.9px,1.39vw,20.2px);border-radius:14px;
+  border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.68);color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
+  font-family:inherit;outline:none;transition:border-color .2s}
+select:focus{border-color:#023e6e}
+select:disabled{opacity:.45}
+#cabinNum{width:100%;max-width:460px;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);
+  background:rgba(255,255,255,.68);border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;
+  font-size:clamp(18.9px,1.7vw,26.5px);font-weight:800;letter-spacing:.05em;font-family:inherit;outline:none;transition:border-color .2s}
+#cabinNum:focus{border-color:#023e6e}
+#cabinNum::placeholder{color:rgba(7,24,63,.5);font-weight:600}
+input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);background:rgba(255,255,255,.68);
+  border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
+  font-family:inherit;outline:none;margin-bottom:10px}
+input#shipSearch:focus{border-color:#023e6e}
+
+/* ── buttons: the site's pill language ── */
+.re-fork{margin:clamp(5px,.6vw,11px) 0 2px}
+.re-choices{display:flex;gap:10px;flex-wrap:wrap}
+.re-btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#0077b6,#023e6e);
+  color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(15.8px,1.34vw,22.7px);
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(18.9px,2.14vw,35.3px);border-radius:50px;border:none;cursor:pointer;
+  text-decoration:none;box-shadow:0 8px 22px rgba(0,119,182,.32);transition:transform .2s,box-shadow .2s}
+.re-btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(0,119,182,.42)}
+.re-btn.yes,.re-btn.no{background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;
+  box-shadow:0 8px 22px rgba(0,119,182,.32)}
+.re-btn.yes:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+
+/* ── answer options ── */
+.re-opts{display:flex;flex-direction:column;gap:clamp(7.6px,0.88vw,13.9px);max-width:680px}
+.re-opt{text-align:left;font-family:inherit;font-size:clamp(15.8px,1.32vw,21.4px);font-weight:600;line-height:1.45;
+  color:#07183f;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:14px;
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(15.1px,1.51vw,23.9px);cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(4,17,46,.06)}
+.re-opt:hover{border-color:#023e6e;transform:translateX(4px);box-shadow:0 6px 16px rgba(4,17,46,.12)}
+.re-opt b{color:#07183f;font-weight:800}
+.re-opt span{color:rgba(7,24,63,.72)!important}
+
+.quiet{color:rgba(7,24,63,.82);font-size:clamp(13.2px,1.08vw,17.6px);font-style:italic;margin:clamp(5px,.6vw,10px) 0 0}
+.re-coverage{color:rgba(7,24,63,.72);font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.6;margin:20px 0 0;max-width:70ch}
+
+/* ── ship + room cards ── */
+.reveal-ship{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:18px;
+  padding:clamp(15.1px,1.64vw,27.7px) clamp(16.4px,1.83vw,30.2px);margin:0 0 clamp(12.6px,1.39vw,22.7px);
+  box-shadow:0 6px 18px rgba(4,17,46,.10)}
+.gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gist h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;font-size:clamp(18.9px,1.89vw,31.5px);margin:0;letter-spacing:-.4px}
+.gist .line{color:rgba(7,24,63,.68);font-size:clamp(12.0px,1.01vw,16.4px);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.gist-score{font-family:'Bree Serif',serif;font-size:clamp(26.5px,2.65vw,45.4px);color:#023e6e;line-height:1;font-weight:400}
+.gist-score small{font-size:.45em;color:rgba(7,24,63,.45)}
+.gist-dancers{display:flex;align-items:flex-end;margin:7px 0 4px;background:#fff;border:1px solid rgba(7,24,63,.10);border-radius:12px;overflow:hidden;width:fit-content}
+.gist-dancers img{height:clamp(46.6px,4.66vw,76.9px);width:auto;display:block}
+/* Exact fill (Mark 2026-09-09, 'use the exact fill'): the score is one-decimal and the dance line
+   shows it literally — full figures for the whole number, the next figure filled to the decimal
+   (4.3 = four dancers + 30% of the fifth) with a thin edge where the fill stops. Replaces the
+   floor (every 4.x ship looked alike) and the half-step attempt (4.3 vs 4.8 too close). */
+.gist-dancers .dancer{position:relative;display:block}
+.gist-dancers .fill{position:absolute;left:0;top:0;height:100%;overflow:hidden;display:block;border-right:2px solid #0077b6}
+.gist-dancers .fill img{height:100%}
+.reveal-comment{font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
+.salty{display:flex;gap:11px;align-items:center;background:rgba(76,29,149,.07);border:1px solid rgba(76,29,149,.2);border-radius:14px;padding:9px 13px}
+.salty img{width:clamp(42.8px,4.16vw,65.5px);height:clamp(42.8px,4.16vw,65.5px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
+.salty .sl{font-size:clamp(10.7px,0.88vw,13.9px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#46216f;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:clamp(14.5px,1.2vw,18.9px);line-height:1.5;color:rgba(7,24,63,.88)}
+.reveal-pick{margin:12px 0 0;text-align:right}
+.room-hook{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(17.0px,1.57vw,25.2px);line-height:1.3;margin:0 0 7px;color:#07183f;letter-spacing:-.3px}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 7px}
+.chip{font-size:clamp(12.0px,1.01vw,16.4px);font-weight:700;color:rgba(7,24,63,.78);background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
+.chip-num{background:#5dff9a;color:#07183f;font-weight:800;
+  font-size:clamp(13.2px,1.109vw,18px);padding:4px 13px}   /* 10% over .chip (Mark 8/21) */
+.room-why{font-size:clamp(14.5px,1.21vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:5px 0 0}
+details.why{margin:4px 0 0}
+details.why summary{cursor:pointer;font-size:clamp(13.9px,1.13vw,18.3px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.why p{font-size:clamp(14.5px,1.18vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:6px 0 0}
+details.cat-info{margin:2px 0 6px}
+details.cat-info summary{cursor:pointer;font-size:clamp(13.2px,1.08vw,17.6px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.cat-info p{font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.55;color:rgba(7,24,63,.82);margin:6px 0 2px;
+  background:rgba(0,119,182,.07);border:1px solid rgba(0,119,182,.16);border-radius:10px;padding:9px 12px}
+.re-cta{margin-top:clamp(15.1px,1.64vw,25.2px);background:linear-gradient(135deg,rgba(93,255,154,.16),rgba(0,119,182,.13));
+  border:1px solid rgba(0,119,182,.26);border-radius:20px;padding:clamp(17.6px,1.89vw,30.2px) clamp(20.2px,2.27vw,35.3px);text-align:center}
+.re-cta h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 7px;font-size:clamp(17.6px,1.7vw,29.0px);letter-spacing:-.4px}
+.re-cta p{margin:0 auto 12px;max-width:560px;font-size:clamp(14.5px,1.23vw,20.2px);line-height:1.55;color:rgba(7,24,63,.85)}
+
+
+/* Mark 8/21: the rooms call reasons live, so say so — a spinner, not a dead headline. */
+.thinking{display:flex;flex-direction:column;align-items:center;gap:16px;padding:clamp(20px,3vw,44px) 0}
+.spinner{width:clamp(40px,3.6vw,58px);height:clamp(40px,3.6vw,58px);border-radius:50%;
+  border:4px solid rgba(2,62,110,.18);border-top-color:#023e6e;animation:spin 900ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+/* Mark 8/21: the rooms to walk past are NOT a link — they sit right after the picks,
+   dark type on a light card. Never white type here. */
+.steer{margin:6px 0 18px;background:rgba(255,255,255,.62);border:1px solid rgba(2,62,110,.22);
+  border-left:5px solid #023e6e;border-radius:16px;padding:clamp(14px,1.5vw,24px) clamp(16px,1.7vw,28px);text-align:left}
+.steer h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 10px;
+  font-size:clamp(16px,1.4vw,24px);letter-spacing:-.3px}
+.steer ul{list-style:none;margin:0;padding:0}
+.steer li{margin:0 0 10px;padding:0 0 0 20px;position:relative;color:rgba(7,24,63,.9);
+  font-size:clamp(14.5px,1.2vw,19px);line-height:1.55}
+.steer li:last-child{margin-bottom:0}
+.steer li::before{content:"\2715";position:absolute;left:0;top:1px;color:#8f3a00;font-weight:800;font-size:.85em}
+.steer li b{color:#07183f;font-weight:800}
+
+/* Mark 8/21: "Show me More Options" — the full shortlist on its own screen, in a
+   scroller, so the rooms page stays a short list of the best few. */
+/* Mark 8/21: "the room choices are running on past the card" — the list was clipped
+   flush against the glass with nothing saying it scrolls. It now sits in its own
+   inset well, with a permanent scrollbar and a fade at the foot so the cut edge
+   reads as "more below" instead of broken layout. */
+.more-wrap{position:relative;margin:6px 0 18px}
+.more-scroll{padding:14px 14px 18px;border-radius:18px;
+  background:rgba(255,255,255,.34);border:1px solid rgba(2,62,110,.2)}
+.more-scroll .reveal-ship:last-child{margin-bottom:0}
+/* Mark 8/21: a long-list row shows the short line and offers a way in to the full
+   detail; a skip row carries the same facts a pick does. */
+.more-scroll .room-why.clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row-more{background:none;border:none;padding:4px 0 0;margin:0;cursor:pointer;font-family:inherit;
+  font-weight:800;color:#023e6e;font-size:clamp(12.5px,1vw,16px);text-decoration:underline;text-underline-offset:3px}
+.steer li .chips{margin:0 0 6px}
+.steer li .chip{background:rgba(7,24,63,.09)}
+.steer li{padding-left:0}
+.steer li::before{display:none}
+.skip-why{margin:0;font-size:clamp(14.5px,1.2vw,19px);line-height:1.55;color:rgba(7,24,63,.9)}
+.more-hint{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 6px;
+  color:#023e6e;font-weight:800;font-size:clamp(12px,1vw,16px);letter-spacing:.04em}
+.more-count{color:rgba(7,24,63,.72);font-weight:700;margin:0 0 10px}
+.disclaimer{max-width:70ch;margin:12px auto 0;font-size:15px;line-height:1.6;color:rgba(255,255,255,.62)}
+
+/* Mark 8/21: "everything on the landing page should fit nicely in the space provided."
+   The card is capped at 718px but the vw type keeps growing on wide screens, so the
+   landing's own maxima are capped to match. Scoped to .land-grid — the question and
+   room screens keep the larger scale he asked for. */
+.land-grid h1{font-size:clamp(25px,2.75vw,36px);margin-bottom:4px}
+.land-grid .re-intro{font-size:clamp(15.5px,1.28vw,19px);margin-bottom:4px}
+.land-grid .re-btn{font-size:clamp(14px,1.15vw,17px);padding:clamp(9px,.95vw,14px) clamp(16px,1.8vw,30px)}
+.land-grid h2.q{font-size:clamp(19px,1.95vw,27px);margin:6px 0 10px}
+footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgba(255,255,255,.72);font-size:16px}
+
+/* ── narrow screens: art on top, panel below it ── */
+@media(max-width:820px){
+  /* The art is one composition built around the painted panel — it can't be cropped
+     at phone width without showing an empty white box, so phones get the house
+     plaque on the ocean ground and the full hero returns at tablet and up. */
+  .hero-wrap{display:block}
+  .hero-art{display:block;position:static}
+  .hero-title{position:static;transform:none;display:table;margin:20px auto 14px;font-size:16px;padding:10px 26px}
+  .hero-img,.hero-art::after{display:none}
+  .hero-lines{padding:0 14px 14px}
+  .panel{margin:0 12px;border-radius:22px;padding:20px 18px;height:auto;display:block}
+  #stage{overflow:visible;padding-right:0}
+  h1{font-size:24px}
+  .re-btn{font-size:15px;padding:12px 20px}
+  .re-intro{font-size:15px}
+}
+/* ── Vacation Genie additions: text, date and number fields, in the concierge's own field look ── */
+.g-in{width:100%;max-width:460px;box-sizing:border-box;display:block;margin:0 auto;padding:clamp(11.3px,1.13vw,17.6px) clamp(13.9px,1.39vw,20.2px);
+  border-radius:14px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.68);color:#07183f;
+  font-size:clamp(16.4px,1.32vw,21.4px);font-family:inherit;outline:none;transition:border-color .2s}
+.g-in:focus{border-color:#023e6e}
+textarea.g-in{min-height:90px;resize:vertical}
+.g-ages{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:460px;margin:0 auto}
+.g-ages select{width:auto;min-width:92px;margin:0}
+.g-err{color:#8f3a00;font-weight:800;margin:12px auto 0;max-width:60ch;font-size:clamp(15px,1.2vw,19px)}
+.g-check{display:flex;align-items:center;gap:10px;justify-content:center;margin:12px auto 0;font-weight:700;color:#07183f;
+  font-size:clamp(15.8px,1.32vw,21.4px);cursor:pointer}
+.g-check input{width:22px;height:22px;accent-color:#023e6e}
+.g-fare{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid rgba(2,62,110,.16)}
+.g-fare:last-child{border-bottom:none}
+.g-fare b{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(19px,1.8vw,29px);color:#07183f}
+.g-fare .t{font-weight:800;color:#07183f;font-size:clamp(16px,1.35vw,22px)}
+.g-fare .n{display:block;font-weight:600;color:rgba(7,24,63,.72);font-size:clamp(13.5px,1.08vw,17.5px)}
+.g-fare.mine{background:rgba(93,255,154,.2);border-radius:12px;padding:11px 12px;border-bottom:none}
+.g-sail{width:100%}
+.g-sail .p{display:block;font-weight:500;color:rgba(7,24,63,.72);font-size:clamp(13.5px,1.08vw,17.5px);margin-top:3px}
+#turnstileWrap{display:flex;justify-content:center;margin:14px 0 0;min-height:65px}
+</style>
+</head>
+<body>
+<header class="rc-banner" role="img" aria-label="The Still Afloat Vacation Genie">
+  <div id="navbar-container"></div>
+<div class="hero-wrap">
+  <div class="hero-art"><div class="hero-title">Vacation Genie</div><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
+       alt="A cruise ship balcony at sunset with a concierge waiting — the Still Afloat Vacation Genie"></div>
+  <div class="hero-lines"><p class="lead">Currently searching the following cruise lines</p><div class="names" id="linesList"></div></div>
+  <main class="panel">
+    <div class="re-topbar"><button class="re-back" id="backBtn" onclick="VG.back()">&larr; Back</button></div>
+    <div id="stage"></div>
+  </main>
+</div>
+<footer>&copy; 2026 Still Afloat LLC &mdash; Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;margin-left:4px;opacity:.75">
+<p class="disclaimer">Many sources were pulled to create this list. There is always a possibility we got it wrong. Prices shown are the cruise line's advertised fares and can change; Mark confirms your final quote before anything is booked.</p>
+</footer>
+<script src="/components/navbar.js?v=20261020-headerfit"></script>
+
+<script>
+const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
+const SALTY_IMG='/assets/concierge/salty-mark.jpg';
+</script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   VacationGenieFlow — the single-booking road (Mark, 2026-11-24).
+   landing → email gate → the trip (who, when, where, room, money) → 17 questions
+   about you → the ship (Conga score + Salty Mark) → her sailings in your dates →
+   the fare by room type → the rooms (the Room Concierge's own picks) → send it
+   to Mark, who calls, finalizes the quote and books.
+
+   The question pools below are a copy of server/src/lib/genie-interview.ts, which
+   is the canonical definition; genie-interview.test.ts fails if they drift.
+──────────────────────────────────────────────────────────────────────────── */
+const GENIE_PERSONALITY_QS = [
+  { key:"seaDay", q:"It's a sea day and the ship has posted forty things to do. By dinner you have…",
+    opts:[["Done six of them, and I'm annoyed about the seventh"],
+          ["Done one, and it was a good one"],
+          ["Read the list, laughed, and gone back to my chair"],
+          ["Never saw the list. I was busy making my own day"]] },
+  { key:"elevator", q:"The elevator stops between decks for ten minutes. There are six strangers in it. When the doors open…",
+    opts:[["We have dinner plans together"],
+          ["I know where every one of them is from"],
+          ["I was polite, and I'm taking the stairs from now on"],
+          ["I never looked up from my phone"]] },
+  { key:"wrongTurn", q:"Day four. You take a wrong turn and find a part of the ship you have never seen. That is…",
+    opts:[["The best part. I want a ship I can't finish in a week"],
+          ["Fine, as long as I can find my way back"],
+          ["A sign the ship is too big"],
+          ["Impossible. I had her memorized by day two, and I like it that way"]] },
+  { key:"steakhouse", q:"The dining room is included. The steakhouse upstairs is $60 a head. You…",
+    opts:[["Book it for the first night, and ask what else they've got"],
+          ["Go once, for the occasion"],
+          ["Skip it. The included dinner is already more than I eat at home"],
+          ["Couldn't tell you where either one is. I eat by the pool"]] },
+  { key:"bartender", q:"By the third night, the bartender…",
+    opts:[["Has my drink started when he sees me coming"],
+          ["Has told me his life story, and I've told him mine"],
+          ["Is fast and leaves me alone, which is all I ask"],
+          ["Couldn't pick me out. I'm at a different bar every night"]] },
+  { key:"table42", q:"Dinner is at 6:15, table 42, every night. Same waiter, same tablemates. Your first feeling is…",
+    opts:[["Relief. One less thing to decide"],
+          ["Fine, if the tablemates are any good"],
+          ["Trapped"],
+          ["I'll show up twice. The rest of the week I eat when I'm hungry"]] },
+  { key:"threeHundred", q:"Someone hands you $300 that can only be spent aboard. It goes on…",
+    opts:[["One dinner I'll still be talking about in a year"],
+          ["The thing with a harness and a waiver"],
+          ["A day somewhere quiet, behind a door the crowd can't open"],
+          ["Nothing yet. First I find out what's already included"]] },
+  { key:"nextLoungers", q:"The people at the next loungers. What finally makes you get up and move?",
+    opts:[["They're running a party at ten in the morning"],
+          ["They've complained about three things since breakfast"],
+          ["They've been asleep since nine. It's a vacation, do something"],
+          ["Nothing. I've joined them"]] },
+  { key:"midnightHungry", q:"It's midnight and you're hungry. The right answer is…",
+    opts:[["Pizza, standing up, no regrets"],
+          ["Whatever the cooks are eating. I asked"],
+          ["A proper sit-down place that's still open"],
+          ["I'm asleep at midnight"]] },
+  { key:"buffetPlate", q:"The buffet has two hundred things on it. Your plate is…",
+    opts:[["Whatever was closest. I'm due at the pool"],
+          ["One thing from every country. I'm doing research"],
+          ["Empty. I booked a real restaurant instead"],
+          ["The same breakfast I eat at home, and I'm happy"]] },
+  { key:"portCancelled", q:"The port you came for is cancelled for weather. An hour later you are…",
+    opts:[["Over it. A free sea day is a gift"],
+          ["At the desk, asking what they're going to do about it"],
+          ["Rebuilding the day from the ship's schedule"],
+          ["In the hot tub with everybody else who's over it"]] },
+  { key:"cannonball", q:"A cannonball contest breaks out at the pool. Average age: nine. You think…",
+    opts:[["That's the sound of a vacation"],
+          ["Cute, from over here"],
+          ["Is there a pool where that can't happen?"],
+          ["Those are mine, and they're winning"]] },
+  { key:"oneSentence", q:"A friend who has sailed this ship gets one sentence of advice. You want it to be…",
+    opts:[["Where to eat, and what to order"],
+          ["What not to miss"],
+          ["Where nobody goes"],
+          ["How not to overpay"]] },
+  { key:"elegantNight", q:"The invitation says \"elegant night.\" You…",
+    opts:[["Packed for it months ago"],
+          ["Put on the one nice shirt and enjoy it"],
+          ["Go find the place that doesn't care what I'm wearing"],
+          ["Did not come on vacation to wear shoes"]] },
+  { key:"oneAm", q:"It's 1 a.m. and you're still up. Where?",
+    opts:[["Where the music is. I requested the last song"],
+          ["At a piano bar, singing badly with strangers"],
+          ["On an open deck with nobody around"],
+          ["I'm not. I haven't seen 1 a.m. in years and I don't miss it"]] },
+  { key:"airportStory", q:"At the airport, somebody is telling their cruise story. Which line makes you jealous?",
+    opts:[["The crew knew our names by the second day"],
+          ["We never did the same thing twice"],
+          ["It was so quiet we forgot what day it was"],
+          ["We paid half what you'd think"]] },
+  { key:"lastNight", q:"Last night aboard. Which regret would bother you most?",
+    opts:[["There was something on this ship I never tried"],
+          ["I never got one full day of doing nothing"],
+          ["We ate fine, but nothing I'll remember"],
+          ["I never really met anybody"]] },
+];
+
+/* The trip questions asked one screen at a time. Values are the server's (parseTrip). */
+const TRIP_QS = [
+  { key:"destination", q:"Where are you dreaming of?", opts:[
+      ["Eastern Caribbean","e_caribbean"],["Western Caribbean","w_caribbean"],
+      ["Southern Caribbean","s_caribbean"],["The Bahamas","bahamas"],
+      ["Alaska","alaska"],["The Mediterranean","mediterranean"],
+      ["Mexican Riviera","mexican_riviera"],
+      ["Surprise me — anywhere the ship fits","surprise"]] },
+  { key:"room", q:"What kind of room do you want?", opts:[
+      ["Interior — a dark, quiet room and more money for the trip","inside"],
+      ["Ocean view — a window on the water","oceanview"],
+      ["Balcony — my own chair outside","balcony"],
+      ["Suite — the room is part of the vacation","suite"],
+      ["Not sure — pick for me","balcony"]] },
+  { key:"priority", q:"What matters most once you're aboard?", opts:[
+      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
+      ["Being near the action","action"],["Room to spread out","space"]] },
+  { key:"budget", q:"How does the trip budget work, honestly?", opts:[
+      ["There's a number, and we respect it","lean"],
+      ["Comfortable, but every dollar should earn its spot","middle"],
+      ["For the right trip, the budget moves","treat"],
+      ["The budget is whatever makes it perfect","sky"]] },
+  { key:"seasick", q:"Does anyone get seasick?", opts:[
+      ["Yes — keep us steady","yes"],["No, we're fine","no"],
+      ["I can grin and bear it","no"]] },
+];
+const OCCASIONS = [["No reason needed","none"],["Anniversary or honeymoon","anniversary"],["Birthday","birthday"],
+  ["Family get-together","family"],["Retirement","retirement"],["Something else","other"]];
+const LENGTHS = [["A long weekend (3 to 5 nights)",3,5],["About a week (6 to 8 nights)",6,8],
+  ["A good long one (9 to 14 nights)",9,14],["Any length (3 to 14 nights)",3,14]];
+const REGION_NAMES = {e_caribbean:"Eastern Caribbean",w_caribbean:"Western Caribbean",s_caribbean:"Southern Caribbean",
+  bahamas:"The Bahamas",alaska:"Alaska",mediterranean:"The Mediterranean",mexican_riviera:"Mexican Riviera"};
+const ROOM_WORD = {inside:"Interior",oceanview:"Ocean view",balcony:"Balcony",suite:"Suite"};
+const LINE_DISPLAY = { "Royal Caribbean International": "Royal Caribbean" };
+function lineName(l){ return LINE_DISPLAY[l] || l; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtOpt(label){
+  const m = label.match(/^([^,—–.]{4,45})([,—–.].*)$/);
+  return m ? `<b>${m[1]}</b><span style="color:rgba(7,24,63,.68);font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
+}
+function longDate(iso){
+  const d=new Date(iso+"T12:00:00Z");
+  return d.toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric",timeZone:"UTC"});
+}
+function money(n){ return "$"+Number(n).toLocaleString("en-US"); }
+function todayIso(){ return new Date().toISOString().slice(0,10); }
+
+class VacationGenieFlow {
+  constructor(){
+    this.stageEl=document.getElementById("stage");
+    this.history=[]; this.fleet=[];
+    this.me={firstName:"",lastName:"",email:"",phone:""};
+    this.trip={adults:2,childAges:[],rooms:1,earliest:"",latest:"",nightsMin:6,nightsMax:8,lengthIx:1,
+      firstCruise:false,occasion:"none",mobility:false,notes:""};
+    this.tIndex=0; this.qIndex=0; this.choices=[];
+    this.session=null; this.key=null; this.tsToken=null; this.tsKey=null;
+    this.picked=new Set();
+    this.loadFleet(); this.loadConfig();
+  }
+  /* ── plumbing ── */
+  async api(path,body){
+    const r=await fetch("/api/genie/"+path,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(Object.assign({session:this.session,key:this.key},body||{}))});
+    let d={}; try{ d=await r.json(); }catch(e){}
+    if(!r.ok) throw new Error(d.error||"Something broke on my end. Try that again.");
+    return d;
+  }
+  push(renderName){ this.history.push(renderName); document.getElementById("backBtn").classList.add("show"); }
+  back(){
+    const prev=this.history.pop();
+    if(!this.history.length) document.getElementById("backBtn").classList.remove("show");
+    if(!prev) return this.landing();
+    if(prev==="tripQ") this.tIndex=Math.max(0,this.tIndex-1);
+    if(prev==="personQ") this.qIndex=Math.max(0,this.qIndex-1);
+    this[prev](); this.stageEl.scrollTop=0;
+  }
+  quiet(){ return `<p class="quiet">Questions? You can always talk to me.</p>`; }
+  busy(kick,line,sub){
+    this.stageEl.innerHTML=`<p class="re-progress">${kick}</p><h2 class="q">${line}</h2>
+      <div class="thinking"><div class="spinner"></div>${sub?`<p class="re-intro" style="margin:0">${sub}</p>`:""}</div>`;
+  }
+  err(msg){ const e=document.getElementById("gErr"); if(e){ e.textContent=msg||""; } }
+  async loadFleet(){
+    try{ const r=await fetch("/api/cabins/fleet"); this.fleet=(await r.json()).ships||[]; }catch(e){ this.fleet=[]; }
+    const bar=document.getElementById("linesList");
+    if(bar&&this.fleet.length){
+      const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
+      bar.innerHTML=lines.map(l=>`<span>${l}</span>`).join('<i>&middot;</i>');
+    }
+  }
+  async loadConfig(){
+    try{ const r=await fetch("/api/public-config"); this.tsKey=(await r.json()).turnstileSiteKey||null; }catch(e){ this.tsKey=null; }
+    if(this.tsKey){
+      const s=document.createElement("script");
+      s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; s.async=true;
+      s.onload=()=>this.drawTurnstile();
+      document.head.appendChild(s);
+    }
+  }
+  drawTurnstile(){
+    const w=document.getElementById("turnstileWrap");
+    if(!w||!this.tsKey||!window.turnstile||w.dataset.done) return;
+    w.dataset.done="1"; this.tsToken=null;
+    window.turnstile.render(w,{sitekey:this.tsKey,callback:t=>{ this.tsToken=t; },"expired-callback":()=>{ this.tsToken=null; }});
+  }
+
+  /* ── 1. landing + the gate ── */
+  landing(){
+    this.stageEl.innerHTML=`
+      <div class="land-grid"><div>
+        <h1>Tell me how you vacation.<br>I'll name the ship, the room and the price.</h1>
+        <p class="re-intro">A few questions about <b>your trip</b>, a few about <b>you</b>, and I'll show you the
+        ship I'd put you on, the cabins I'd book myself, and what that sailing costs today. Then it comes to
+        me. I go through it, call you, and finish the quote. You don't book a thing until we've talked.</p>
+        <p class="re-intro" id="longNote"><b>Yes, it's obnoxiously long.</b> I want to make sure we give you as perfect a cruise as possible. Maybe the perfect cruise you never saw coming.</p>
+        <div class="hero-brand"><img src="/assets/concierge/still-afloat-cruise-smarter.png" alt="Still Afloat — Cruise Smarter"></div>
+        <div class="re-fork"><div class="re-choices">
+          <button class="re-btn yes" onclick="VG.push('landing');VG.gate()">Start my vacation &rarr;</button>
+        </div></div>
+      </div></div>
+      <p class="quiet">Still Afloat Cruising — your independent travel advisor</p>`;
+  }
+  gate(){
+    const m=this.me;
+    this.stageEl.innerHTML=`
+      <p class="re-progress">First, who am I talking to?</p>
+      <h2 class="q">Where do I send your results?</h2>
+      <p class="re-intro" style="margin-top:-4px">Your email is how I follow up with your quote. I don't share it and I don't sell it.</p>
+      <label class="re-lbl" for="gFirst">First name</label><input class="g-in" id="gFirst" autocomplete="given-name" value="${esc(m.firstName)}">
+      <label class="re-lbl" for="gLast">Last name</label><input class="g-in" id="gLast" autocomplete="family-name" value="${esc(m.lastName)}">
+      <label class="re-lbl" for="gEmail">Email</label><input class="g-in" id="gEmail" type="email" autocomplete="email" value="${esc(m.email)}">
+      <label class="re-lbl" for="gPhone">Phone (optional)</label><input class="g-in" id="gPhone" type="tel" autocomplete="tel" value="${esc(m.phone)}">
+      <div id="turnstileWrap"></div>
+      <p class="g-err" id="gErr"></p>
+      <div class="re-choices" style="margin-top:10px"><button class="re-btn yes" id="gGo" onclick="VG.gateGo()">Let's go &rarr;</button></div>
+      ${this.quiet()}`;
+    this.drawTurnstile();
+  }
+  async gateGo(){
+    const v=id=>document.getElementById(id).value.trim();
+    this.me={firstName:v("gFirst"),lastName:v("gLast"),email:v("gEmail"),phone:v("gPhone")};
+    if(!this.me.firstName) return this.err("Add your first name.");
+    if(!this.me.lastName) return this.err("Add your last name.");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.me.email)) return this.err("That email address does not look right. Check it and try again.");
+    if(this.session){ this.push('gate'); return this.who(); }   /* came back to this screen: already started */
+    if(this.tsKey&&!this.tsToken) return this.err("Tick the spam check box above, then press the button again.");
+    const go=document.getElementById("gGo"); go.disabled=true; this.err("");
+    try{
+      const d=await this.api("start",Object.assign({lang:LANG,"cf-turnstile-response":this.tsToken},this.me));
+      this.session=d.session; this.key=d.key;
+      this.push('gate'); this.who();
+    }catch(e){ go.disabled=false; this.err(e.message); }
+  }
+
+  /* ── 2. the trip ── */
+  who(){
+    const t=this.trip, n=(a,b,sel)=>{ let o=""; for(let i=a;i<=b;i++) o+=`<option${i===sel?" selected":""}>${i}</option>`; return o; };
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Your trip · who</p>
+      <h2 class="q">Who's going?</h2>
+      <label class="re-lbl" for="tAdults">Adults (18 and up)</label><select id="tAdults">${n(1,12,t.adults)}</select>
+      <label class="re-lbl" for="tKids">Children (17 and under)</label><select id="tKids" onchange="VG.kidAges()">${n(0,10,t.childAges.length)}</select>
+      <div id="tAgesBox"></div>
+      <label class="re-lbl" for="tRooms">Rooms needed</label><select id="tRooms">${n(1,8,t.rooms)}</select>
+      <p class="g-err" id="gErr"></p>
+      <div class="re-choices" style="margin-top:10px"><button class="re-btn yes" onclick="VG.whoGo()">Next &rarr;</button></div>
+      ${this.quiet()}`;
+    this.kidAges();
+  }
+  kidAges(){
+    const count=Number(document.getElementById("tKids").value), box=document.getElementById("tAgesBox");
+    const had=[...box.querySelectorAll("select")].map(s=>s.value);
+    if(!count){ box.innerHTML=""; return; }
+    let sels="";
+    for(let i=0;i<count;i++){
+      const cur=had[i]!==undefined?had[i]:(this.trip.childAges[i]!==undefined?String(this.trip.childAges[i]):"");
+      let o=`<option value="">Age…</option>`;
+      for(let a=0;a<=17;a++) o+=`<option value="${a}"${String(a)===cur?" selected":""}>${a===0?"Under 1":a}</option>`;
+      sels+=`<select aria-label="Age of child ${i+1}">${o}</select>`;
+    }
+    box.innerHTML=`<label class="re-lbl">Each child's age on the sailing date</label><div class="g-ages">${sels}</div>`;
+  }
+  whoGo(){
+    const t=this.trip;
+    t.adults=Number(document.getElementById("tAdults").value);
+    const ages=[...document.querySelectorAll("#tAgesBox select")].map(s=>s.value);
+    if(ages.some(a=>a==="")) return this.err("Pick an age for each child. The cruise line prices children by age.");
+    t.childAges=ages.map(Number);
+    t.rooms=Number(document.getElementById("tRooms").value);
+    const people=t.adults+t.childAges.length;
+    if(t.rooms>t.adults) return this.err("Every room needs at least one adult in it. Lower the rooms or add an adult.");
+    if(people>t.rooms*5) return this.err("That is more than five people to a room. Add a room.");
+    this.push('who'); this.when();
+  }
+  when(){
+    const t=this.trip;
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Your trip · when</p>
+      <h2 class="q">When could you sail?</h2>
+      <p class="re-intro" style="margin-top:-4px">Give me the window, wide or narrow. I'll show you the sailings that leave inside it.</p>
+      <label class="re-lbl" for="tFrom">The first day you could leave</label><input class="g-in" id="tFrom" type="date" min="${todayIso()}" value="${esc(t.earliest)}">
+      <label class="re-lbl" for="tTo">The last day you could leave</label><input class="g-in" id="tTo" type="date" min="${todayIso()}" value="${esc(t.latest)}">
+      <label class="re-lbl" for="tLen">How long a trip?</label>
+      <select id="tLen">${LENGTHS.map((l,i)=>`<option value="${i}"${i===t.lengthIx?" selected":""}>${l[0]}</option>`).join("")}</select>
+      <p class="g-err" id="gErr"></p>
+      <div class="re-choices" style="margin-top:10px"><button class="re-btn yes" onclick="VG.whenGo()">Next &rarr;</button></div>
+      ${this.quiet()}`;
+  }
+  whenGo(){
+    const t=this.trip, from=document.getElementById("tFrom").value, to=document.getElementById("tTo").value;
+    if(!from||!to) return this.err("Pick the first and last day you could leave.");
+    if(from<todayIso()) return this.err("The first day you could leave has already passed. Pick a later one.");
+    if(to<from) return this.err("The last day you could leave is before the first. Swap them.");
+    t.earliest=from; t.latest=to; t.lengthIx=Number(document.getElementById("tLen").value);
+    t.nightsMin=LENGTHS[t.lengthIx][1]; t.nightsMax=LENGTHS[t.lengthIx][2];
+    this.push('when'); this.tIndex=0; this.tripQ();
+  }
+  tripQ(){
+    const i=this.tIndex;
+    if(i>=TRIP_QS.length) return this.extras();
+    const q=TRIP_QS[i];
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Your trip · ${i+1} of ${TRIP_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label,val])=>
+        `<button class="re-opt" onclick="VG.answerT('${q.key}','${val}')">${fmtOpt(label)}</button>`).join("")}</div>
+      ${this.quiet()}`;
+  }
+  answerT(key,val){
+    this.push('tripQ');
+    if(key==="seasick") this.trip.seasick=(val==="yes"); else this.trip[key]=val;
+    this.tIndex++; this.tripQ();
+  }
+  extras(){
+    const t=this.trip;
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Your trip · last few</p>
+      <h2 class="q">Anything I should know?</h2>
+      <label class="g-check"><input type="checkbox" id="tFirst"${t.firstCruise?" checked":""}> This is our first cruise</label>
+      <label class="g-check"><input type="checkbox" id="tMob"${t.mobility?" checked":""}> Someone needs an accessible room or short walks</label>
+      <label class="re-lbl" for="tOcc">Celebrating anything?</label>
+      <select id="tOcc">${OCCASIONS.map(([l,v])=>`<option value="${v}"${v===t.occasion?" selected":""}>${l}</option>`).join("")}</select>
+      <label class="re-lbl" for="tNotes">Anything else (optional)</label>
+      <textarea class="g-in" id="tNotes" maxlength="1000" placeholder="A port you have to see, a ship a friend raved about, a hard budget number…">${esc(t.notes)}</textarea>
+      <div class="re-choices" style="margin-top:14px"><button class="re-btn yes" onclick="VG.extrasGo()">Now, about you &rarr;</button></div>
+      ${this.quiet()}`;
+  }
+  extrasGo(){
+    const t=this.trip;
+    t.firstCruise=document.getElementById("tFirst").checked; t.mobility=document.getElementById("tMob").checked;
+    t.occasion=document.getElementById("tOcc").value; t.notes=document.getElementById("tNotes").value.trim();
+    this.push('extras'); this.qIndex=0; this.personQ();
+  }
+
+  /* ── 3. about you ── */
+  personQ(){
+    const i=this.qIndex;
+    if(i>=GENIE_PERSONALITY_QS.length) return this.reveal();
+    const q=GENIE_PERSONALITY_QS[i];
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Getting to know you · ${i+1} of ${GENIE_PERSONALITY_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label],oi)=>
+        `<button class="re-opt" onclick="VG.answerP(${i},${oi})">${fmtOpt(label)}</button>`).join("")}</div>
+      ${this.quiet()}`;
+  }
+  answerP(qi,oi){ this.push('personQ'); this.choices[qi]=oi; this.qIndex++; this.personQ(); }
+
+  /* ── 4. the ship ── */
+  tripBody(){
+    const t=this.trip;
+    return {adults:t.adults,childAges:t.childAges,rooms:t.rooms,earliest:t.earliest,latest:t.latest,
+      nightsMin:t.nightsMin,nightsMax:t.nightsMax,destination:t.destination,room:t.room,priority:t.priority,
+      budget:t.budget,seasick:!!t.seasick,firstCruise:!!t.firstCruise,occasion:t.occasion,mobility:!!t.mobility,notes:t.notes||""};
+  }
+  async reveal(){
+    this.busy("The reveal","Checking my notes against your answers…");
+    let d;
+    try{ d=await this.api("ships",{trip:this.tripBody(),choices:this.choices.slice(0,GENIE_PERSONALITY_QS.length)}); }
+    catch(e){
+      this.stageEl.innerHTML=`<p class="re-progress">The reveal</p><h2 class="q">That didn't go through.</h2>
+        <p class="g-err">${esc(e.message)}</p>
+        <div class="re-choices" style="margin-top:14px"><button class="re-btn yes" onclick="VG.reveal()">Try again</button></div>`;
+      return;
+    }
+    this.party=d.party; this.ships=d.picks||[]; this.worth=d.worthALook||null; this.reason=d.reason||"";
+    await this.drawReveal();
+  }
+  async drawReveal(){
+    if(!this.ships.length){
+      this.stageEl.innerHTML=`<p class="re-progress">The reveal</p><h2 class="q">I'd rather get this right than guess.</h2>
+        <p class="re-intro">Nothing lined up cleanly on my end. Send me what you told me and I'll match your ship by hand.</p>${this.sendCard('drawReveal')}`;
+      return;
+    }
+    const cards=[]; for(const s of this.ships) cards.push(await this.shipCard(s));
+    let worth="";
+    if(this.worth){ worth=`<div style="margin-top:18px;padding-top:6px;border-top:1px dashed rgba(2,62,110,.3)">
+      <p style="font-size:18px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#023e6e;margin:10px 0 2px">Worth a look</p>
+      <p class="re-intro" style="font-size:15px;margin-bottom:8px">${this.worth.why||""}</p>${await this.shipCard(this.worth)}</div>`; }
+    this.stageEl.innerHTML=`
+      <p class="re-progress">The reveal</p>
+      <h2 class="q">${cards.length>1?"Two ships I'd put you on.":"The ship I'd put you on."}</h2>
+      ${this.reason?`<p class="re-intro" style="font-size:15.5px">${this.reason}</p>`:""}
+      ${cards.join("")}${worth}`;
+  }
+  async shipCard(s){
+    let rating=null, comment=null, salty=null;
+    try{
+      const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
+      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
+    }catch(e){/* no rating shown */}
+    const dest=this.trip.destination;
+    const nextLevel=s.nextLevel?`
+      <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
+        <span style="font-size:20px">✦</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#023e6e;display:block;margin-bottom:2px">A step up: ${s.nextLevel.name}</span>
+        <p style="margin:0;font-size:16px;line-height:1.55;color:rgba(7,24,63,.88)">${s.nextLevel.why}</p></div>
+      </div>`:"";
+    return `<div class="reveal-ship">
+      <div class="gist">
+        <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
+        ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
+      </div>
+      ${(dest&&dest!=="surprise"&&(s.regions||[]).includes(dest))?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Sails ${REGION_NAMES[dest]||dest}</p>`:""}
+      ${rating!=null?`<p style="margin:6px 0 2px;font-size:15.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#023e6e">Our Conga Line rating — how many join the dance</p>
+      <div class="gist-dancers">${(()=>{const r=Math.max(0,Math.min(5,Number(rating)));const full=Math.floor(r);const pct=Math.round((r-full)*100);const dim='opacity:.22;filter:grayscale(80%)';
+        return [1,2,3,4,5].map(n=>n<=full?`<span class="dancer"><img src="${DANCERS[n]}" alt=""></span>`
+          :(n===full+1&&pct>0)?`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""><span class="fill" style="width:${pct}%"><img src="${DANCERS[n]}" alt=""></span></span>`
+          :`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""></span>`).join("");})()}</div>`:""}
+      ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
+      ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
+        <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
+      ${nextLevel}
+      <div class="reveal-pick"><button class="re-btn no" onclick="VG.pickShip('${s.slug}')">This is my ship — show me her sailings &rarr;</button></div>
+    </div>`;
+  }
+
+  /* ── 5. her sailings inside the dates ── */
+  async pickShip(slug){
+    this.push('drawReveal');
+    this.shipPick=[...this.ships,this.worth].filter(Boolean).find(s=>s.slug===slug);
+    this.busy("Your sailing",`Reading ${esc(this.shipPick.ship)}'s schedule…`);
+    try{ const d=await this.api("sailings",{ship:slug}); this.sailings=d.sailings||[]; }
+    catch(e){ this.sailings=null; this.sailErr=e.message; }
+    this.drawSailings();
+  }
+  drawSailings(){
+    const s=this.shipPick, t=this.trip;
+    if(this.sailings===null){
+      this.stageEl.innerHTML=`<p class="re-progress">Your sailing</p><h2 class="q">That didn't go through.</h2>
+        <p class="g-err">${esc(this.sailErr||"")}</p>
+        <div class="re-choices" style="margin-top:14px"><button class="re-btn yes" onclick="VG.history.pop();VG.pickShip('${s.slug}')">Try again</button></div>`;
+      return;
+    }
+    if(!this.sailings.length){
+      this.stageEl.innerHTML=`<p class="re-progress">Your sailing · ${esc(s.ship)}</p>
+        <h2 class="q">I don't see her leaving in your dates.</h2>
+        <p class="re-intro">Nothing on my schedule for ${esc(s.ship)} between ${longDate(t.earliest)} and ${longDate(t.latest)} at the length you asked for.
+        Press Back to try the other ship, or send this to me and I'll find the sailing by hand. The lines add dates I may not have yet.</p>
+        ${this.sendCard('drawSailings')}`;
+      return;
+    }
+    const rows=this.sailings.map((x,i)=>`<button class="re-opt g-sail" onclick="VG.pickSailing(${i})">
+      <b>${longDate(x.start)}${x.nights?` · ${x.nights} nights`:""}</b>
+      ${x.ports.length?`<span class="p">${x.ports.map(esc).join(" · ")}</span>`:""}</button>`).join("");
+    this.stageEl.innerHTML=`
+      <div class="stage-head"><p class="re-progress">Your sailing · ${esc(s.ship)}</p>
+      <h2 class="q">Pick the one that fits your calendar.</h2></div>
+      <div class="stage-body"><div class="re-opts">${rows}</div></div>${this.quiet()}`;
+  }
+
+  /* ── 6. the fare ── */
+  async pickSailing(i){
+    this.push('drawSailings');
+    const x=this.sailings[i]; this.sailing=x;
+    this.busy("Your price","Asking what that sailing costs today…");
+    try{ this.priced=await this.api("price",{start:x.start,end:x.end,nights:x.nights,ports:x.ports}); }
+    catch(e){ this.priced={fares:null,why:"unavailable"}; }
+    this.drawPrice();
+  }
+  drawPrice(){
+    const s=this.shipPick, x=this.sailing, f=this.priced&&this.priced.fares, t=this.trip;
+    const people=t.adults+t.childAges.length;
+    let body;
+    if(f&&f.fares&&f.fares.length){
+      const covers=fa=>fa.basis==="per-person"?`per person, ${f.guests===1?"one in the room":"two in a room"}`
+        :fa.basis==="room"?`for the room, ${f.guests===1?"one guest":"two guests"}`:"as the line advertises it";
+      const rows=f.fares.map(fa=>`<div class="g-fare${fa.type===t.room?" mine":""}">
+        <div><span class="t">${ROOM_WORD[fa.type]}${fa.type===t.room?" — the one you asked for":""}</span>
+        <span class="n">${fa.price!=null?covers(fa)+", taxes and fees included":(fa.status==="sold_out"?"Sold out on this sailing":"No fare listed today")}</span></div>
+        <b>${fa.price!=null?money(fa.price):"—"}</b></div>`).join("");
+      const partyNote=(Math.ceil(people/t.rooms)>2)
+        ?`<p class="re-intro" style="font-size:15.5px">These are the fares for two in a room. You have more than two in a room, so I'll price the extra guests for you. Third and fourth guests usually cost a good deal less.</p>`:"";
+      body=`<div class="reveal-ship" style="padding:10px 18px">${rows}</div>${partyNote}
+        <p class="re-intro" style="font-size:15.5px">That is the cruise line's own advertised price today, and it moves. Before I quote you I check it
+        against the group rates and extras I can get that the public price doesn't show.</p>`;
+    } else {
+      body=`<p class="re-intro">I can't pull a live fare for this sailing from here, so I'll price it by hand and send it with your quote.
+        You lose nothing by going on. Pick your room and send it over.</p>`;
+    }
+    const next=s.hasRooms
+      ?`<button class="re-btn yes" onclick="VG.rooms()">Now show me the rooms &rarr;</button>`
+      :`<button class="re-btn yes" onclick="VG.push('drawPrice');VG.finishAsk()">Send this to Mark &rarr;</button>`;
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Your price · ${esc(s.ship)}</p>
+      <h2 class="q">${longDate(x.start)}${x.nights?`, ${x.nights} nights`:""}</h2>
+      ${x.ports.length?`<p class="re-intro" style="font-size:15.5px;margin-top:-4px">${x.ports.map(esc).join(" · ")}</p>`:""}
+      ${body}
+      <div class="re-choices" style="margin-top:12px">${next}</div>${this.quiet()}`;
+  }
+
+  /* ── 7. the rooms: the Room Concierge's own picks ── */
+  async rooms(){
+    this.push('drawPrice');
+    const s=this.shipPick, t=this.trip;
+    this.busy("Your rooms",`Reading the deck plans for ${esc(s.ship)}…`,"Checking every cabin on that hull against what you told me.");
+    let d=null;
+    try{
+      const r=await fetch("/api/cabins/recommend",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ship:s.repSlug||s.slug,party:this.party,room:t.room,priority:t.priority,budget:t.budget,motion:!!t.seasick})});
+      if(r.ok) d=await r.json();
+    }catch(e){/* handled below */}
+    this.roomsData=d; this.picked=new Set(); this.drawRooms();
+  }
+  drawRooms(){
+    const d=this.roomsData, s=this.shipPick;
+    if(!d||!d.picks||!d.picks.length){
+      this.stageEl.innerHTML=`<p class="re-progress">Your rooms</p><h2 class="q">This one needs the human touch.</h2>
+        <p class="re-intro">${(d&&d.note)||`I don't have room-by-room picks for ${esc(s.ship)} yet. Send this over and I'll choose your cabin by hand.`}</p>${this.sendCard('drawRooms')}`;
+      return;
+    }
+    const picks=d.picks.map(p=>{
+      const f=p.facts||{}, on=this.picked.has(p.cabin);
+      const chips=[f.deck?`Deck ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<div class="reveal-ship" style="padding:15px 18px">
+        <p class="room-hook">${p.hook||("Cabin "+p.cabin)}</p>
+        <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
+        ${p.reason?`<p class="room-why">${p.reason}</p>`:""}
+        <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+          onclick="VG.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div></div>`;}).join("");
+    const steer=(d.steerClear||[]).slice(0,3).map(x=>{
+      const sf=x.facts||{};
+      const sc=[sf.deck?`Deck ${sf.deck}`:null,sf.section||null,sf.category||null,sf.view||null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<li><div class="chips"><span class="chip chip-num">Cabin ${x.cabin||x.area||""}</span>${sc}</div><p class="skip-why">${x.reason||""}</p></li>`;}).join("");
+    const note=d.note?`<p class="re-intro" style="background:rgba(0,119,182,.10);border-left:3px solid #023e6e;border-radius:8px;padding:12px 14px;margin:0 0 16px">${d.note}</p>`:"";
+    const rooms=this.trip.rooms;
+    this.stageEl.innerHTML=`
+      <div class="stage-head"><p class="re-progress">Your rooms · ${esc(s.ship)}</p>
+      <h2 class="q">Here's where I'd put you.</h2>
+      ${rooms>1?`<p class="re-intro" style="font-size:15.5px">You need ${rooms} rooms. Pick the ones you like and I'll keep you close together.</p>`:""}</div>
+      <div class="stage-body">${note}${picks}
+      ${steer?`<div class="steer"><h3>Rooms I'd Skip</h3><ul>${steer}</ul></div>`:""}
+      <div class="re-cta"><h3>${this.picked.size?`${this.picked.size} room${this.picked.size>1?"s":""} picked`:"Not sure which? Leave it to me."}</h3>
+        <p>Send it over. I'll check the room, the price and the itinerary, then call you with the final quote.</p>
+        <button class="re-btn yes" onclick="VG.push('drawRooms');VG.finishAsk()">Send this to Mark &rarr;</button></div>
+      </div>`;
+  }
+  togglePick(c){ this.picked.has(c)?this.picked.delete(c):this.picked.add(c); this.drawRooms(); }
+
+  /* ── 8. hand it to Mark ── */
+  sendCard(from){
+    return `<div class="re-cta"><h3>Send me what you've told me.</h3>
+      <p>I'll finish it by hand and call you with the quote.</p>
+      <button class="re-btn yes" onclick="VG.push('${from}');VG.finishAsk()">Send this to Mark &rarr;</button></div>`;
+  }
+  finishAsk(){
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Last step</p>
+      <h2 class="q">When's a good time to call you?</h2>
+      <p class="re-intro" style="margin-top:-4px">I'll go through everything first, then we walk it together and I give you the final number.</p>
+      <label class="re-lbl" for="fPhone">Phone</label><input class="g-in" id="fPhone" type="tel" autocomplete="tel" value="${esc(this.me.phone)}">
+      <label class="re-lbl" for="fWhen">Best days and times</label><input class="g-in" id="fWhen" maxlength="200" placeholder="Weekday evenings after 6, Eastern time">
+      <p class="g-err" id="gErr"></p>
+      <div class="re-choices" style="margin-top:12px"><button class="re-btn yes" id="fGo" onclick="VG.finish()">Send it to Mark</button></div>
+      <p class="quiet">No phone? Leave it blank and I'll email you instead.</p>`;
+  }
+  async finish(){
+    const go=document.getElementById("fGo"); go.disabled=true; this.err("");
+    this.me.phone=document.getElementById("fPhone").value.trim();
+    try{
+      await this.api("finish",{cabins:[...this.picked],callWhen:document.getElementById("fWhen").value.trim(),phone:this.me.phone});
+    }catch(e){ go.disabled=false; return this.err(e.message); }
+    this.history=[]; document.getElementById("backBtn").classList.remove("show");
+    this.stageEl.innerHTML=`
+      <p class="re-progress">Sent</p>
+      <h2 class="q">Got it, ${esc(this.me.firstName)}. It's on my desk.</h2>
+      <p class="re-intro">I'll read through your answers, check the price against the rates and extras I can get you, and then ${this.me.phone?"call":"email"} you.
+      A copy of what happens next is on its way to <b>${esc(this.me.email)}</b>.</p>
+      <p class="re-intro">Nothing is booked and nothing is owed. The only studying left is the pool-bar menu.</p>
+      <div class="re-choices" style="margin-top:12px"><a class="re-btn yes" style="text-decoration:none" href="/">Back to Still Afloat</a></div>`;
+  }
+}
+const LANG="en";
+const VG=new VacationGenieFlow(); VG.landing();
+</script>
+</body>
+</html>

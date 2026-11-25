@@ -805,4 +805,82 @@ export default [
       t.ok(unsafe.length === 0, `the link's values are written into the page as HTML without escaping, so a crafted link can run script on the site: ${unsafe.join(", ")}`);
     },
   },
+  {
+    id: "cabins.genie-page-wired",
+    basis: "ruling: Mark 2026-11-24 — the Vacation Genie is the single-booking front door: email first, the trip, then the Genie's own questions about the traveler (scenes aboard a ship, not the Room Concierge's six), then the ship, the sailing, the fare, the rooms, and the file goes to Mark; interior is a room choice the visitor can name",
+    title: "The Vacation Genie page loads, asks every step of its road from the right endpoints, opens with the email gate and offers an interior room by name",
+    covers: ["page /vacation-genie.html"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const html = t.html(await t.get("/vacation-genie.html"), {
+        mustContain: ['"/api/genie/"', "/api/cabins/fleet", "/api/cabins/recommend", "/api/ships/", "/api/public-config", "GENIE_PERSONALITY_QS", "TRIP_QS"],
+      });
+      t.equal(H.htmlLang(html).slice(0, 2), "en", "the page's language");
+      t.equal(H.canonical(html), `https://${PROD_HOST}/vacation-genie.html`, "the page's canonical link");
+      t.matches(H.title(html), /Vacation Genie/, "the page's title");
+      for (const step of ["start", "ships", "sailings", "price", "finish"]) {
+        t.ok(new RegExp(`this\\.api\\("${step}"`).test(html), `the page never calls the "${step}" step`);
+      }
+      // The gate comes before any question: the landing's one button opens the name-and-email screen.
+      t.matches(html, /onclick="VG\.push\('landing'\);VG\.gate\(\)"/, "the landing's button (it must open the email screen first)");
+      t.matches(html, /id="gEmail" type="email"/, "the email field on the gate screen");
+      // Mark's own line, on the landing before the button (2026-11-24): the interview is long on purpose and says so.
+      t.matches(html, /Yes, it's obnoxiously long\.[\s\S]{0,40}I want to make sure we give you as perfect a cruise as possible\. Maybe the perfect cruise you never saw coming\./, "the landing's line that owns up to the length");
+      t.matches(html, /\["Interior[^"]*","inside"\]/, "the room question's interior answer");
+      const asked = [...(html.match(/const GENIE_PERSONALITY_QS\s*=\s*\[([\s\S]*?)\n\];/)?.[1] ?? "").matchAll(/key:"([A-Za-z0-9]+)"/g)].map((m) => m[1]);
+      t.equal(asked.length, 17, "questions about the traveler on the page");
+      // The Genie's questions are its own scenes aboard, not the Room Concierge's six (Mark, 2026-11-24).
+      for (const borrowed of ["retell", "photos", "wedding", "annoy", "overpay", "tradeoff"]) t.ok(!asked.includes(borrowed), `the Genie still asks the Room Concierge's "${borrowed}" question`);
+      t.observe("genie questions", asked.join(","));
+    },
+  },
+  {
+    id: "cabins.genie-refuses-bad-requests",
+    basis: "code: server/src/routes/genie.ts — /genie/start refuses a missing name or a bad email with one sentence saying what to fix (400) before anything is written; every later step refuses a missing or wrong interview key (401)",
+    title: "The Vacation Genie refuses a bad name or email with what to fix, and refuses every later step without a real interview key (refusals only: a real interview writes a person's file and emails Mark)",
+    covers: ["POST /api/genie/start", "POST /api/genie/ships", "POST /api/genie/sailings", "POST /api/genie/price", "POST /api/genie/finish"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POSTs and prod sweeps are read-only; only refusals are sent, so no file is written and no email goes out",
+    run: async (t) => {
+      const noName = await t.send("POST", "/api/genie/start", { body: { firstName: "", lastName: "Walker", email: "walker@example.com" } });
+      t.ok(noName.status === 400 && /first name/i.test(noName.json?.error || ""), `a start with no first name should be 400 naming the first name: ${noName.describe()}`);
+      const badEmail = await t.send("POST", "/api/genie/start", { body: { firstName: "Gate", lastName: "Walker", email: "not-an-address" } });
+      t.ok(badEmail.status === 400 && /email/i.test(badEmail.json?.error || ""), `a start with a bad email should be 400 naming the email: ${badEmail.describe()}`);
+      const wrongKeys = [{}, { session: "not-a-uuid", key: "k".repeat(48) }, { session: "00000000-0000-4000-8000-000000000000", key: "k".repeat(48) }];
+      for (const step of ["ships", "sailings", "price", "finish"]) {
+        for (const body of wrongKeys) {
+          const res = await t.send("POST", `/api/genie/${step}`, { body });
+          t.ok(res.status === 401 && /start again/i.test(res.json?.error || ""), `"${step}" without a real interview key should be 401 telling the visitor to start again: ${res.describe()}`);
+        }
+      }
+    },
+  },
+  {
+    id: "cabins.genie-files-are-marks-only",
+    basis: "code: server/src/routes/genie.ts — GET /genie/leads and POST /genie/leads/:id answer only to Mark's token; the list gives each file its name, email, status and the file's rows; an unknown status or an unknown file is refused",
+    title: "The Vacation Genie files open only with Mark's token, each file carries the person and what they were shown, and a bad change is refused",
+    covers: ["GET /api/genie/leads", "POST /api/genie/leads/:id"],
+    modes: ["dev"],
+    devOnlyBecause: "the refusal probes on the change route are POSTs and prod sweeps are read-only",
+    run: async (t) => {
+      t.status(await t.get("/api/genie/leads"), 401);
+      const list = t.success(await t.get("/api/genie/leads", { auth: true }));
+      t.ok(Array.isArray(list.leads), "the files list is not a list");
+      const STATUSES = ["started", "finished", "contacted", "quoted", "booked", "closed"];
+      for (const l of list.leads) {
+        t.fields(l, ["id", "status", "name", "email", "created_at"], "a Vacation Genie file");
+        t.ok(STATUSES.includes(l.status), `file ${l.id}: unknown status "${l.status}"`);
+        t.ok(Array.isArray(l.file) && l.file.some(([k]) => k === "Email"), `file ${l.id}: the file's rows do not carry the person's email`);
+        if (l.status !== "started") t.ok(l.file.some(([k]) => k === "Travelers"), `file ${l.id} is finished but holds no trip`);
+      }
+      t.observe("genie files", list.leads.length, "info");
+      t.status(await t.send("POST", "/api/genie/leads/00000000-0000-4000-8000-000000000000", { body: { status: "booked" } }), 401);
+      const badId = await t.send("POST", "/api/genie/leads/not-a-file", { auth: true, body: { status: "booked" } });
+      t.ok(badId.status === 400 && badId.json?.success === false, `a change to a file id that is not an id should be 400: ${badId.describe()}`);
+      const badStatus = await t.send("POST", "/api/genie/leads/00000000-0000-4000-8000-000000000000", { auth: true, body: { status: "started" } });
+      t.ok(badStatus.status === 400 && /status/i.test(badStatus.json?.error || ""), `setting a file back to "started" should be 400: ${badStatus.describe()}`);
+      const nothing = await t.send("POST", "/api/genie/leads/00000000-0000-4000-8000-000000000000", { auth: true, body: {} });
+      t.ok(nothing.status === 400 && /nothing to change/i.test(nothing.json?.error || ""), `a change with nothing in it should be 400: ${nothing.describe()}`);
+    },
+  },
 ];

@@ -37,6 +37,7 @@ import { logger } from "../lib/logger";
 import { llmJson, anthropicConfigured } from "../lib/llm";
 import { factsSentence, type CabinFacts } from "../lib/cabin-facts-sentence";
 import { clientIp } from "../lib/client-ip";
+import { shipStandings, standingFor, cruiserFit, readDial, type CruiserScoreRow } from "../lib/ship-scores";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
   shipTypeInventory, zonesForCabin, zoneSign, classifyCategory, satisfies,
@@ -876,7 +877,7 @@ type FleetShip = {
 // Both rating maps are always built; the caller decides which to use (/cabins/fleet
 // ignores internalRating, suggest-ships uses it). The old boolean parameter was
 // dead after the rewrite and implied a gate that did not exist.
-async function buildFleet(): Promise<{ ships: FleetShip[]; internalRating: Map<string, number> }> {
+async function buildFleet(): Promise<{ ships: FleetShip[]; internalRating: Map<string, number>; cruiserRows: CruiserScoreRow[] }> {
   const supabase = getSupabase();
   const { data: shipRows } = await supabase
     .from("cabin_ships")
@@ -930,7 +931,15 @@ async function buildFleet(): Promise<{ ships: FleetShip[]; internalRating: Map<s
     };
   }).sort((a, b) => a.line.localeCompare(b.line) || a.ship.localeCompare(b.ship));
 
-  return { ships, internalRating };
+  // What cruisers say per ship per category (migration 0076), as captured. Only the Vacation Genie's
+  // matching reads it (suggestShips, when a profile is given). A database that does not have the table
+  // yet answers with an error, not rows: then there are simply no scores and the matcher works as before.
+  const { data: scoreRows, error: scoreErr } = await supabase
+    .from("ship_cruiser_scores").select("ship_slug,source,review_count,categories");
+  if (scoreErr) logger.warn({ err: scoreErr.message }, "ship_cruiser_scores not readable; matching without cruiser category scores");
+  const cruiserRows = (scoreErr ? [] : (scoreRows ?? [])) as CruiserScoreRow[];
+
+  return { ships, internalRating, cruiserRows };
 }
 
 router.get("/cabins/fleet", async (_req: Request, res: Response) => {
@@ -967,6 +976,8 @@ type Matrix = {
    *  (Mark, 2026-08-21: up-and-coming, rates well in our rankings — presented
    *  alongside the majors, never as the wildcard). */
   mainstream?: string[];
+  /** The dial for cruiser category scores (lib/ship-scores.ts readDial). Vacation Genie only. */
+  cruiserScores?: unknown;
 };
 function loadMatrix(): Matrix | null {
   for (const p of [
@@ -1002,14 +1013,32 @@ function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: st
   return e.classes.includes(shipClass) ? { name: e.name, note: e.note } : null;
 }
 
-router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
-  try {
-    const { personality = {}, party, traits = {}, budget, destination, lang: langRaw } = (req.body ?? {}) as
-      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string; destination?: string; lang?: string };
-    const lang: "en" | "es" = langRaw === "es" || req.query["lang"] === "es" ? "es" : "en";
+/**
+ * `profile` is the Vacation Genie's (lib/genie-interview.ts genieProfile): where the person sits on each
+ * virtue and how much each counts, read straight off its own questions. When it is given it REPLACES the
+ * targets and weights worked out below from the concierge's five labels; everything else (ratings, Mark's
+ * own verdicts, budget, destination, the enclave, one ship per line) is the same code for both.
+ */
+export type SuggestProfile = { target: Partial<Record<string, number>>; weight: Partial<Record<string, number>> };
+export type SuggestInput = { personality?: Personality; party?: string; traits?: Traits; budget?: string; destination?: string; profile?: SuggestProfile };
+export type SuggestedShip = FleetShip & { nextLevel: { name: string; why: string } | null };
+export type SuggestOutput = { picks: SuggestedShip[]; reason: string; worthALook: (SuggestedShip & { why: string }) | null };
+
+/**
+ * The ship suggestion itself, callable without a request: the Room Concierge's route and the Vacation
+ * Genie (routes/genie.ts) both answer from this one function, so the two can never disagree about a ship.
+ * null = the virtue matrix could not be read.
+ */
+export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Promise<SuggestOutput | null> {
+  {
+    const { personality = {}, party, traits = {}, budget, destination } = input;
     const matrix = loadMatrix();
-    if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
-    const { ships, internalRating } = await buildFleet();
+    if (!matrix) return null;
+    const { ships, internalRating, cruiserRows } = await buildFleet();
+    // Cruiser category scores count only for the Genie (a profile is given): the Room Concierge's ship
+    // suggestions are approved as they are and must not move because this table was filled.
+    const dial = readDial(matrix.cruiserScores);
+    const standings = input.profile && dial.strength > 0 ? shipStandings(cruiserRows, dial.halfTrustReviews, dial.oneSiteShare) : null;
 
     const t = (k: string) => Number(traits[k] ?? 0);
     // What this visitor is reaching for, per virtue (same 0-2 space as the matrix).
@@ -1034,6 +1063,14 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       scale: personality.crowds === "avoids" ? 2.0 : 1.0,
       warmth: t("extrovert") >= 2 ? 1.25 : 0.5,
     };
+    if (input.profile) {
+      const num = (v: unknown, lo: number, hi: number): number | null =>
+        typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null;
+      for (const k of Object.keys(target) as (keyof typeof target)[]) {
+        const tv = num(input.profile.target[k], 0, 2); if (tv !== null) target[k] = tv;
+        const wv = num(input.profile.weight[k], 0, 3); if (wv !== null) weight[k] = wv;
+      }
+    }
     // Never pitch the enclave to someone who just said they respect a number —
     // the disposition gates the upsell, no pricing data needed (Mark, 8/14).
     const wantsEnclave = budget !== "lean" && (personality.splurge === "cabin" ||
@@ -1067,6 +1104,10 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
         // The advisor's thumb: Mark's firsthand per-ship verdicts outrank any model.
         const adj = matrix.shipAdjust?.[sh.slug];
         if (adj && typeof adj.adjust === "number") score += adj.adjust;
+        // What cruisers say about this ship on the things THIS traveler cares about: a food lover is
+        // paid for a ship whose food stands above the fleet and charged for one below it; someone who
+        // said food is fuel is neither. The overall rating above stays: it is the ship as a whole.
+        if (standings) score += cruiserFit(standingFor(sh.slug, standings, dial), target, weight, dial).points;
         /**
          * What they said about money has to change the ships.
          *
@@ -1174,7 +1215,17 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       ? `${iPicked} ${es ? "porque" : "because"} ${reasonBits.slice(0, 2).join(joiner)}.`
       : (es ? `${iPicked} para encajar con lo que me contaste.` : `${iPicked} to fit what you told me.`);
 
-    return res.json({ picks, reason, worthALook });
+    return { picks, reason, worthALook };
+  }
+}
+
+router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as SuggestInput & { lang?: string };
+    const lang: "en" | "es" = body.lang === "es" || req.query["lang"] === "es" ? "es" : "en";
+    const out = await suggestShips(body, lang);
+    if (!out) return res.status(500).json({ error: "matrix unavailable" });
+    return res.json(out);
   } catch (err) {
     logger.error({ err }, "cabins/suggest-ships failed");
     return res.status(500).json({ error: "Could not suggest ships" });
