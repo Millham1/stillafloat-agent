@@ -122,7 +122,8 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("conga_line_ratings")
-      .select("ship_slug, rating, rating_display, comment, salty_mark_take, comment_es, salty_mark_take_es, source_count, computed_at, status, comment_status")
+      // "*": a database without the 0077 columns yet still answers, just without the two parts.
+      .select("*")
       .eq("ship_slug", slug)
       .eq("status", "published")
       .eq("comment_status", "approved")
@@ -134,6 +135,7 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
       ship_slug: string; rating: number; rating_display: string | null; comment: string | null;
       salty_mark_take: string | null; comment_es: string | null; salty_mark_take_es: string | null;
       source_count: number | null; computed_at: string | null;
+      why_this_ship?: string | null; watch_for?: string | null;
     };
     return res.json({
       ok: true,
@@ -144,6 +146,10 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
       // back to English rather than an empty card.
       comment: (es && row.comment_es) || row.comment,
       saltyMarkTake: (es && row.salty_mark_take_es) || row.salty_mark_take,
+      // The approved comment in two parts (0077): the upside, and what it costs you. English only for
+      // now; a Spanish card keeps the whole translated sentence.
+      whyThisShip: es ? null : (row.why_this_ship ?? null),
+      watchFor: es ? null : (row.watch_for ?? null),
       sourceCount: row.source_count,
       computedAt: row.computed_at,
     });

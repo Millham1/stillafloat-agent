@@ -38,10 +38,12 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
    (718 of a 1536-wide frame = 46.74vw), so the card is now exactly that height and the
    stage scrolls inside it. Nothing can run past the glass. */
 .panel{grid-area:1/1;position:relative;z-index:2;isolation:isolate;
-  margin:7.9% 19.27% 11.0% 17.9%;
+  /* Mark 11/25: the Genie has its own art (him as the genie on a lido deck). Its card is lighter and
+     smaller than the Concierge's so the deck shows: painted at (322,160)-(1222,806) of 1536x1024. */
+  margin:10.42% 20.44% 14.19% 20.96%;
   padding:clamp(30.2px,3.78vw,65.5px) clamp(32.8px,4.03vw,68.0px);
   color:#07183f;display:flex;flex-direction:column;box-sizing:border-box;
-  height:min(46.74vw,718px)}
+  height:min(42.06vw,646px)}
 .re-topbar{flex:0 0 auto}
 /* overflow-y:scroll (not auto) + no `scrollbar-width` — the standard property makes
    Chrome fall back to the macOS OVERLAY bar, which hides itself and reserves no width,
@@ -60,7 +62,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
 .stage-body::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
   border:3px solid transparent;background-clip:content-box}
 .stage-body::-webkit-scrollbar-thumb:hover{background:#07183f;background-clip:content-box}
-.panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
+.panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.30);
   -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
                      linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
   -webkit-mask-composite:source-in;
@@ -103,6 +105,11 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
   padding:clamp(32.8px,3.78vw,65.5px) clamp(17.6px,3.78vw,60.5px) clamp(12.6px,1.51vw,25.2px);
   background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
   text-shadow:0 2px 8px rgba(0,0,0,.6)}
+/* Mark 11/25: the Cornerstone mark sits in the bottom left of this band. */
+.hero-lines{position:relative}
+/* the names keep clear of the mark on both sides, so they stay centred */
+.hero-lines .names{padding:0 clamp(86px,9.2vw,150px)}
+.hero-cs{position:absolute;left:clamp(14px,2vw,34px);bottom:clamp(10px,1.2vw,20px);width:clamp(64px,6.4vw,104px);height:auto;opacity:.92}
 .hero-lines .lead{margin:0 0 clamp(6.3px,0.76vw,12.6px);text-align:center;color:rgba(255,255,255,.78);
   font-size:clamp(12.0px,1.01vw,17.0px);font-weight:700;letter-spacing:.1em}
 .hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
@@ -184,6 +191,13 @@ input#shipSearch:focus{border-color:#023e6e}
 .gist-dancers .fill{position:absolute;left:0;top:0;height:100%;overflow:hidden;display:block;border-right:2px solid #0077b6}
 .gist-dancers .fill img{height:100%}
 .reveal-comment{font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
+/* Mark 11/25: a score and a slam cannot share one quoted sentence. The upside and the trade-off sit apart. */
+.vg-part{border-radius:14px;padding:9px 13px;margin:9px 0}
+.vg-part.why{background:rgba(0,119,182,.07);border:1px solid rgba(0,119,182,.22)}
+.vg-part.watch{background:rgba(7,24,63,.04);border:1px solid rgba(7,24,63,.16)}
+.vg-part .vl{font-size:clamp(10.7px,0.88vw,13.9px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#023e6e;display:block;margin-bottom:2px}
+.vg-part p{margin:0;font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.5;color:#07183f;font-weight:600}
+.vg-part.watch p{font-weight:500}
 .salty{display:flex;gap:11px;align-items:center;background:rgba(76,29,149,.07);border:1px solid rgba(76,29,149,.2);border-radius:14px;padding:9px 13px}
 .salty img{width:clamp(42.8px,4.16vw,65.5px);height:clamp(42.8px,4.16vw,65.5px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
 .salty .sl{font-size:clamp(10.7px,0.88vw,13.9px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#46216f;display:block;margin-bottom:2px}
@@ -272,6 +286,8 @@ footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgb
   .hero-title{position:static;transform:none;display:table;margin:20px auto 14px;font-size:16px;padding:10px 26px}
   .hero-img,.hero-art::after{display:none}
   .hero-lines{padding:0 14px 14px}
+  .hero-cs{position:static;display:block;margin:0 auto 10px;width:72px}
+  .hero-lines .names{padding:0}
   .panel{margin:0 12px;border-radius:22px;padding:20px 18px;height:auto;display:block}
   #stage{overflow:visible;padding-right:0}
   h1{font-size:24px}
@@ -305,9 +321,9 @@ textarea.g-in{min-height:90px;resize:vertical}
 <header class="rc-banner" role="img" aria-label="The Still Afloat Vacation Genie">
   <div id="navbar-container"></div>
 <div class="hero-wrap">
-  <div class="hero-art"><div class="hero-title">Vacation Genie</div><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
-       alt="A cruise ship balcony at sunset with a concierge waiting — the Still Afloat Vacation Genie"></div>
-  <div class="hero-lines"><p class="lead">Currently searching the following cruise lines</p><div class="names" id="linesList"></div></div>
+  <div class="hero-art"><div class="hero-title">Vacation Genie</div><img class="hero-img" src="/assets/genie/hero-lido-genie.jpg"
+       alt="Mark as the Vacation Genie, in a turban with a plume, rising from a lamp on a cruise ship lido deck at sunset"></div>
+  <div class="hero-lines"><img class="hero-cs" src="/assets/images/cornerstone-white.png" alt="Cornerstone Collective"><p class="lead">Currently searching the following cruise lines</p><div class="names" id="linesList"></div></div>
   <main class="panel">
     <div class="re-topbar"><button class="re-back" id="backBtn" onclick="VG.back()">&larr; Back</button></div>
     <div id="stage"></div>
@@ -535,7 +551,7 @@ class VacationGenieFlow {
         <p class="re-intro">A few questions about <b>your trip</b>, a few about <b>you</b>, and I'll show you the
         ship I'd put you on, the cabins I'd book myself, and what that sailing costs today. Then it comes to
         me. I go through it, call you, and finish the quote. You don't book a thing until we've talked.</p>
-        <p class="re-intro" id="longNote"><b>Yes, it's obnoxiously long.</b> I want to make sure we give you as perfect a cruise as possible. Maybe the perfect cruise you never saw coming.</p>
+        <p class="re-intro" id="longNote">Yes, it's obnoxiously long. I want to make sure we give you as perfect a cruise as possible. Maybe the perfect cruise you never saw coming.</p>
         <div class="hero-brand"><img src="/assets/concierge/still-afloat-cruise-smarter.png" alt="Still Afloat — Cruise Smarter"></div>
         <div class="re-fork"><div class="re-choices">
           <button class="re-btn yes" onclick="VG.push('landing');VG.gate()">Start my vacation &rarr;</button>
@@ -727,10 +743,10 @@ class VacationGenieFlow {
       ${cards.join("")}${worth}`;
   }
   async shipCard(s){
-    let rating=null, comment=null, salty=null;
+    let rating=null, comment=null, salty=null, why=null, watch=null;
     try{
       const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
-      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
+      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; why=d.whyThisShip; watch=d.watchFor; } }
     }catch(e){/* no rating shown */}
     const dest=this.trip.destination;
     const nextLevel=s.nextLevel?`
@@ -750,7 +766,9 @@ class VacationGenieFlow {
         return [1,2,3,4,5].map(n=>n<=full?`<span class="dancer"><img src="${DANCERS[n]}" alt=""></span>`
           :(n===full+1&&pct>0)?`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""><span class="fill" style="width:${pct}%"><img src="${DANCERS[n]}" alt=""></span></span>`
           :`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""></span>`).join("");})()}</div>`:""}
-      ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
+      ${why?`<div class="vg-part why"><span class="vl">Why this ship</span><p>${why}</p></div>
+        ${watch?`<div class="vg-part watch"><span class="vl">The trade-off</span><p>${watch}</p></div>`:""}`
+        :(comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:"")}
       ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
         <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
       ${nextLevel}
