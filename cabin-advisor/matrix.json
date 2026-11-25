@@ -218,5 +218,34 @@
     "Princess Cruises",
     "Celebrity Cruises",
     "Margaritaville at Sea"
-  ]
+  ],
+  "cruiserScores": {
+    "_note": "Vacation Genie only. What cruisers say about each ship per category (table ship_cruiser_scores), worth points to a traveler who cares about that thing. strength = matcher points per full rating point above or below the fleet on the things the traveler cares about, averaged across them (0 switches it off). halfTrustReviews = the review count at which one site's reading counts for half. oneSiteShare = how much of its lead or deficit a ship keeps when only one site really knows it (Mark 11/25, after sailing Islander: 'dial down margaritaville'; 1 = no discount). counts = which cruiser topic answers for which virtue. Method: server/src/lib/ship-scores.ts. DRAFT for Mark's correction.",
+    "strength": 2.5,
+    "halfTrustReviews": 50,
+    "oneSiteShare": 0.5,
+    "counts": {
+      "dining": "dining",
+      "activity": "things_to_do",
+      "family": "kids",
+      "warmth": "service",
+      "energy": "entertainment",
+      "price": "value"
+    },
+    "firsthand": {
+      "_note": "Mark's FIRSTHAND verdicts per ship per topic. Each REPLACES what reviewers scored for that ship and that topic. standing = rating points above (+) or below (-) the fleet average; for scale, the best-reviewed food in the fleet stands at about +0.55 and the worst at about -0.6. Topics: dining, service, entertainment, things_to_do, kids, value, cabins, ship. Always carry the why. The standing numbers are Claude's reading of Mark's words, for his correction.",
+      "margaritaville-at-sea-islander": {
+        "dining": {
+          "standing": 0.1,
+          "why": "Mark has sailed her: 'the food was good, not great' (11/25). Reviews alone had her food first in the fleet."
+        }
+      },
+      "msc-seaside": {
+        "dining": {
+          "standing": 0.25,
+          "why": "Mark has sailed her: 'I found the food on MSC Seaside to be better' than Islander's (11/25). Reviews put her food well below the fleet."
+        }
+      }
+    }
+  }
 }

@@ -52,6 +52,9 @@ export interface CruiseApiItem {
   shipCode?: string; shipHydrated?: { code?: string; fullName?: string; shortName?: string; cruiseLineCode?: string };
   roomTypeCategoryCode?: string; soldOut?: boolean; itineraryUrl?: string;
   cruiseLineHydrated?: { code?: string; fullName?: string; shortName?: string };
+  /** The fare the line advertises for this room type, taxes and fees in, US dollars. null unless available. */
+  roomPriceWithTaxesFees?: number | null; roomPriceWithTaxesFeesPerNight?: number | null;
+  availabilityStatus?: string; lastUpdateTimestamp?: string; numberOfGuests?: number;
 }
 
 function addDays(date: string, n: number): string {

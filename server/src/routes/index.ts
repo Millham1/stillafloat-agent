@@ -41,6 +41,7 @@ import addressRouter from "./address";
 import groupJourneyRouter from "./group-journey";
 import groupAnalyticsRouter from "./group-analytics";
 import myCruiseRouter from "./my-cruise";
+import genieRouter from "./genie";
 
 const router: IRouter = Router();
 
@@ -85,6 +86,7 @@ router.use(groupFormsRouter); // before groupsRouter: its /groups/:id/:child rou
 router.use(groupJourneyRouter); // likewise: its DELETE /groups/:id/journey/simulate would match groupsRouter's /groups/:id/:child/:rowId
 router.use(groupAnalyticsRouter); // before groupsRouter: its GET /groups/:id would read "analytics" as a group id
 router.use(myCruiseRouter);
+router.use(genieRouter); // the Vacation Genie: the single-booking interview (public, by the interview's own key) and Mark's list of files
 router.use(groupsRouter);
 
 export default router;

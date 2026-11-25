@@ -73,15 +73,19 @@ async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): P
 export interface SearchBody {
   cruiseLineCodes?: string[]; shipCodes?: string[]; earliestStartDate?: string; latestStartDate?: string;
   roomTypeCategoryCodes?: string[]; page?: number; pageSize?: number; sortBy?: string; sortOrder?: string; includeDetailedMetadata?: boolean;
+  numberOfGuests?: number[]; cruiseTypes?: string[]; durationMin?: number; durationMax?: number;
 }
 
-/** One search page (counted BEFORE the call). null when the cap is reached or the call fails. */
-export async function searchCruises(
+/**
+ * One search page as the API returned it (counted BEFORE the call). null when the cap is reached or the
+ * call fails. searchCruises reads sailings out of this; the Vacation Genie reads fares out of it.
+ */
+export async function searchCruiseRows(
   body: SearchBody,
   fetchImpl: typeof fetch = fetch,
   now = new Date(),
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
-): Promise<{ sailings: PlannedSailing[]; totalResults: number; totalPages: number } | null> {
+): Promise<{ rows: CruiseApiItem[]; totalResults: number; totalPages: number } | null> {
   if (!cruiseApiEnabled()) return null;
   const l = await loadLedger(now);
   if (l.searchUsed >= cruiseApiSearchCap()) { logger.warn({ used: l.searchUsed, cap: cruiseApiSearchCap() }, "cruise-api: search cap reached"); return null; }
@@ -104,9 +108,8 @@ export async function searchCruises(
     }
     const d = b as { data?: CruiseApiItem[]; total_results?: number; total_pages?: number };
     l.lastError = null;
-    const sailings = parseCruiseApiItems(d.data ?? []);
-    logger.info({ body, rows: d.data?.length ?? 0, sailings: sailings.length, totalResults: d.total_results, searchUsed: l.searchUsed }, "cruise-api: search");
-    return { sailings, totalResults: d.total_results ?? 0, totalPages: d.total_pages ?? 0 };
+    logger.info({ body, rows: d.data?.length ?? 0, totalResults: d.total_results, searchUsed: l.searchUsed }, "cruise-api: search");
+    return { rows: d.data ?? [], totalResults: d.total_results ?? 0, totalPages: d.total_pages ?? 0 };
   } catch (err) {
     l.lastError = { at: now.toISOString(), status: (err as Error)?.name ?? "error" };
     logger.warn({ err }, "cruise-api: search threw");
@@ -114,6 +117,18 @@ export async function searchCruises(
   } finally {
     await saveLedger();
   }
+}
+
+/** One search page as sailings (room-type duplicates collapsed). null when the cap is reached or the call fails. */
+export async function searchCruises(
+  body: SearchBody,
+  fetchImpl: typeof fetch = fetch,
+  now = new Date(),
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<{ sailings: PlannedSailing[]; totalResults: number; totalPages: number } | null> {
+  const r = await searchCruiseRows(body, fetchImpl, now, sleep);
+  if (!r) return null;
+  return { sailings: parseCruiseApiItems(r.rows), totalResults: r.totalResults, totalPages: r.totalPages };
 }
 
 /** Ship codes (2 letters, per line) for shipCodes filters — basic reference call, cached 30 days. */
