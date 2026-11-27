@@ -1,7 +1,7 @@
 // genie-pricing.test.ts — fares and sailing choices for the Vacation Genie.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { faresFromRows, fareLine, fareSearchBody, guestsToAsk, sailingChoices, type SailingRow } from "./genie-pricing";
+import { faresFromRows, fareLine, fareSearchBody, guestsToAsk, sailingChoices, regionsOfPorts, type SailingRow } from "./genie-pricing";
 import type { CruiseApiItem } from "./cruise-api-core";
 
 const row = (o: Partial<CruiseApiItem>): CruiseApiItem => ({
@@ -37,7 +37,8 @@ test("a sold-out room type is listed with no price", () => {
 });
 
 test("a line we have not checked says so instead of claiming what the fare covers", () => {
-  const out = faresFromRows([row({ cruiseLineCode: "PR", roomTypeCategoryCode: "B", roomPriceWithTaxesFees: 1500 })], { ...want, lineCode: "PR" });
+  // "ZZ" stands for a line the API might add later: all eleven it carries today are checked.
+  const out = faresFromRows([row({ cruiseLineCode: "ZZ", roomTypeCategoryCode: "B", roomPriceWithTaxesFees: 1500 })], { ...want, lineCode: "ZZ" });
   assert.equal(out.fares[0]!.basis, "unconfirmed");
   assert.equal(fareLine(out.fares[0]!, 2), "Balcony: $1,500 as the line advertises it, taxes and fees included");
 });
@@ -69,4 +70,56 @@ test("sailing choices: inside the dates, the right length, one row a departure, 
   assert.deepEqual(out.map((x) => x.start), ["2027-02-07", "2027-03-07"]);
   assert.equal(out[0]!.nights, 7);
   assert.deepEqual(out[0]!.ports, ["Port Canaveral", "Nassau", "CocoCay"], "the fuller row wins, with repeat ports listed once");
+});
+
+test("a sailing's destination is read from its own port names, with no map positions", () => {
+  const named = (name: string) => [...regionsOfPorts([{ name, slug: null }])];
+  // Names exactly as the schedule source prints them.
+  assert.deepEqual(named("Oranjestad Aruba, Netherlands Antilles"), ["s_caribbean"]);
+  assert.deepEqual(named("Bridgetown, Barbados"), ["s_caribbean"]);
+  assert.deepEqual(named("Pointe-a-Pitre, Grande-Terre Island Guadeloupe"), ["s_caribbean"]);
+  assert.deepEqual(named("Roseau, Dominica"), ["s_caribbean"]);
+  assert.deepEqual(named("Cartagena Colombia"), ["s_caribbean"]);
+  assert.deepEqual(named("St John's Antigua, RCI Royal Beach Club"), ["e_caribbean"]);
+  assert.deepEqual(named("St Thomas Island USVI, Charlotte Amalie, US Virgin Islands"), ["e_caribbean"]);
+  assert.deepEqual(named("Philipsburg St Maarten, Netherlands Antilles"), ["e_caribbean"]);
+  assert.deepEqual(named("Puerto Plata-Amber Cove, Dominicana"), ["e_caribbean"]);
+  assert.deepEqual(named("Grand Turk Island, Cockburn Town, Turks and Caicos"), ["e_caribbean"]);
+  assert.deepEqual(named("Cozumel, Mexico, Riviera Maya"), ["w_caribbean"]);
+  assert.deepEqual(named("Grand Cayman Island, George Town Harbour"), ["w_caribbean"]);
+  assert.deepEqual(named("Falmouth Jamaica"), ["w_caribbean"]);
+  assert.deepEqual(named("Belize City"), ["w_caribbean"]);
+  assert.deepEqual(named("Nassau, Bahamas, New Providence Island"), ["bahamas"]);
+  assert.deepEqual(named("Coco Cay, Bahamas, Royal Caribbean"), ["bahamas"]);
+  assert.deepEqual(named("Ketchikan, Revillagigedo Island Alaska"), ["alaska"]);
+  assert.deepEqual(named("Cabo San Lucas, Baja California Mexico"), ["mexican_riviera"]);
+  assert.deepEqual(named("Puerto Vallarta, Jalisco, Mexico Riviera"), ["mexican_riviera"]);
+  assert.deepEqual(named("Barcelona, Spain"), ["mediterranean"]);
+  assert.deepEqual(named("Marseille, France Riviera"), ["mediterranean"]);
+  assert.deepEqual(named("Piraeus-Athens, Greece"), ["mediterranean"]);
+  // Home ports and other regions are none of the seven.
+  for (const n of ["Miami, Florida", "Fort Lauderdale, Port Everglades, Florida", "Port Canaveral, Orlando, Florida", "Tampa, Florida",
+    "Galveston, Texas", "Key West, Florida", "Boston, Massachusetts", "Kings Wharf, Bermuda", "Vancouver, BC Canada", "Seattle, Washington",
+    "Los Angeles, Long Beach-San Pedro, California", "Cartagena Spain, Murcia".replace("Cartagena Spain, Murcia", "Cadiz, Spain, Sevilla"),
+    "Lisbon, Portugal", "Southampton, England", "Santa Cruz de Tenerife, Canary Islands", "Le Havre-Paris, France", "Puntarenas, Puerto Caldera, Costa Rica"]) {
+    assert.deepEqual(named(n), [], `${n} is not one of the seven destinations`);
+  }
+  assert.equal(regionsOfPorts([{ lat: 12.5, lon: -70 }]).size, 0, "a position with no name says nothing");
+  assert.equal(regionsOfPorts(null).size, 0);
+});
+
+test("with a destination named, only sailings that call there are offered", () => {
+  const row = (start: string, end: string, ports: unknown): SailingRow =>
+    ({ ship_name: "Test Ship", operator: null, start_date: start, end_date: end, ports, source: "t" });
+  const want = { earliest: "2027-05-01", latest: "2027-05-30", nightsMin: 6, nightsMax: 8 };
+  const rows = [
+    row("2027-05-02", "2027-05-09", [{ name: "Boston, Massachusetts" }, { name: "Kings Wharf, Bermuda" }]),
+    row("2027-05-09", "2027-05-16", [{ name: "San Juan, Puerto Rico" }, { name: "Oranjestad Aruba, Netherlands Antilles" }]),
+    row("2027-05-16", "2027-05-23", [{ name: "Somewhere" }]),
+  ];
+  assert.equal(sailingChoices(rows, want).length, 3, "no destination named: all three");
+  assert.equal(sailingChoices(rows, { ...want, destination: "surprise" }).length, 3);
+  const south = sailingChoices(rows, { ...want, destination: "s_caribbean" });
+  assert.deepEqual(south.map((c) => c.start), ["2027-05-09"]);
+  assert.equal(sailingChoices(rows, { ...want, destination: "alaska" }).length, 0);
 });

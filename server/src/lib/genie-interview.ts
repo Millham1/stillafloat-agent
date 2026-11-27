@@ -20,8 +20,9 @@
 //   - How much a virtue counts for THIS person comes from how they answered: the same way every time it
 //     came up (it matters to them) or all over the place (it does not). See genieProfile().
 //
-// The room questions (room type, what matters aboard, budget, seasick) are still the Room Concierge's,
-// because for the room they work.
+// The room comes from the Room Concierge's own questions, which for the room work (how they picture using
+// it, what matters aboard, budget, seasick). The first two are asked inside the interview, after the scenes
+// about them; the Genie never asks for a room type by name.
 //
 // vacation-genie.html carries its own copy of the questions inline (it renders them) and
 // genie-interview.test.ts parses the page and asserts the two are identical.
@@ -213,13 +214,18 @@ export const GENIE_PERSONALITY_QS: readonly GenieQuestion[] = [
   },
 ];
 
-/** The room-type question. Interior is a plain, named choice here (Mark, 2026-11-24). */
+/**
+ * How they picture using the room: the Room Concierge's own scene, word for word, asked inside the interview
+ * after the scenes about them. The Genie never asks "what kind of room do you want" (Mark, 2026-11-26: "which
+ * shouldn't be asked. That's what the interview is supposed to help determine. the ship and the room.").
+ * "Crash and recharge" is the interior room.
+ */
 export const ROOM_CHOICES = [
-  { label: "Interior — a dark, quiet room and more money for the trip", value: "inside" },
-  { label: "Ocean view — a window on the water", value: "oceanview" },
-  { label: "Balcony — my own chair outside", value: "balcony" },
-  { label: "Suite — the room is part of the vacation", value: "suite" },
-  { label: "Not sure — pick for me", value: "balcony" },
+  { label: "Crash and recharge", value: "inside" },
+  { label: "Wake up to daylight and water", value: "oceanview" },
+  { label: "Coffee outside in my pajamas", value: "balcony" },
+  { label: "The room is part of the vacation", value: "suite" },
+  { label: "Honestly, no idea — pick for me", value: "balcony" },
 ] as const;
 
 export const PRIORITY_CHOICES = [
@@ -328,7 +334,7 @@ export function parseTrip(raw: unknown, today: string): { trip: TripFacts } | { 
   const destination = oneOf(DESTINATION_CHOICES, r["destination"]);
   if (!destination) return { error: "Pick where you want to go, or pick Surprise me." };
   const room = oneOf(ROOM_CHOICES, r["room"]);
-  if (!room) return { error: "Pick the kind of room you want, or pick Not sure." };
+  if (!room) return { error: "Tell me how you picture using your room, or pick No idea." };
   const priority = oneOf(PRIORITY_CHOICES, r["priority"]);
   if (!priority) return { error: "Pick what matters most once you are aboard." };
   const budget = oneOf(BUDGET_CHOICES, r["budget"]);

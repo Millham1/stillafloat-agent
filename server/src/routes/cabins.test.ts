@@ -14,7 +14,7 @@
 
 import { test, beforeEach, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
-import { reasonLive, writeSteerLines, resolvePickReasons } from "./cabins";
+import { reasonLive, writeSteerLines, resolvePickReasons, namesUnshownCabin } from "./cabins";
 import { normalizeAnswers, plainSteerLine, type SteerFacts } from "../lib/cabin-match";
 import { factsSentence } from "../lib/cabin-facts-sentence";
 
@@ -300,4 +300,22 @@ test("writeSteerLines makes no request at all without ANTHROPIC_API_KEY", async 
   const out = await writeSteerLines(ship(), steerFacts, answers, "en");
   assert.equal(calls.length, 0);
   for (const f of steerFacts) assert.equal(out.get(f.cabin), plainSteerLine(f, "en"));
+});
+
+test("a room's reason may not lean on a cabin the reader cannot see (asked for by the Vacation Genie)", () => {
+  const text = "C327 on deck 10 is nearly identical in position to C515—both are mid-ship, both are balconies.";
+  assert.equal(namesUnshownCabin(text, "C327", ["C327", "B328"]), true, "C515 is not on the screen");
+  assert.equal(namesUnshownCabin(text, "C327", ["C327", "C515"]), false, "C515 is one of the rooms shown");
+  assert.equal(namesUnshownCabin("Deck 10, 214 square feet, about $1,349 a person.", "C327", ["C327", "B328"]), false, "decks, sizes and money are not cabins");
+  assert.equal(namesUnshownCabin("Cabin 8280 is steadier than 8284.", "8280", ["8280", "9150"]), true);
+  const p = [
+    { cabin: "C327", reason: text, facts: { deck: 10, category: "Balcony" } },
+    { cabin: "B328", reason: "One deck up, same mid-ship position.", facts: { deck: 11, category: "Balcony" } },
+  ];
+  const loose = resolvePickReasons("Test Ship", p, null, "en");
+  assert.equal(loose.picks[0]!.reason, text, "the Room Concierge is unchanged: the stored text is served");
+  const strict = resolvePickReasons("Test Ship", p, null, "en", { onlyShown: true });
+  assert.equal(strict.picks[0]!.reasonSource, "facts");
+  assert.ok(!/C515/.test(strict.picks[0]!.reason ?? ""), "the off-screen cabin is gone");
+  assert.equal(strict.picks[1]!.reasonSource, "research", "a reason that names no other cabin is kept");
 });

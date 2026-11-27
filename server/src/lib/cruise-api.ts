@@ -74,6 +74,8 @@ export interface SearchBody {
   cruiseLineCodes?: string[]; shipCodes?: string[]; earliestStartDate?: string; latestStartDate?: string;
   roomTypeCategoryCodes?: string[]; page?: number; pageSize?: number; sortBy?: string; sortOrder?: string; includeDetailedMetadata?: boolean;
   numberOfGuests?: number[]; cruiseTypes?: string[]; durationMin?: number; durationMax?: number;
+  /** The service's destination codes (GET /destinations): "CS" = Caribbean (Southern). The key is `destinations`; `destinationCodes` is refused. */
+  destinations?: string[];
 }
 
 /**

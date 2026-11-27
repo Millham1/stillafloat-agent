@@ -49,6 +49,8 @@ export interface CruiseApiItem {
   cruiseId?: string; cruiseName?: string; cruiseType?: string; cruiseLineCode?: string;
   departureDate?: string; duration?: number; itineraryPorts?: string[];
   itineraryPortsHydrated?: Array<{ portCode?: string; portName?: string; portCountryCode?: string }>;
+  /** Where the sailing goes, in the service's own words: codes, and `{code,name}` ("Caribbean (Western)"). */
+  itineraryDestinations?: string[]; itineraryDestinationsHydrated?: Array<{ code?: string; name?: string }>;
   shipCode?: string; shipHydrated?: { code?: string; fullName?: string; shortName?: string; cruiseLineCode?: string };
   roomTypeCategoryCode?: string; soldOut?: boolean; itineraryUrl?: string;
   cruiseLineHydrated?: { code?: string; fullName?: string; shortName?: string };

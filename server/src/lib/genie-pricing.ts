@@ -17,7 +17,20 @@ const TYPE_BY_CODE: Record<string, RoomType> = { I: "inside", O: "oceanview", B:
 export const ROOM_TYPE_ORDER: readonly RoomType[] = ["inside", "oceanview", "balcony", "suite"];
 
 /** What the advertised figure covers, by the API's line code. Only lines checked against the line's own page are listed. */
-export const PRICE_BASIS: Record<string, "per-person" | "room"> = { CA: "per-person", RC: "per-person", DI: "room" };
+// Each checked against the line's own page for a live sailing (API figure, two guests, interior):
+//   CA, RC  per person (checked 2026-11-15, carnival.com / royalcaribbean.com)      DI  whole room
+//   PR  2026-11-27  princess.com: "$999 ... Price in USD, avg/person, 2 guests, includes taxes and fees" (API 999)
+//   CU  2026-11-27  cunard.com: "From $2,579 per person ... based on double occupancy, includes taxes" (API 2579)
+//   CE  2026-11-27  celebritycruises.com: "Starting from price displayed is per person" (API 1074.88; one guest 2337.38)
+//   HA  2026-11-27  hollandamerica.com: "INSIDE FROM $749 pp" (API 869: per person, the page's headline is lower)
+//   CO  2026-11-27  costacruises.com: "Total 2 Guests from $3,481 / Price per person from $1,740" (API 1780.65 = the per-person figure)
+//   VI  2026-11-27  virginvoyages.com: "Estimated voyage total for 2 Sailors from: $1,490" (API 1490 = the total for two)
+//   MS, NO  2026-11-27  Mark: "MSC is per person. Norwegian is per person." (My own page checks did not settle them:
+//           msccruisesusa.com showed "Total Price $1,676.42" for two against an API 913; ncl.com's page could not be read.)
+// All eleven lines the API carries are now listed. A line code that is not here still reads as unconfirmed.
+export const PRICE_BASIS: Record<string, "per-person" | "room"> = {
+  CA: "per-person", RC: "per-person", DI: "room", PR: "per-person", CU: "per-person", CE: "per-person", HA: "per-person", CO: "per-person", VI: "room", MS: "per-person", NO: "per-person",
+};
 
 /** Lines whose fares the API only holds for two in a room. */
 const DOUBLE_ONLY = new Set(["CO", "HA"]);
@@ -102,19 +115,57 @@ export interface SailingChoice { start: string; end: string | null; nights: numb
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86_400_000);
 
 /**
+ * Which of the Genie's destinations a sailing goes to, read from its own itinerary: the port list that
+ * arrives with the sailing's dates, from the same source, in the same pass. No map positions (Mark,
+ * 2026-11-27: "the itinerary should be coming from the same API we get the sailing dates. It does not
+ * need to rely on geopositioning"). The source prints every port with its island or country
+ * ("Oranjestad Aruba, Netherlands Antilles", "Juneau, Alaska", "Cozumel, Mexico, Riviera Maya"), so the
+ * name says where it is. A sailing goes to a destination when at least one port of call is there; the
+ * home port usually is not, which is the point (Miami is not the Bahamas).
+ *
+ * The lines between Eastern and Southern (Guadeloupe and south is Southern, Antigua and north Eastern)
+ * and what counts as Western are a judgment; they are here, in one place, to be corrected. "Dominicana"
+ * is the Dominican Republic (Eastern), "Dominica" the island (Southern). Spain and France have Atlantic
+ * coasts too, so their Mediterranean ports are named one by one or by "Riviera" / "Costa".
+ */
+const DESTINATION_PORTS: readonly [string, RegExp][] = [
+  ["alaska", /\bAlaska\b/i],
+  ["bahamas", /\bBahamas\b/i],
+  ["mexican_riviera", /Mexic\w* Riviera|\bBaja\b|\b(Sonora|Sinaloa|Jalisco|Nayarit|Colima|Guerrero|Oaxaca|Chiapas)\b/i],
+  ["w_caribbean", /Cozumel|Costa Maya|Riviera Maya|Yucatan|Progreso|\bBelize\b|Roatan|\bHonduras\b|Cayman|\bJamaica\b|Lim[oó]n\b|\bColon\b.*Panama|Santo Tomas de Castilla/i],
+  ["e_caribbean", /Puerto Rico|Virgin Islands|\bUSVI\b|\bBVI\b|St\.? Thomas|St\.? Croix|Tortola|Virgin Gorda|Jost Van Dyke|S(?:ain)?t\.? Maarten|Sint Maarten|S(?:ain)?t\.? Martin|S(?:ain)?t\.? Kitts|\bNevis\b|\bAntigua\b|\bAnguilla\b|St\.? Barth|\bSaba\b|Montserrat|Dominicana|Dominican Republic|Turks|\bHaiti\b/i],
+  ["s_caribbean", /\bAruba\b|\bBonaire\b|Cura[cç]ao|\bBarbados\b|S(?:ain)?t\.? Lucia|\bGrenada\b|Grenadines|S(?:ain)?t\.? Vincent|Martinique|\bDominica\b|Guadeloupe|Trinidad|\bTobago\b|Cartagena.*Colombia|Santa Marta/i],
+  ["mediterranean", /\b(Italy|Sicily|Sardinia|Greece|Crete|Croatia|Montenegro|Slovenia|Albania|Malta|Cyprus|Corsica|Monaco|Turkey|Tunisia|Balearic|Gibraltar)\b|France Riviera|Spain Costa (Brava|Daurada|del Sol)|\b(Barcelona|Valencia|Malaga|Alicante|Tarragona|Almeria|Motril|Castellon)\b|Cartagena Spain/i],
+];
+
+/** The destinations a sailing's ports put it in, by each port's printed name. */
+export function regionsOfPorts(ports: unknown): Set<string> {
+  const out = new Set<string>();
+  for (const p of Array.isArray(ports) ? ports : []) {
+    const name = (p as { name?: unknown } | null)?.name;
+    if (typeof name !== "string") continue;
+    for (const [region, re] of DESTINATION_PORTS) if (re.test(name)) out.add(region);
+  }
+  return out;
+}
+
+/**
  * Our planned-sailings rows -> the choices to show: inside the dates, the right length, one row a
  * departure (the table holds the same sailing from more than one source), soonest first.
  */
 export function sailingChoices(
   rows: readonly SailingRow[],
-  want: { earliest: string; latest: string; nightsMin: number; nightsMax: number },
+  want: { earliest: string; latest: string; nightsMin: number; nightsMax: number; destination?: string },
   limit = 12,
 ): SailingChoice[] {
   const seen = new Map<string, SailingChoice>();
+  const region = want.destination && want.destination !== "surprise" ? want.destination : null;
   for (const r of rows) {
     if (r.start_date < want.earliest || r.start_date > want.latest) continue;
     const nights = r.end_date ? dayDiff(r.start_date, r.end_date) : null;
     if (nights !== null && (nights < want.nightsMin || nights > want.nightsMax)) continue;
+    // They named where they want to go: a sailing counts only when one of its ports of call is there.
+    if (region && !regionsOfPorts(r.ports).has(region)) continue;
     const ports = (Array.isArray(r.ports) ? r.ports : [])
       .map((p) => (p && typeof p === "object" && typeof (p as { name?: unknown }).name === "string" ? (p as { name: string }).name : ""))
       .filter(Boolean);

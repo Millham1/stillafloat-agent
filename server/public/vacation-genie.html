@@ -311,6 +311,23 @@ textarea.g-in{min-height:90px;resize:vertical}
 .g-fare b{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(19px,1.8vw,29px);color:#07183f}
 .g-fare .t{font-weight:800;color:#07183f;font-size:clamp(16px,1.35vw,22px)}
 .g-fare .n{display:block;font-weight:600;color:rgba(7,24,63,.72);font-size:clamp(13.5px,1.08vw,17.5px)}
+/* Room cards (Mark, 2026-11-27: "this card is hard to read. it is difficult to see that the cabin is a
+   balcony"): a solid card over the lighter panel, the room type leading in a tag, its price beside it. */
+.vg-room{background:rgba(255,255,255,.9);border:1px solid rgba(2,62,110,.18)}
+.vg-room-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 10px;padding-bottom:10px;border-bottom:1px solid rgba(2,62,110,.16)}
+.vg-type{font-weight:900;letter-spacing:.06em;text-transform:uppercase;font-size:clamp(16px,1.4vw,23px);color:#07183f;background:#ffca4f;border-radius:999px;padding:6px 16px}
+.vg-price{text-align:right;line-height:1.25}
+.vg-price b{display:block;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(21px,1.9vw,31px);color:#07183f}
+.vg-price small{display:block;font-weight:600;color:rgba(7,24,63,.75);font-size:clamp(12.5px,1vw,16.5px)}
+.vg-price b span{font-family:'Baloo 2','Nunito',sans-serif;font-weight:800;font-size:.62em;letter-spacing:0}
+.vg-cabin{font-weight:800;color:#07183f;font-size:clamp(17px,1.5vw,24px);margin:0 0 6px}
+.vg-room .room-why{color:#07183f}
+.vg-price small{color:#07183f}
+.vg-fit{display:inline-block;font-weight:900;letter-spacing:.06em;text-transform:uppercase;font-size:clamp(14px,1.2vw,19px);color:#07183f;background:#ffca4f;border-radius:999px;padding:5px 14px;margin:0 0 8px}
+.vg-order{font-weight:700;color:#07183f;font-size:clamp(14px,1.15vw,18px);line-height:1.5;margin:0 0 12px}
+.g-sail .f{display:block;font-weight:800;color:#07183f;font-size:clamp(14px,1.1vw,17.5px);margin-top:2px}
+.vg-caveat{font-weight:800;color:#07183f;font-size:clamp(13.5px,1.1vw,17.5px);margin:6px 0 0}
+.g-fare .see{margin-top:6px;font-size:14px;padding:7px 14px}
 .g-fare.mine{background:rgba(93,255,154,.2);border-radius:12px;padding:11px 12px;border-bottom:none}
 .g-sail{width:100%}
 .g-sail .p{display:block;font-weight:500;color:rgba(7,24,63,.72);font-size:clamp(13.5px,1.08vw,17.5px);margin-top:3px}
@@ -341,8 +358,8 @@ const SALTY_IMG='/assets/concierge/salty-mark.jpg';
 <script>
 /* ─────────────────────────────────────────────────────────────────────────────
    VacationGenieFlow — the single-booking road (Mark, 2026-11-24).
-   landing → email gate → the trip (who, when, where, room, money) → 17 questions
-   about you → the ship (Conga score + Salty Mark) → her sailings in your dates →
+   landing → email gate → the trip (who, when, where, money) → 17 questions
+   about you, then the Room Concierge's two room scenes → the ship (Conga score + Salty Mark) → her sailings in your dates →
    the fare by room type → the rooms (the Room Concierge's own picks) → send it
    to Mark, who calls, finalizes the quote and books.
 
@@ -445,15 +462,6 @@ const TRIP_QS = [
       ["Alaska","alaska"],["The Mediterranean","mediterranean"],
       ["Mexican Riviera","mexican_riviera"],
       ["Surprise me — anywhere the ship fits","surprise"]] },
-  { key:"room", q:"What kind of room do you want?", opts:[
-      ["Interior — a dark, quiet room and more money for the trip","inside"],
-      ["Ocean view — a window on the water","oceanview"],
-      ["Balcony — my own chair outside","balcony"],
-      ["Suite — the room is part of the vacation","suite"],
-      ["Not sure — pick for me","balcony"]] },
-  { key:"priority", q:"What matters most once you're aboard?", opts:[
-      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
-      ["Being near the action","action"],["Room to spread out","space"]] },
   { key:"budget", q:"How does the trip budget work, honestly?", opts:[
       ["There's a number, and we respect it","lean"],
       ["Comfortable, but every dollar should earn its spot","middle"],
@@ -463,6 +471,18 @@ const TRIP_QS = [
       ["Yes — keep us steady","yes"],["No, we're fine","no"],
       ["I can grin and bear it","no"]] },
 ];
+/* The room, asked the Room Concierge's way and asked INSIDE the interview, after the scenes about them
+   (Mark, 2026-11-26: the Genie never asks "what type of room"; the interview determines the ship and
+   the room). Values are the server's (parseTrip). */
+const ROOM_QS = [
+  { key:"room", q:"How do you picture using your room?", opts:[
+      ["Crash and recharge","inside"],["Wake up to daylight and water","oceanview"],
+      ["Coffee outside in my pajamas","balcony"],["The room is part of the vacation","suite"],
+      ["Honestly, no idea — pick for me","balcony"]] },
+  { key:"priority", q:"What matters most once you're aboard?", opts:[
+      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
+      ["Being near the action","action"],["Room to spread out","space"]] },
+];
 const OCCASIONS = [["No reason needed","none"],["Anniversary or honeymoon","anniversary"],["Birthday","birthday"],
   ["Family get-together","family"],["Retirement","retirement"],["Something else","other"]];
 const LENGTHS = [["A long weekend (3 to 5 nights)",3,5],["About a week (6 to 8 nights)",6,8],
@@ -470,6 +490,33 @@ const LENGTHS = [["A long weekend (3 to 5 nights)",3,5],["About a week (6 to 8 n
 const REGION_NAMES = {e_caribbean:"Eastern Caribbean",w_caribbean:"Western Caribbean",s_caribbean:"Southern Caribbean",
   bahamas:"The Bahamas",alaska:"Alaska",mediterranean:"The Mediterranean",mexican_riviera:"Mexican Riviera"};
 const ROOM_WORD = {inside:"Interior",oceanview:"Ocean view",balcony:"Balcony",suite:"Suite"};
+/* Room-category explainers — new cruisers don't know an Infinite Veranda from a
+   porthole. Text now; image slots come later (Mark, 8/14). Inside needs none. */
+const CATEGORY_INFO = [
+  { match:/infinite/i, name:"What's an Infinite Veranda?",
+    text:"Celebrity's twist on a balcony: the whole room IS the veranda. The window's top half slides down and your sitting area becomes open-air. You get more indoor space out of it — but there's no separate outdoor chair zone, and people either love that or miss a true balcony." },
+  { match:/balcony|veranda/i, name:"What's a balcony cabin?",
+    text:"Your own private outdoor space — a glass door, a couple of chairs, and the ocean. Morning coffee out there is the thing people can't give up once they've had it. And it's the one deck chair on the ship nobody can claim with a towel." },
+  { match:/ocean\s?view|oceanview|window/i, name:"What's an ocean view?",
+    text:"A real window to the sea — daylight and a view of where you are, without an outdoor space. You see the ocean; you just don't sit outside in it." },
+  { match:/suite/i, name:"What's a suite?",
+    text:"More space, and usually more perks — priority lines, better service, sometimes access to areas of the ship regular cabins don't get." },
+];
+function categoryInfo(cat){
+  if(!cat) return "";
+  const hit = CATEGORY_INFO.find(c=>c.match.test(cat));
+  return hit ? `<details class="cat-info"><summary>${hit.name}</summary><p>${hit.text}</p></details>` : "";
+}
+/* Which of the four room types a cabin's category is, so the card can lead with it and price it. */
+function roomTypeOf(cat,fallback){
+  const c=String(cat||"");
+  if(/suite/i.test(c)) return "suite";
+  if(/balcon|verand/i.test(c)) return "balcony";
+  if(/ocean|window|porthole|view/i.test(c)) return "oceanview";
+  if(/inside|interior/i.test(c)) return "inside";
+  return fallback;
+}
+const PRICE_CAVEAT = "All prices are subject to change until booking.";
 const LINE_DISPLAY = { "Royal Caribbean International": "Royal Caribbean" };
 function lineName(l){ return LINE_DISPLAY[l] || l; }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -693,17 +740,19 @@ class VacationGenieFlow {
 
   /* ── 3. about you ── */
   personQ(){
-    const i=this.qIndex;
-    if(i>=GENIE_PERSONALITY_QS.length) return this.reveal();
-    const q=GENIE_PERSONALITY_QS[i];
+    const i=this.qIndex, n=GENIE_PERSONALITY_QS.length, total=n+ROOM_QS.length;
+    if(i>=total) return this.reveal();
+    const room=i>=n, q=room?ROOM_QS[i-n]:GENIE_PERSONALITY_QS[i];
     this.stageEl.innerHTML=`
-      <p class="re-progress">Getting to know you · ${i+1} of ${GENIE_PERSONALITY_QS.length}</p>
+      <p class="re-progress">Getting to know you · ${i+1} of ${total}</p>
       <h2 class="q">${q.q}</h2>
-      <div class="re-opts">${q.opts.map(([label],oi)=>
-        `<button class="re-opt" onclick="VG.answerP(${i},${oi})">${fmtOpt(label)}</button>`).join("")}</div>
+      <div class="re-opts">${q.opts.map(([label,val],oi)=>room
+        ?`<button class="re-opt" onclick="VG.answerR('${q.key}','${val}')">${fmtOpt(label)}</button>`
+        :`<button class="re-opt" onclick="VG.answerP(${i},${oi})">${fmtOpt(label)}</button>`).join("")}</div>
       ${this.quiet()}`;
   }
   answerP(qi,oi){ this.push('personQ'); this.choices[qi]=oi; this.qIndex++; this.personQ(); }
+  answerR(key,val){ this.push('personQ'); this.trip[key]=val; this.qIndex++; this.personQ(); }
 
   /* ── 4. the ship ── */
   tripBody(){
@@ -722,27 +771,37 @@ class VacationGenieFlow {
         <div class="re-choices" style="margin-top:14px"><button class="re-btn yes" onclick="VG.reveal()">Try again</button></div>`;
       return;
     }
-    this.party=d.party; this.ships=d.picks||[]; this.worth=d.worthALook||null; this.reason=d.reason||"";
+    this.party=d.party; this.noSailings=!!d.noSailings; this.ships=d.picks||[]; this.worth=d.worthALook||null; this.reason=d.reason||"";
     await this.drawReveal();
   }
   async drawReveal(){
+    if(!this.ships.length&&this.noSailings){
+      const t=this.trip, where=(t.destination&&t.destination!=="surprise")?` to ${REGION_NAMES[t.destination]||"there"}`:"";
+      this.stageEl.innerHTML=`<p class="re-progress">The reveal</p><h2 class="q">Nothing sails that window.</h2>
+        <p class="re-intro">I have no ship${where} between ${longDate(t.earliest)} and ${longDate(t.latest)} at the length you asked for. Go back and widen the dates, change the length, or pick another destination. Or send me what you told me and I'll look by hand.</p>${this.sendCard('drawReveal')}`;
+      return;
+    }
     if(!this.ships.length){
       this.stageEl.innerHTML=`<p class="re-progress">The reveal</p><h2 class="q">I'd rather get this right than guess.</h2>
         <p class="re-intro">Nothing lined up cleanly on my end. Send me what you told me and I'll match your ship by hand.</p>${this.sendCard('drawReveal')}`;
       return;
     }
-    const cards=[]; for(const s of this.ships) cards.push(await this.shipCard(s));
+    const FIT=["Best fit for you","Second-best fit for you"];
+    const cards=[]; for(const [i,s] of this.ships.entries()) cards.push(await this.shipCard(s,FIT[i]||null));
     let worth="";
     if(this.worth){ worth=`<div style="margin-top:18px;padding-top:6px;border-top:1px dashed rgba(2,62,110,.3)">
       <p style="font-size:18px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#023e6e;margin:10px 0 2px">Worth a look</p>
-      <p class="re-intro" style="font-size:15px;margin-bottom:8px">${this.worth.why||""}</p>${await this.shipCard(this.worth)}</div>`; }
+      <p class="re-intro" style="font-size:15px;margin-bottom:8px">${this.worth.why||""}</p>${await this.shipCard(this.worth,null)}</div>`; }
     this.stageEl.innerHTML=`
       <p class="re-progress">The reveal</p>
       <h2 class="q">${cards.length>1?"Two ships I'd put you on.":"The ship I'd put you on."}</h2>
       ${this.reason?`<p class="re-intro" style="font-size:15.5px">${this.reason}</p>`:""}
+      <p class="vg-order">They are in order of how well they fit your answers, best fit first. The score on each card is our Conga Line rating of the ship as a whole, so the best fit for you is not always the highest score.</p>
       ${cards.join("")}${worth}`;
   }
-  async shipCard(s){
+  /* `fit` = where she stands in the order: the ships are listed best fit first (Mark, 2026-11-27: "ship order is
+     best fit first, but it needs to say that"), and the number on the card is a different thing, said so. */
+  async shipCard(s,fit){
     let rating=null, comment=null, salty=null, why=null, watch=null;
     try{
       const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
@@ -756,11 +815,12 @@ class VacationGenieFlow {
         <p style="margin:0;font-size:16px;line-height:1.55;color:rgba(7,24,63,.88)">${s.nextLevel.why}</p></div>
       </div>`:"";
     return `<div class="reveal-ship">
+      ${fit?`<p class="vg-fit">${fit}</p>`:""}
       <div class="gist">
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
         ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
       </div>
-      ${(dest&&dest!=="surprise"&&(s.regions||[]).includes(dest))?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Sails ${REGION_NAMES[dest]||dest}</p>`:""}
+      ${(dest&&dest!=="surprise")?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Sails ${REGION_NAMES[dest]||dest} in your dates</p>`:""}
       ${rating!=null?`<p style="margin:6px 0 2px;font-size:15.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#023e6e">Our Conga Line rating — how many join the dance</p>
       <div class="gist-dancers">${(()=>{const r=Math.max(0,Math.min(5,Number(rating)));const full=Math.floor(r);const pct=Math.round((r-full)*100);const dim='opacity:.22;filter:grayscale(80%)';
         return [1,2,3,4,5].map(n=>n<=full?`<span class="dancer"><img src="${DANCERS[n]}" alt=""></span>`
@@ -803,11 +863,13 @@ class VacationGenieFlow {
     }
     const rows=this.sailings.map((x,i)=>`<button class="re-opt g-sail" onclick="VG.pickSailing(${i})">
       <b>${longDate(x.start)}${x.nights?` · ${x.nights} nights`:""}</b>
-      ${x.ports.length?`<span class="p">${x.ports.map(esc).join(" · ")}</span>`:""}</button>`).join("");
+      ${x.ports.length?`<span class="p">${x.ports.map(esc).join(" · ")}</span>`:""}
+      ${x.fromPrice!=null&&x.basis!=="unconfirmed"?`<span class="f">Interior from ${money(x.fromPrice)} ${x.basis==="room"?"for two":"per person"}, taxes and fees included</span>`:""}</button>`).join("");
     this.stageEl.innerHTML=`
       <div class="stage-head"><p class="re-progress">Your sailing · ${esc(s.ship)}</p>
       <h2 class="q">Pick the one that fits your calendar.</h2></div>
-      <div class="stage-body"><div class="re-opts">${rows}</div></div>${this.quiet()}`;
+      <div class="stage-body"><div class="re-opts">${rows}</div>
+      ${this.sailings.some(x=>x.fromPrice!=null)?`<p class="vg-caveat">${PRICE_CAVEAT}</p>`:""}</div>${this.quiet()}`;
   }
 
   /* ── 6. the fare ── */
@@ -819,25 +881,45 @@ class VacationGenieFlow {
     catch(e){ this.priced={fares:null,why:"unavailable"}; }
     this.drawPrice();
   }
+  /* A fare in words: who the figure is for, and what the room comes to (Mark, 2026-11-27: "I need to show
+     whether this price is per person or for both"). `lead` goes beside the dollars, `rest` under them. */
+  priceWords(fa){
+    const g=(this.priced&&this.priced.fares&&this.priced.fares.guests)||2, t=this.trip;
+    const extra=Math.ceil((t.adults+t.childAges.length)/t.rooms)>2?" (first two guests)":"";
+    const tax="taxes and fees included";
+    if(fa.basis==="per-person") return g===1
+      ? {lead:"for one guest", rest:tax}
+      : {lead:"per person", rest:`${money(fa.price*2)} for both of you${extra}, ${tax}`};
+    if(fa.basis==="room") return g===1
+      ? {lead:"for one guest", rest:tax}
+      : {lead:`for both of you${extra}`, rest:`${money(Math.round(fa.price/2))} per person, ${tax}`};
+    return {lead:"", rest:`The line's advertised price, ${tax}. I'll confirm on the call whether it is per person.`};
+  }
+  fareFor(type){
+    const f=this.priced&&this.priced.fares;
+    return (f&&f.fares||[]).find(fa=>fa.type===type)||null;
+  }
   drawPrice(){
     const s=this.shipPick, x=this.sailing, f=this.priced&&this.priced.fares, t=this.trip;
     const people=t.adults+t.childAges.length;
     let body;
     if(f&&f.fares&&f.fares.length){
-      const covers=fa=>fa.basis==="per-person"?`per person, ${f.guests===1?"one in the room":"two in a room"}`
-        :fa.basis==="room"?`for the room, ${f.guests===1?"one guest":"two guests"}`:"as the line advertises it";
       const rows=f.fares.map(fa=>`<div class="g-fare${fa.type===t.room?" mine":""}">
-        <div><span class="t">${ROOM_WORD[fa.type]}${fa.type===t.room?" — the one you asked for":""}</span>
-        <span class="n">${fa.price!=null?covers(fa)+", taxes and fees included":(fa.status==="sold_out"?"Sold out on this sailing":"No fare listed today")}</span></div>
+        <div><span class="t">${ROOM_WORD[fa.type]}${fa.type===t.room?" — the one your answers point to":""}</span>
+        <span class="n">${fa.price!=null?((w)=>`${w.lead?w.lead+". ":""}${w.rest}`)(this.priceWords(fa)):(fa.status==="sold_out"?"Sold out on this sailing":"No fare listed today")}</span>
+        ${s.hasRooms?`<button class="re-btn no see" onclick="VG.rooms('${fa.type}')">Show me ${ROOM_WORD[fa.type].toLowerCase()} rooms &rarr;</button>`:""}</div>
         <b>${fa.price!=null?money(fa.price):"—"}</b></div>`).join("");
       const partyNote=(Math.ceil(people/t.rooms)>2)
         ?`<p class="re-intro" style="font-size:15.5px">These are the fares for two in a room. You have more than two in a room, so I'll price the extra guests for you. Third and fourth guests usually cost a good deal less.</p>`:"";
-      body=`<div class="reveal-ship" style="padding:10px 18px">${rows}</div>${partyNote}
+      body=`<div class="reveal-ship vg-room" style="padding:10px 18px">${rows}</div><p class="vg-caveat">${PRICE_CAVEAT}</p>${partyNote}
         <p class="re-intro" style="font-size:15.5px">That is the cruise line's own advertised price today, and it moves. Before I quote you I check it
         against the group rates and extras I can get that the public price doesn't show.</p>`;
     } else {
       body=`<p class="re-intro">I can't pull a live fare for this sailing from here, so I'll price it by hand and send it with your quote.
-        You lose nothing by going on. Pick your room and send it over.</p>`;
+        You lose nothing by going on. Pick your room and send it over.</p>
+        ${s.hasRooms?`<div class="reveal-ship vg-room" style="padding:10px 18px">${["inside","oceanview","balcony","suite"].map(ty=>`<div class="g-fare${ty===t.room?" mine":""}">
+          <div><span class="t">${ROOM_WORD[ty]}${ty===t.room?" — the one your answers point to":""}</span>
+          <button class="re-btn no see" onclick="VG.rooms('${ty}')">Show me ${ROOM_WORD[ty].toLowerCase()} rooms &rarr;</button></div><b>—</b></div>`).join("")}</div>`:""}`;
     }
     const next=s.hasRooms
       ?`<button class="re-btn yes" onclick="VG.rooms()">Now show me the rooms &rarr;</button>`
@@ -851,14 +933,16 @@ class VacationGenieFlow {
   }
 
   /* ── 7. the rooms: the Room Concierge's own picks ── */
-  async rooms(){
+  /* `type` = the room type to show: the one their answers point to, or one they chose on the price card. */
+  async rooms(type){
     this.push('drawPrice');
     const s=this.shipPick, t=this.trip;
+    this.roomType=ROOM_WORD[type]?type:t.room;
     this.busy("Your rooms",`Reading the deck plans for ${esc(s.ship)}…`,"Checking every cabin on that hull against what you told me.");
     let d=null;
     try{
       const r=await fetch("/api/cabins/recommend",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ship:s.repSlug||s.slug,party:this.party,room:t.room,priority:t.priority,budget:t.budget,motion:!!t.seasick})});
+        body:JSON.stringify({ship:s.repSlug||s.slug,party:this.party,room:this.roomType,priority:t.priority,budget:t.budget,motion:!!t.seasick,onlyShown:true})});
       if(r.ok) d=await r.json();
     }catch(e){/* handled below */}
     this.roomsData=d; this.picked=new Set(); this.drawRooms();
@@ -870,15 +954,27 @@ class VacationGenieFlow {
         <p class="re-intro">${(d&&d.note)||`I don't have room-by-room picks for ${esc(s.ship)} yet. Send this over and I'll choose your cabin by hand.`}</p>${this.sendCard('drawRooms')}`;
       return;
     }
+    /* One room, pared down (Mark, 2026-11-27: "most of this is not necessary and if it is, this is very hard to
+       read"): the room type and what it costs, the cabin and its deck in plain dark type, why I picked it. */
     const picks=d.picks.map(p=>{
       const f=p.facts||{}, on=this.picked.has(p.cabin);
-      const chips=[f.deck?`Deck ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
-      return `<div class="reveal-ship" style="padding:15px 18px">
-        <p class="room-hook">${p.hook||("Cabin "+p.cabin)}</p>
-        <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
+      const type=roomTypeOf(f.category,this.roomType||this.trip.room), fa=this.fareFor(type);
+      const w=fa&&fa.price!=null?this.priceWords(fa):null;
+      const price=w?`<b>${money(fa.price)}${w.lead?` <span>${w.lead}</span>`:""}</b><small>${w.rest}</small>`
+        :fa&&fa.status==="sold_out"?`<small>Sold out on this sailing at the public price. I'll check what I can get.</small>`
+        :`<small>I'll price this room with your quote.</small>`;
+      /* The line's own name for the room only when it says more than the tag does ("Infinite Veranda"). */
+      const own=f.category&&f.category.trim().toLowerCase()!==ROOM_WORD[type].toLowerCase()?f.category:null;
+      const where=[`Cabin ${p.cabin}`,f.deck?`Deck ${f.deck}`:null,own].filter(Boolean).join(" · ");
+      return `<div class="reveal-ship vg-room" style="padding:15px 18px">
+        <div class="vg-room-head"><span class="vg-type">${ROOM_WORD[type]}</span><span class="vg-price">${price}</span></div>
+        <p class="vg-cabin">${where}</p>
+        ${p.hook?`<p class="room-hook">${p.hook}</p>`:""}
+        ${categoryInfo(f.category)}
         ${p.reason?`<p class="room-why">${p.reason}</p>`:""}
         <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
           onclick="VG.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div></div>`;}).join("");
+    const moreBtn=`<p style="margin:2px 0 16px"><button class="re-btn no" onclick="VG.moreChoices()">Show me more choices &rarr;</button></p>`;
     const steer=(d.steerClear||[]).slice(0,3).map(x=>{
       const sf=x.facts||{};
       const sc=[sf.deck?`Deck ${sf.deck}`:null,sf.section||null,sf.category||null,sf.view||null].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
@@ -888,8 +984,10 @@ class VacationGenieFlow {
     this.stageEl.innerHTML=`
       <div class="stage-head"><p class="re-progress">Your rooms · ${esc(s.ship)}</p>
       <h2 class="q">Here's where I'd put you.</h2>
+      <p class="vg-caveat">${PRICE_CAVEAT}</p>
       ${rooms>1?`<p class="re-intro" style="font-size:15.5px">You need ${rooms} rooms. Pick the ones you like and I'll keep you close together.</p>`:""}</div>
       <div class="stage-body">${note}${picks}
+      ${moreBtn}
       ${steer?`<div class="steer"><h3>Rooms I'd Skip</h3><ul>${steer}</ul></div>`:""}
       <div class="re-cta"><h3>${this.picked.size?`${this.picked.size} room${this.picked.size>1?"s":""} picked`:"Not sure which? Leave it to me."}</h3>
         <p>Send it over. I'll check the room, the price and the itinerary, then call you with the final quote.</p>
@@ -897,6 +995,8 @@ class VacationGenieFlow {
       </div>`;
   }
   togglePick(c){ this.picked.has(c)?this.picked.delete(c):this.picked.add(c); this.drawRooms(); }
+  /* "Show me more choices": back to the card of room types and their prices, each with its own rooms button. */
+  moreChoices(){ this.push('drawRooms'); this.drawPrice(); this.stageEl.scrollTop=0; }
 
   /* ── 8. hand it to Mark ── */
   sendCard(from){

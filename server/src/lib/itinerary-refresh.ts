@@ -21,16 +21,30 @@ import { logger } from "./logger";
 import { after, briefly } from "./brief-error";
 import { CRUISEMAPPER_BASE as BASE } from "./cruisemapper";
 import {
-  fetchCruiseMapper, isNonPort, pageIdentity, parsePortTable, parseSchedule, resolvePort,
+  fetchCruiseMapper, isNonPort, pageIdentity, parsePortTable, parseSchedule, resolvePort, type ScheduleRow,
 } from "./cruisemapper";
+import { shipNameKeys } from "./cruise-api-core";
 
 /** ~50 requests a minute. We are a guest on a free site; do not hammer it. */
 const PAUSE_MS = 1200;
 /** Far enough back to catch a sailing already under way. */
 const BACK_DAYS = 21;
-/** A monthly refresh only needs the near horizon; 90 days covers hurricane season. */
-const FWD_DAYS = 90;
-const MAX_SAILINGS_PER_SHIP = 12;
+/**
+ * EVERY sailing the site lists is kept (about 17 months ahead). This was 90 days and 12 sailings a ship,
+ * which was enough for the storm tracker it was written for and useless for booking: Mark, 2026-11-27,
+ * on finding the Vacation Genie could not see Islander past December: "That's ridiculous when people
+ * are planning up to 2 years out." and "we need to be able to retrieve the sailings for all cruise lines
+ * that fall within the requested dates in order for the genie to work. if it is faster to keep this info
+ * in a table then that is what we do."
+ *
+ * What keeps the monthly run short is not reading less, it is not re-reading: a sailing's ports cost one
+ * request each, so a sailing already on file is believed until it is REREAD_AFTER_DAYS old, except inside
+ * NEAR_DAYS, where the storm tracker needs today's ports and every run reads them again. The first run
+ * after this change reads everything (about 100 sailings a ship); the ones after it read a month's worth.
+ */
+const NEAR_DAYS = 90;
+const FWD_DAYS = 800;
+const REREAD_AFTER_DAYS = 100;
 export const SOURCE = "cruisemapper";
 /** Backoff after a failed run, in minutes. Covers a provider blip without hammering. */
 const RETRY_DELAYS_MIN = [5, 20, 60, 180] as const;
@@ -62,16 +76,34 @@ export interface RefreshResult {
   portCalls: number;
   unmatchedPorts: number;
   written: number;
+  /** Listed sailings believed from the copy on file, not read again this run. */
+  alreadyOnFile: number;
+  /** Rows deleted because the site no longer lists the sailing. */
+  removed: number;
   errors: { ship: string; error: string }[];
 }
 
-interface RegistryShip {
+export interface RegistryShip {
   name: string;
   cruise_line: string | null;
   mmsi: string | null;
   imo: string | null;
   cruisemapper_id: string;
 }
+
+/**
+ * Ships we sell whose sailings we need, but that are NOT switched on in the tracker registry.
+ *
+ * Margaritaville at Sea Beachcomber is the former Costa Fortuna (IMO 9239783, CruiseMapper page 723). Mark
+ * switched the Costa Fortuna row off on 2026-09-22 ("remove norwegian sky and cost fortuna for the time
+ * being and set a reminder to talk to me about it in mid December"), and that decision is still his. The
+ * Vacation Genie offers her (she is in cabin_ships), so her schedule is read here under her own name
+ * without touching that row: no tracking, no public ship list, only planned sailings. When the registry
+ * row is renamed and switched back on, delete this entry (a ship listed both ways is read once).
+ */
+export const SOLD_NOT_TRACKED: readonly RegistryShip[] = [
+  { name: "Margaritaville at Sea Beachcomber", cruise_line: "Margaritaville at Sea", mmsi: null, imo: "9239783", cruisemapper_id: "723" },
+];
 
 function isoDay(offsetDays: number): string {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
@@ -97,10 +129,16 @@ async function refreshShip(ship: RegistryShip, opts: RefreshOptions, out: Refres
   }
 
   const lo = isoDay(-BACK_DAYS);
-  const hi = isoDay(FWD_DAYS);
-  const wanted = parseSchedule(page.body)
-    .filter((s) => s.start >= lo && s.start <= hi)
-    .slice(0, MAX_SAILINGS_PER_SHIP);
+  const listed = parseSchedule(page.body).filter((s) => s.start >= lo && s.start <= isoDay(FWD_DAYS));
+
+  // What is already on file for her from this source, so only what is new, near or old is read again.
+  const { data: fileData, error: fileErr } = await getSupabase().from("planned_sailings")
+    .select("ref,start_date,updated_at").eq("source", SOURCE).eq("ship_name", ship.name)
+    .gte("start_date", lo).order("ref").limit(1000);
+  if (fileErr) throw new Error(fileErr.message);
+  const onFile = (fileData ?? []) as OnFile[];
+  const wanted = sailingsToRead(listed, onFile, new Date());
+  out.alreadyOnFile += listed.length - wanted.length;
 
   const supabase = getSupabase();
   for (const sched of wanted) {
@@ -137,11 +175,53 @@ async function refreshShip(ship: RegistryShip, opts: RefreshOptions, out: Refres
     if (error) throw new Error(error.message);
     out.written += 1;
   }
+
+  // A sailing the site has stopped listing (cancelled, re-dated, the ship moved) must not stay on file as
+  // something a traveler can be offered. Only her own rows from this source, only from today on, and
+  // only inside the dates the page itself covers.
+  if (!opts.dryRun) {
+    const gone = refsNoLongerListed(listed, onFile, isoDay(0));
+    for (let i = 0; i < gone.length; i += 100) {
+      const { error } = await supabase.from("planned_sailings").delete().eq("source", SOURCE).in("ref", gone.slice(i, i + 100));
+      if (error) throw new Error(error.message);
+    }
+    out.removed += gone.length;
+  }
+}
+
+interface OnFile { ref: string; start_date: string; updated_at: string | null }
+
+/**
+ * Which listed sailings need their ports read this run: one we do not hold, one inside the near horizon
+ * (read every run), or one whose copy is older than REREAD_AFTER_DAYS. Exported for tests.
+ */
+export function sailingsToRead(listed: readonly ScheduleRow[], onFile: readonly OnFile[], now: Date): ScheduleRow[] {
+  const held = new Map(onFile.map((r) => [r.ref, r.updated_at]));
+  const near = new Date(now.getTime() + NEAR_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const oldBefore = now.getTime() - REREAD_AFTER_DAYS * 86_400_000;
+  return listed.filter((s) => {
+    const ref = `${SOURCE}:${s.cruiseId}`;
+    if (!held.has(ref)) return true;
+    if (s.start <= near) return true;
+    const at = Date.parse(held.get(ref) ?? "");
+    return !Number.isFinite(at) || at < oldBefore;
+  });
+}
+
+/**
+ * Rows on file that the page no longer lists: from `today` on, and no later than the last sailing the
+ * page shows (what lies beyond the page is unknown, not gone). An empty page removes nothing. Exported for tests.
+ */
+export function refsNoLongerListed(listed: readonly ScheduleRow[], onFile: readonly OnFile[], today: string): string[] {
+  if (!listed.length) return [];
+  const last = listed.reduce((m, s) => (s.start > m ? s.start : m), "");
+  const now = new Set(listed.map((s) => `${SOURCE}:${s.cruiseId}`));
+  return onFile.filter((r) => r.start_date >= today && r.start_date <= last && !now.has(r.ref)).map((r) => r.ref);
 }
 
 export async function refreshItineraries(opts: RefreshOptions = {}): Promise<RefreshResult> {
   const out: RefreshResult = {
-    ships: 0, sailings: 0, portCalls: 0, unmatchedPorts: 0, written: 0, errors: [],
+    ships: 0, sailings: 0, portCalls: 0, unmatchedPorts: 0, written: 0, alreadyOnFile: 0, removed: 0, errors: [],
   };
   const supabase = getSupabase();
   let q = supabase.from("ships")
@@ -153,7 +233,18 @@ export async function refreshItineraries(opts: RefreshOptions = {}): Promise<Ref
   const { data, error } = await q;
   if (error) throw new Error(error.message);
 
-  const ships = ((data ?? []) as RegistryShip[]).slice(0, opts.limit ?? Infinity);
+  // The ships we sell first (the fleet the Vacation Genie and the Room Concierge offer), then the rest of
+  // the registry: the first full run takes hours, and a traveler's question must not wait behind an
+  // expedition yacht.
+  const { data: fleetData } = await supabase.from("cabin_ships").select("ship").eq("in_fleet", true);
+  const fleet = new Set(((fleetData ?? []) as { ship: string }[]).flatMap((f) => shipNameKeys(f.ship)));
+  const sold = (sh: RegistryShip) => shipNameKeys(sh.name).some((k) => fleet.has(k));
+  const registry = (data ?? []) as RegistryShip[];
+  const named = new Set(registry.map((r) => r.name));
+  const extra = SOLD_NOT_TRACKED.filter((x) => !named.has(x.name) && (!opts.shipName || opts.shipName === x.name));
+  const ships = [...registry, ...extra]
+    .sort((a, b) => Number(sold(b)) - Number(sold(a)))
+    .slice(0, opts.limit ?? Infinity);
   for (const ship of ships) {
     try {
       await refreshShip(ship, opts, out);
@@ -180,6 +271,26 @@ export function bootRefreshNeeded(newestUpdatedAt: string | null, now: Date, sta
   if (!newestUpdatedAt) return true;
   const age = now.getTime() - Date.parse(newestUpdatedAt);
   return !Number.isFinite(age) || age > staleAfterDays * 24 * 60 * 60 * 1000;
+}
+
+/**
+ * A table that stops short of SHALLOW_DAYS ahead was filled by the old 90-day capture (or is half filled):
+ * read everything now instead of waiting for the 1st. After one full pass the farthest sailing sits about
+ * 500 days out, so this fires once per box, not on every restart. Exported for tests.
+ */
+export const SHALLOW_DAYS = 270;
+export function tableIsShallow(farthestStart: string | null, now: Date, shallowDays = SHALLOW_DAYS): boolean {
+  if (!farthestStart) return true;
+  const ahead = (Date.parse(farthestStart + "T00:00:00Z") - now.getTime()) / 86_400_000;
+  return !Number.isFinite(ahead) || ahead < shallowDays;
+}
+
+async function farthestCruiseMapperStart(): Promise<string | null> {
+  const { data, error } = await getSupabase().from("planned_sailings")
+    .select("start_date").eq("source", SOURCE)
+    .order("start_date", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { start_date?: string | null } | null)?.start_date ?? null;
 }
 
 async function newestCruiseMapperRow(): Promise<string | null> {
@@ -209,6 +320,7 @@ export function scheduleItineraryRefresh() {
       logger.info({
         ships: r.ships, sailings: r.sailings, portCalls: r.portCalls,
         portsWithoutAKnownSlug: r.unmatchedPorts, rowsWritten: r.written,
+        believedFromFile: r.alreadyOnFile, removedNoLongerListed: r.removed,
         shipsThatFailed: r.errors.length,
       }, "Itinerary refresh complete");
     } catch (err) {
@@ -237,11 +349,12 @@ export function scheduleItineraryRefresh() {
   after(BOOT_CHECK_DELAY_MS, () => void (async () => {
     try {
       const newest = await newestCruiseMapperRow();
-      if (!bootRefreshNeeded(newest, new Date())) {
-        logger.info({ newest }, "Itinerary refresh: table is fresh, no boot run");
+      const farthest = await farthestCruiseMapperStart();
+      if (!bootRefreshNeeded(newest, new Date()) && !tableIsShallow(farthest, new Date())) {
+        logger.info({ newest, farthest }, "Itinerary refresh: table is fresh and deep, no boot run");
         return;
       }
-      logger.info({ newest }, "Itinerary refresh: table empty or stale — running at boot");
+      logger.info({ newest, farthest }, "Itinerary refresh: table empty, stale or shallow — running at boot");
       await tick();
     } catch (err) {
       logger.error({ reason: briefly(err) }, "Itinerary refresh: boot freshness check failed — waiting for the monthly run");
