@@ -122,8 +122,9 @@ test("a good trip parses, with the note trimmed", () => {
   if ("trip" in r) { assert.equal(r.trip.room, "inside"); assert.equal(r.trip.notes, "We want Cozumel."); assert.equal(r.trip.firstCruise, true); }
 });
 
-test("interior is a room choice the visitor can name", () => {
-  assert.ok(ROOM_CHOICES.some((c) => c.value === "inside" && /interior/i.test(c.label)));
+test("the room is asked as the Room Concierge's scene, never as a room type, and interior is one of the answers", () => {
+  assert.ok(ROOM_CHOICES.some((c) => c.value === "inside"));
+  for (const c of ROOM_CHOICES) assert.ok(!/interior|ocean view|balcony|suite/i.test(c.label), `"${c.label}" names a room type`);
 });
 
 test("each thing wrong with a trip comes back as one sentence saying what to fix", () => {
@@ -137,7 +138,7 @@ test("each thing wrong with a trip comes back as one sentence saying what to fix
     [{ latest: "2027-01-01" }, /before the first/],
     [{ nightsMin: 9, nightsMax: 7 }, /how long a trip/],
     [{ destination: "mars" }, /where you want to go/],
-    [{ room: "yacht" }, /kind of room/],
+    [{ room: "yacht" }, /picture using your room/],
     [{ priority: "" }, /matters most/],
     [{ budget: null }, /budget/],
   ];
@@ -188,8 +189,11 @@ test("vacation-genie.html asks exactly the questions the server scores", () => {
     assert.equal(asked ? JSON.parse(asked) : null, q.ask, `the page words "${q.key}" differently`);
   }
   const trip = pool("TRIP_QS");
-  for (const [key, list] of [["destination", DESTINATION_CHOICES], ["room", ROOM_CHOICES], ["priority", PRIORITY_CHOICES], ["budget", BUDGET_CHOICES]] as const) {
-    const block = trip.match(new RegExp(`key:"${key}"[\\s\\S]*?opts:\\[([\\s\\S]*?)\\]\\]\\s*\\}`))?.[1] ?? "";
+  const roomPool = pool("ROOM_QS");
+  assert.ok(!/key:"(room|priority)"/.test(trip), "the room questions belong in the interview, not in the trip facts");
+  assert.ok(!/What kind of room/i.test(html), "the page asks for a room type by name");
+  for (const [key, list, from] of [["destination", DESTINATION_CHOICES, trip], ["room", ROOM_CHOICES, roomPool], ["priority", PRIORITY_CHOICES, roomPool], ["budget", BUDGET_CHOICES, trip]] as const) {
+    const block = from.match(new RegExp(`key:"${key}"[\\s\\S]*?opts:\\[([\\s\\S]*?)\\]\\]\\s*\\}`))?.[1] ?? "";
     const pairs = [...block.matchAll(/\["([^"]+)","([^"]+)"/g)].map((m) => [m[1], m[2]]);
     assert.deepEqual(pairs, list.map((o) => [o.label, o.value]), `the page's "${key}" answers drifted`);
   }

@@ -825,7 +825,7 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       const html = t.html(await t.get("/vacation-genie.html"), {
-        mustContain: ['"/api/genie/"', "/api/cabins/fleet", "/api/cabins/recommend", "/api/ships/", "/api/public-config", "GENIE_PERSONALITY_QS", "TRIP_QS"],
+        mustContain: ['"/api/genie/"', "/api/cabins/fleet", "/api/cabins/recommend", "/api/ships/", "/api/public-config", "GENIE_PERSONALITY_QS", "TRIP_QS", "ROOM_QS", "noSailings"],
       });
       t.equal(H.htmlLang(html).slice(0, 2), "en", "the page's language");
       t.equal(H.canonical(html), `https://${PROD_HOST}/vacation-genie.html`, "the page's canonical link");
@@ -838,7 +838,14 @@ export default [
       t.matches(html, /id="gEmail" type="email"/, "the email field on the gate screen");
       // Mark's own line, on the landing before the button (2026-11-24): the interview is long on purpose and says so.
       t.matches(html, /Yes, it's obnoxiously long\.[\s\S]{0,40}I want to make sure we give you as perfect a cruise as possible\. Maybe the perfect cruise you never saw coming\./, "the landing's line that owns up to the length");
-      t.matches(html, /\["Interior[^"]*","inside"\]/, "the room question's interior answer");
+      // Mark, 2026-11-26: the Genie never asks for a room type by name; the room is read from the Room
+      // Concierge's own two scenes, asked inside the interview and not among the trip facts.
+      t.ok(!/What kind of room/i.test(html), "the page asks for a room type by name");
+      const tripPool = html.match(/const TRIP_QS\s*=\s*\[([\s\S]*?)\n\];/)?.[1] ?? "";
+      const roomPool = html.match(/const ROOM_QS\s*=\s*\[([\s\S]*?)\n\];/)?.[1] ?? "";
+      t.ok(!/key:"(room|priority)"/.test(tripPool), "a room question sits among the trip facts");
+      t.matches(roomPool, /key:"room", q:"How do you picture using your room\?"/, "the Room Concierge's room scene in the interview");
+      t.matches(roomPool, /key:"priority", q:"What matters most once you're aboard\?"/, "the Room Concierge's what-matters scene in the interview");
       const asked = [...(html.match(/const GENIE_PERSONALITY_QS\s*=\s*\[([\s\S]*?)\n\];/)?.[1] ?? "").matchAll(/key:"([A-Za-z0-9]+)"/g)].map((m) => m[1]);
       t.equal(asked.length, 17, "questions about the traveler on the page");
       // The Genie's questions are its own scenes aboard, not the Room Concierge's six (Mark, 2026-11-24).

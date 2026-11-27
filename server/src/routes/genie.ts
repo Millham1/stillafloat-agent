@@ -31,6 +31,7 @@ import {
   parseTrip, partyOf, guestsPerRoom, genieProfile, profileAxes, profileInWords, answersInWords,
   type TripFacts, type GenieProfile,
 } from "../lib/genie-interview";
+import { liveSailings, liveSailingsOf, type LiveAnswer } from "../lib/genie-live";
 import {
   fareSearchBody, faresFromRows, guestsToAsk, sailingChoices, fareLine,
   type SailingFares, type SailingRow, type SailingChoice,
@@ -111,6 +112,49 @@ router.post("/genie/start", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Our planned sailings for one ship inside the traveler's dates. planned_sailings names a ship as the
+ * registry does; the fleet list sometimes carries the line in front ("Carnival Mardi Gras"), so both
+ * spellings are asked for. One ship, one date range: the (ship_name, start_date) index answers it.
+ */
+async function plannedRowsFor(shipName: string, trip: Pick<TripFacts, "earliest" | "latest">): Promise<SailingRow[]> {
+  const names = [...new Set([shipName, ...shipNameKeys(shipName)])];
+  const rows: SailingRow[] = [];
+  for (const n of names) {
+    const { data, error } = await db().from("planned_sailings")
+      .select("ship_name,operator,start_date,end_date,ports,source")
+      .ilike("ship_name", n).gte("start_date", trip.earliest).lte("start_date", trip.latest)
+      .order("start_date").limit(400);
+    if (error) throw new Error(error.message);
+    rows.push(...((data ?? []) as SailingRow[]));
+  }
+  return rows;
+}
+
+/** The fare service's answer for this trip, and the ships it carries. Either may be null: then the table decides. */
+async function liveFor(trip: TripFacts): Promise<{ live: LiveAnswer | null; carried: Map<string, { code: string; line: string }> | null }> {
+  try {
+    const live = await liveSailings(trip);
+    return { live, carried: live ? await shipCodes() : null };
+  } catch (err) {
+    logger.warn({ err }, "genie: live sailing search failed, using the table");
+    return { live: null, carried: null };
+  }
+}
+const isCarried = (shipName: string, carried: Map<string, { code: string; line: string }> | null) =>
+  Boolean(carried && shipNameKeys(shipName).some((k) => carried.has(k)));
+
+/**
+ * Does this ship sail the trip? The fare service says so for a ship it lists. When its answer is complete
+ * and it carries the ship but did not list her, she does not. Otherwise (a line it does not carry, a
+ * wide-open question it could not finish, or no answer at all) our own table decides.
+ */
+async function sailsTheTrip(shipName: string, trip: TripFacts, live: LiveAnswer | null, carried: Map<string, { code: string; line: string }> | null): Promise<boolean> {
+  if (live && liveSailingsOf(live, shipName)) return true;
+  if (live?.complete && isCarried(shipName, carried)) return false;
+  return sailingChoices(await plannedRowsFor(shipName, trip), trip, 1).length > 0;
+}
+
 // ── 2. Trip facts + personality answers -> the ships ────────────────────────
 router.post("/genie/ships", async (req: Request, res: Response) => {
   try {
@@ -127,9 +171,20 @@ router.post("/genie/ships", async (req: Request, res: Response) => {
     // active are the two that line reads as numbers. The ship itself is chosen from `profile`.
     const axes = profileAxes(profile);
 
+    // Destination first: ask the fare service for sailings to where they want to go, in their dates and
+    // length. It answers for the eleven lines it carries; the table answers for the rest.
+    const { live, carried } = await liveFor(trip);
+
     const out = await suggestShips({
       personality: axes, party: partyOf(trip), budget: trip.budget, destination: trip.destination,
       traits: { food: profile.target.dining, active: profile.target.activity }, profile,
+      // A ship is offered only when she has a sailing inside their dates, at their length, to where
+      // they want to go: the same test the sailing list applies after they pick her.
+      available: async (ships) => {
+        const open = new Set<string>();
+        await Promise.all(ships.map(async (sh) => { if (await sailsTheTrip(sh.ship, trip, live, carried)) open.add(sh.slug); }));
+        return open;
+      },
     }, row.lang);
     if (!out) throw new Error("virtue matrix unavailable");
 
@@ -137,7 +192,7 @@ router.post("/genie/ships", async (req: Request, res: Response) => {
       trip, choices, answers_words: answersInWords(choices), traits: profile, axes,
       suggested_ships: [...out.picks.map((p) => p.slug), ...(out.worthALook ? [out.worthALook.slug] : [])],
     });
-    return res.json({ ...out, party: partyOf(trip) });
+    return res.json({ ...out, party: partyOf(trip), noSailings: out.picks.length === 0 });
   } catch (err) {
     logger.error({ err }, "genie/ships failed");
     return res.status(500).json({ error: "I could not match a ship just now. Try again in a minute." });
@@ -156,19 +211,12 @@ router.post("/genie/sailings", async (req: Request, res: Response) => {
     const ship = shipData as { slug: string; ship: string; line: string } | null;
     if (!ship) return res.status(404).json({ error: "I do not know that ship." });
 
-    // planned_sailings names a ship as the registry does; the fleet list sometimes carries the line in
-    // front ("Carnival Mardi Gras"). Ask for both spellings.
-    const names = [...new Set([ship.ship, ...shipNameKeys(ship.ship)])];
-    const rows: SailingRow[] = [];
-    for (const n of names) {
-      const { data, error } = await db().from("planned_sailings")
-        .select("ship_name,operator,start_date,end_date,ports,source")
-        .ilike("ship_name", n).gte("start_date", row.trip.earliest).lte("start_date", row.trip.latest)
-        .order("start_date").limit(400);
-      if (error) throw new Error(error.message);
-      rows.push(...((data ?? []) as SailingRow[]));
-    }
-    const sailings = sailingChoices(rows, row.trip);
+    // The same answer the ship was offered on: the fare service's sailings when it carries her, our table when not.
+    const { live, carried } = await liveFor(row.trip);
+    const listed = live ? liveSailingsOf(live, ship.ship) : null;
+    const sailings: SailingChoice[] = listed ? listed.slice(0, 12)
+      : live?.complete && isCarried(ship.ship, carried) ? []
+      : sailingChoices(await plannedRowsFor(ship.ship, row.trip), row.trip);
     await patch(row.id, { ship_slug: ship.slug, ship_name: ship.ship, ship_line: ship.line, sailing: null, fares: null, cabins: null });
     return res.json({ ship: { slug: ship.slug, ship: ship.ship, line: ship.line }, sailings });
   } catch (err) {
@@ -245,7 +293,7 @@ export function fileRows(row: Row): [string, string][] {
       ["Can sail", `${t.earliest} to ${t.latest}`],
       ["Trip length", t.nightsMin === t.nightsMax ? `${t.nightsMin} nights` : `${t.nightsMin} to ${t.nightsMax} nights`],
       ["Where", t.destination === "surprise" ? "Open: wherever the ship fits" : t.destination.replace(/_/g, " ")],
-      ["Room type asked for", ROOM_WORD[t.room] ?? t.room],
+      ["Room their answers point to", ROOM_WORD[t.room] ?? t.room],
       ["Matters most aboard", t.priority], ["Budget", t.budget],
       ["Seasick", t.seasick ? "Yes" : "No"], ["First cruise", t.firstCruise ? "Yes" : "No"],
       ["Occasion", t.occasion === "none" ? "None given" : t.occasion],

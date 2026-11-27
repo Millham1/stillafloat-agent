@@ -358,6 +358,29 @@ function arguesAgainstItself(t: string | undefined): boolean {
  */
 export type ReasonSource = "live" | "research" | "facts";
 
+/**
+ * Does this text name a cabin that is not on the screen?
+ *
+ * Mark, 2026-11-27, reading a Vacation Genie room card that said "C327 ... is nearly identical in
+ * position to C515": "why are we comparing our room to C515 if it is not a proposed room to choose?"
+ * The stored reasons were written across a whole shortlist; the screen shows the top few, so a reason
+ * can lean on a room the reader cannot see. A cabin number counts when it has the same shape as the
+ * numbers on the screen (same letters-then-digits pattern), is not this card's own, and is not one of
+ * the others shown. Money ("$1,349") is not a cabin.
+ */
+export function namesUnshownCabin(text: string | undefined, own: string, shown: readonly string[]): boolean {
+  if (!text) return false;
+  const shape = (c: string) => c.toUpperCase().replace(/[A-Z]/g, "A").replace(/\d/g, "9");
+  const shapes = new Set(shown.map(shape));
+  const onScreen = new Set(shown.map((c) => c.toUpperCase()));
+  for (const m of text.matchAll(/(?<![$,.\d])\b([A-Za-z]{0,2}\d{3,5})\b(?![,.]\d)/g)) {
+    const token = m[1]!.toUpperCase();
+    if (token === own.toUpperCase() || onScreen.has(token)) continue;
+    if (shapes.has(shape(token))) return true;
+  }
+  return false;
+}
+
 export function resolvePickReasons<
   T extends { cabin: string; hook?: string; reason?: string; facts: CabinFacts | null },
 >(
@@ -365,9 +388,14 @@ export function resolvePickReasons<
   picks: T[],
   live: LiveOut | null,
   lang: "en" | "es",
+  /** onlyShown: a reason that names a cabin not among these picks drops to the next rung (the Vacation Genie asks for it). */
+  opts: { onlyShown?: boolean } = {},
 ): { picks: (T & { reasonSource: ReasonSource })[]; counts: Record<ReasonSource, number> } {
   const byCabin = live ? new Map(live.recommendations.map((r) => [String(r.cabin), r])) : null;
   const counts: Record<ReasonSource, number> = { live: 0, research: 0, facts: 0 };
+  const shown = picks.map((p) => p.cabin);
+  const offScreen = (p: T, ...texts: (string | undefined)[]) =>
+    opts.onlyShown === true && texts.some((t) => namesUnshownCabin(t, p.cabin, shown));
 
   const resolved = picks.map((p) => {
     const lr = byCabin?.get(p.cabin);
@@ -380,12 +408,14 @@ export function resolvePickReasons<
       if (arguesAgainstItself(hook) || arguesAgainstItself(reason)) {
         logger.warn({ ship: shipName, cabin: p.cabin },
           "cabin concierge: model argued against its own pick — serving stored text");
+      } else if (offScreen(p, hook, reason)) {
+        logger.warn({ ship: shipName, cabin: p.cabin }, "cabin concierge: live text names a cabin that is not shown — serving stored text");
       } else if (reason) {
         counts.live++;
         return { ...p, hook, reason, reasonSource: "live" as const };
       }
     }
-    if (p.reason) {
+    if (p.reason && !offScreen(p, p.hook, p.reason)) {
       counts.research++;
       return { ...p, reasonSource: "research" as const };
     }
@@ -1020,7 +1050,16 @@ function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: st
  * own verdicts, budget, destination, the enclave, one ship per line) is the same code for both.
  */
 export type SuggestProfile = { target: Partial<Record<string, number>>; weight: Partial<Record<string, number>> };
-export type SuggestInput = { personality?: Personality; party?: string; traits?: Traits; budget?: string; destination?: string; profile?: SuggestProfile };
+export type SuggestInput = {
+  personality?: Personality; party?: string; traits?: Traits; budget?: string; destination?: string; profile?: SuggestProfile;
+  /**
+   * Given a batch of ships, the slugs of those that can really be booked for this traveler (the Vacation
+   * Genie: a sailing inside their dates, at their length, to where they want to go). When it is given, a
+   * ship that is not in the answer is never offered, however well it fits (Mark, 2026-11-26: "only ships
+   * with sailings within the window should be presented"). The Room Concierge does not pass it.
+   */
+  available?: (ships: { slug: string; ship: string; line: string }[]) => Promise<Set<string>>;
+};
 export type SuggestedShip = FleetShip & { nextLevel: { name: string; why: string } | null };
 export type SuggestOutput = { picks: SuggestedShip[]; reason: string; worthALook: (SuggestedShip & { why: string }) | null };
 
@@ -1126,7 +1165,10 @@ export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Prom
         if (budget === "sky") score += (priceV - 1) * 2.2;
         else if (budget === "treat") score += (priceV - 1) * 1.1;
         else if (budget === "lean") score += (1 - priceV) * 2.2;
-        if (destination && destination !== "surprise" && anyDeployments && sh.regions.length) {
+        // When the caller checks each ship against real sailings (`available`), that check IS the
+        // destination test, dates included; the season-blind deployment list must not then push down a
+        // ship that does sail there in the traveler's window.
+        if (!input.available && destination && destination !== "surprise" && anyDeployments && sh.regions.length) {
           score += sh.regions.includes(destination) ? 3.0 : -3.0;
         }
         const nextLevel = enclave && wantsEnclave
@@ -1140,9 +1182,11 @@ export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Prom
       })
       .sort((a, b) => b.score - a.score);
 
+    type Scored = (typeof scored)[number];
+    const select = (list: Scored[]) => {
     const picks: (FleetShip & { nextLevel: { name: string; why: string } | null })[] = [];
     const usedLines = new Set<string>();
-    for (const { s: sh, nextLevel } of scored) {
+    for (const { s: sh, nextLevel } of list) {
       if (usedLines.has(sh.line)) continue;
       usedLines.add(sh.line);
       picks.push({ ...sh, nextLevel });
@@ -1156,8 +1200,8 @@ export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Prom
     // internal verdict backs it (>= 4), never from vibes; the response carries the
     // published rating alone, per the rule at the top of this section.
     let worthALook: (FleetShip & { nextLevel: { name: string; why: string } | null; why: string }) | null = null;
-    const floor = picks.length ? (scored.find((x) => x.s.slug === picks[picks.length - 1]!.slug)?.score ?? 0) - 4 : -Infinity;
-    for (const { s: sh, score, nextLevel } of scored) {
+    const floor = picks.length ? (list.find((x) => x.s.slug === picks[picks.length - 1]!.slug)?.score ?? 0) - 4 : -Infinity;
+    for (const { s: sh, score, nextLevel } of list) {
       if (usedLines.has(sh.line)) continue;
       /**
        * The old test here was "not in matrix.mainstream". Every one of the seven lines
@@ -1192,6 +1236,29 @@ export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Prom
       worthALook = { ...sh, nextLevel, why };
       break;
     }
+    return { picks, worthALook, floor };
+    };
+
+    // Only ships that can be booked for this traveler. Asked in fit order, a batch at a time, and only as
+    // far down the list as a ship could still be offered (the "worth a look" floor), so a normal interview
+    // checks a few dozen ships and not the fleet.
+    let chosen = select(scored);
+    if (input.available) {
+      const open: Scored[] = [];
+      const STEP = 16;
+      for (let from = 0; ; from += STEP) {
+        const batch = scored.slice(from, from + STEP);
+        if (batch.length) {
+          const ok = await input.available(batch.map((x) => ({ slug: x.s.slug, ship: x.s.ship, line: x.s.line })));
+          for (const x of batch) if (ok.has(x.s.slug)) open.push(x);
+        }
+        chosen = select(open);
+        const next = scored[from + STEP];
+        if (!next) break;
+        if (chosen.picks.length === 2 && (chosen.worthALook || next.score < chosen.floor)) break;
+      }
+    }
+    const { picks, worthALook } = chosen;
 
     const es = lang === "es";
     const reasonBits: string[] = [];
@@ -1204,7 +1271,7 @@ export async function suggestShips(input: SuggestInput, lang: "en" | "es"): Prom
     if (personality.splurge === "cabin") reasonBits.push(es ? "la habitación te importa" : "the room matters to you");
     if (personality.splurge === "value") reasonBits.push(es ? "quieres que la tarifa haga el trabajo" : "you want the fare to do the work");
     const one = picks.length === 1;
-    if (destination && destination !== "surprise" && picks.some((p) => p.regions.includes(destination))) {
+    if (destination && destination !== "surprise" && (input.available ? picks.length > 0 : picks.some((p) => p.regions.includes(destination)))) {
       reasonBits.unshift(one
         ? (es ? "navega hacia donde tú vas" : "she sails where you're headed")
         : (es ? "navegan hacia donde tú vas" : "they sail where you're headed"));
@@ -1449,7 +1516,7 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // (346 of 1,079, measured 2026-08-17). It writes the room cards; the
     // warnings are facts we can point at a source for.
     const { picks: withReasons, counts: reasonCounts } = resolvePickReasons(
-      shipRow.ship ?? ship, picks, live, lang,
+      shipRow.ship ?? ship, picks, live, lang, { onlyShown: (req.body as Record<string, unknown> | undefined)?.["onlyShown"] === true },
     );
     picks = withReasons;
     // Mark's 2026-09-08 report ("no description for these rooms"): a pick can
